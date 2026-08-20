@@ -1,67 +1,12 @@
-export type DocumentStatus = 'Draft' | 'In Routing' | 'Approved' | 'Revision Required' | 'Expired';
+// Curated seed/demo data only. Types and pure business-rule functions now live in
+// ./domain (moved there when the real backend was added, so API routes and the
+// migration scripts can import them without pulling in this file's mock arrays) —
+// re-exported here so every existing `from "@/lib/mockData"` import across the app
+// keeps working unchanged.
+export * from "./domain/types";
+export * from "./domain/rules";
 
-export type PSIType = 
-  | 'Informasi Bahan Berbahaya' 
-  | 'Informasi Teknologi Proses' 
-  | 'Informasi Peralatan' 
-  | 'Sistem Tata Kerja';
-
-export type LifecyclePhase = 'Proyek' | 'Operasi' | 'Decommissioning';
-
-export interface ApprovalRouteItem {
-  approverRole: string;
-  approverName: string;
-  stepOrder: number; // 1 = Tahap Pertama, 2 = Tahap Kedua (Sekuensial / Paralel jika sama)
-  status: 'Pending' | 'Approved' | 'Rejected';
-  actionDate?: string;
-  comment?: string;
-}
-
-export interface HistoryItem {
-  id: string;
-  timestamp: string;
-  actorName: string;
-  actorRole: string;
-  location: string;
-  action: 'Created' | 'Forwarded' | 'Approved' | 'Rejected' | 'Extended Validity' | 'Revised';
-  notes?: string;
-  // Snapshot berkas & versi dokumen PADA SAAT entri riwayat ini terjadi — dipakai untuk
-  // download per-versi (bukan cuma versi/file terbaru dari dokumen induknya).
-  fileUrl: string;
-  version: string;
-}
-
-export interface DocumentItem {
-  id: string;
-  documentNumber: string;
-  title: string;
-  psiType: PSIType;
-  lifecyclePhase: LifecyclePhase;
-  location: string;
-  currentVersion: string;
-  status: DocumentStatus;
-  issueDate: string;
-  expiryDate: string; // ISO String or YYYY-MM-DD
-  fileUrl: string;
-  routes: ApprovalRouteItem[];
-  history: HistoryItem[];
-  isCircular: boolean;
-}
-
-export interface LocationTarget {
-  locationName: string;
-  locationType: 'IT' | 'FT' | 'AFT';
-  region: string;
-  targets: Record<PSIType, number>;
-}
-
-export interface SimulatedUser {
-  id: string;
-  name: string;
-  role: 'Penanggung Jawab PSI (Initiator)' | 'PSI / MOC Controller' | 'Admin Regional';
-  location: string;
-  isRegionalAdmin?: boolean;
-}
+import { DocumentItem, LocationTarget, SimulatedUser } from "./domain/types";
 
 export const SIMULATED_USERS: SimulatedUser[] = [
   {
@@ -118,8 +63,8 @@ export const REGIONAL_LOCATIONS: LocationTarget[] = [
     }
   },
   {
-    locationName: 'FT Bima',
-    locationType: 'FT',
+    locationName: 'IT Bima',
+    locationType: 'IT',
     region: 'Jatimbalinus',
     targets: {
       'Informasi Bahan Berbahaya': 2,
@@ -164,16 +109,16 @@ export const INITIAL_DOCUMENTS: DocumentItem[] = [
     status: 'Approved',
     issueDate: '2024-03-10',
     expiryDate: '2029-03-10',
-    fileUrl: 'https://r2.cloudflare-pertamina.com/docs/ECA_FT_MALANG_v2.0.pdf',
+    fileUrl: '/sample-docs/eca-ft-malang.pdf',
     isCircular: true,
     routes: [
       { approverRole: 'PSI Controller', approverName: 'Agnes Wijaya', stepOrder: 1, status: 'Approved', actionDate: '2024-03-11' },
       { approverRole: 'Facility Manager', approverName: 'Rahmat Hidayat', stepOrder: 2, status: 'Approved', actionDate: '2024-03-12' }
     ],
     history: [
-      { id: 'h-1', timestamp: '2024-03-10 09:15', actorName: 'Budi Santosa', actorRole: 'Initiator', location: 'FT Malang', action: 'Created', notes: 'Mengajukan dokumen ECA baru', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/ECA_FT_MALANG_v2.0.pdf', version: '2.0' },
-      { id: 'h-2', timestamp: '2024-03-11 11:30', actorName: 'Agnes Wijaya', actorRole: 'PSI Controller', location: 'FT Malang', action: 'Approved', notes: 'Pemeriksaan teknis aman', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/ECA_FT_MALANG_v2.0.pdf', version: '2.0' },
-      { id: 'h-3', timestamp: '2024-03-12 14:00', actorName: 'Rahmat Hidayat', actorRole: 'Facility Manager', location: 'FT Malang', action: 'Approved', notes: 'Disetujui untuk operasi', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/ECA_FT_MALANG_v2.0.pdf', version: '2.0' }
+      { id: 'h-1', timestamp: '2024-03-10 09:15', actorName: 'Budi Santosa', actorRole: 'Initiator', location: 'FT Malang', action: 'Created', notes: 'Mengajukan dokumen ECA baru', fileUrl: '/sample-docs/eca-ft-malang.pdf', version: '2.0' },
+      { id: 'h-2', timestamp: '2024-03-11 11:30', actorName: 'Agnes Wijaya', actorRole: 'PSI Controller', location: 'FT Malang', action: 'Approved', notes: 'Pemeriksaan teknis aman', fileUrl: '/sample-docs/eca-ft-malang.pdf', version: '2.0' },
+      { id: 'h-3', timestamp: '2024-03-12 14:00', actorName: 'Rahmat Hidayat', actorRole: 'Facility Manager', location: 'FT Malang', action: 'Approved', notes: 'Disetujui untuk operasi', fileUrl: '/sample-docs/eca-ft-malang.pdf', version: '2.0' }
     ]
   },
   {
@@ -242,16 +187,16 @@ export const INITIAL_DOCUMENTS: DocumentItem[] = [
     title: '2025 SECE MAH - FT Bima',
     psiType: 'Informasi Peralatan',
     lifecyclePhase: 'Operasi',
-    location: 'FT Bima',
+    location: 'IT Bima',
     currentVersion: '1.0',
     status: 'Approved',
     issueDate: '2019-10-15',
     expiryDate: '2024-10-15', // 2024 = mendekati expired 5 tahun!
-    fileUrl: 'https://r2.cloudflare-pertamina.com/docs/SECE_MAH_BIMA_2025.pdf',
+    fileUrl: '/sample-docs/sece-mah-2025-ft-bima.xlsx',
     isCircular: false,
     routes: [],
     history: [
-      { id: 'h-7', timestamp: '2019-10-15 14:00', actorName: 'Manager Bima', actorRole: 'Initiator', location: 'FT Bima', action: 'Created', notes: 'Direct approved dokumen SECE', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/SECE_MAH_BIMA_2025.pdf', version: '1.0' }
+      { id: 'h-7', timestamp: '2019-10-15 14:00', actorName: 'Manager Bima', actorRole: 'Initiator', location: 'IT Bima', action: 'Created', notes: 'Direct approved dokumen SECE', fileUrl: '/sample-docs/sece-mah-2025-ft-bima.xlsx', version: '1.0' }
     ]
   },
   {
@@ -265,14 +210,14 @@ export const INITIAL_DOCUMENTS: DocumentItem[] = [
     status: 'Revision Required',
     issueDate: '2024-05-01',
     expiryDate: '2029-05-01',
-    fileUrl: 'https://r2.cloudflare-pertamina.com/docs/MAH_SECE_ELTARI_v1.0.pdf',
+    fileUrl: '/sample-docs/mah-sece-2025-aft-eltari.xlsx',
     isCircular: true,
     routes: [
       { approverRole: 'Aviation Safety Inspector', approverName: 'Anton Kusuma', stepOrder: 1, status: 'Rejected', actionDate: '2024-05-03', comment: 'Harap perbarui diagram diagram pipa bahan bakar avtur.' }
     ],
     history: [
-      { id: 'h-8', timestamp: '2024-05-01 10:00', actorName: 'Staff Eltari', actorRole: 'Initiator', location: 'AFT Eltari', action: 'Forwarded', notes: 'Pengajuan dokumen MAH SECE 2025', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/MAH_SECE_ELTARI_v1.0.pdf', version: '1.0' },
-      { id: 'h-9', timestamp: '2024-05-03 16:20', actorName: 'Anton Kusuma', actorRole: 'PSI Controller', location: 'AFT Eltari', action: 'Rejected', notes: 'Ditolak: Harap perbarui diagram pipa bahan bakar avtur.', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/MAH_SECE_ELTARI_v1.0.pdf', version: '1.0' }
+      { id: 'h-8', timestamp: '2024-05-01 10:00', actorName: 'Staff Eltari', actorRole: 'Initiator', location: 'AFT Eltari', action: 'Forwarded', notes: 'Pengajuan dokumen MAH SECE 2025', fileUrl: '/sample-docs/mah-sece-2025-aft-eltari.xlsx', version: '1.0' },
+      { id: 'h-9', timestamp: '2024-05-03 16:20', actorName: 'Anton Kusuma', actorRole: 'PSI Controller', location: 'AFT Eltari', action: 'Rejected', notes: 'Ditolak: Harap perbarui diagram pipa bahan bakar avtur.', fileUrl: '/sample-docs/mah-sece-2025-aft-eltari.xlsx', version: '1.0' }
     ]
   },
   {
@@ -286,56 +231,169 @@ export const INITIAL_DOCUMENTS: DocumentItem[] = [
     status: 'Approved',
     issueDate: '2024-02-14',
     expiryDate: '2029-02-14',
-    fileUrl: 'https://r2.cloudflare-pertamina.com/docs/CONTROL_PS_MADIUN.pdf',
+    fileUrl: '/sample-docs/control-ps-sece-form-ft-madiun.xlsx',
     isCircular: false,
     routes: [],
     history: [
-      { id: 'h-10', timestamp: '2024-02-14 11:15', actorName: 'Initiator Madiun', actorRole: 'Initiator', location: 'FT Madiun', action: 'Created', notes: 'Direct approved', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/CONTROL_PS_MADIUN.pdf', version: '1.0' }
+      { id: 'h-10', timestamp: '2024-02-14 11:15', actorName: 'Initiator Madiun', actorRole: 'Initiator', location: 'FT Madiun', action: 'Created', notes: 'Direct approved', fileUrl: '/sample-docs/control-ps-sece-form-ft-madiun.xlsx', version: '1.0' }
+    ]
+  },
+  // Poin dari klien: contoh dokumen di bawah ini dibuat mengikuti nama berkas & kategori
+  // asli dari arsip "02. Process Safety" (SECE, HAZID/HAZOP, LPS, Audit PSAIMS) supaya
+  // data contoh mencerminkan dokumen sungguhan, bukan cuma nama karangan.
+  {
+    id: 'doc-8',
+    documentNumber: 'PSI-MALANG-2025-021',
+    title: 'SECE - FT Malang',
+    psiType: 'Informasi Peralatan',
+    lifecyclePhase: 'Operasi',
+    location: 'FT Malang',
+    currentVersion: '1.0',
+    status: 'Approved',
+    issueDate: '2025-01-15',
+    expiryDate: '2030-01-15',
+    fileUrl: '/sample-docs/sece-ft-malang.xlsx',
+    isCircular: false,
+    routes: [],
+    history: [
+      { id: 'h-11', timestamp: '2025-01-15 09:00', actorName: 'Budi Santosa', actorRole: 'Initiator', location: 'FT Malang', action: 'Created', notes: 'Registrasi ulang daftar Safety Critical Element (SECE) FT Malang', fileUrl: '/sample-docs/sece-ft-malang.xlsx', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-9',
+    documentNumber: 'PSI-SURABAYA-2025-014',
+    title: 'HAZID Perhitungan Overfill Tangki - IT Surabaya',
+    psiType: 'Informasi Teknologi Proses',
+    lifecyclePhase: 'Operasi',
+    location: 'IT Surabaya',
+    currentVersion: '1.0',
+    status: 'Approved',
+    issueDate: '2025-03-12',
+    expiryDate: '2030-03-12',
+    fileUrl: '/sample-docs/hazid-overfill-it-surabaya.xlsx',
+    isCircular: true,
+    routes: [
+      { approverRole: 'MOC Controller', approverName: 'Hendrik Pratama', stepOrder: 1, status: 'Approved', actionDate: '2025-03-13' }
+    ],
+    history: [
+      { id: 'h-12', timestamp: '2025-03-12 10:20', actorName: 'Staff Surabaya', actorRole: 'Initiator', location: 'IT Surabaya', action: 'Forwarded', notes: 'Kajian HAZID perhitungan overfill tangki timbun', fileUrl: '/sample-docs/hazid-overfill-it-surabaya.xlsx', version: '1.0' },
+      { id: 'h-13', timestamp: '2025-03-13 15:40', actorName: 'Hendrik Pratama', actorRole: 'MOC Controller', location: 'IT Surabaya', action: 'Approved', notes: 'Perhitungan overfill sesuai standar', fileUrl: '/sample-docs/hazid-overfill-it-surabaya.xlsx', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-10',
+    documentNumber: 'PSI-SURABAYA-2025-018',
+    title: 'TKI Pemeriksaan Grounding System - IT Surabaya',
+    psiType: 'Sistem Tata Kerja',
+    lifecyclePhase: 'Operasi',
+    location: 'IT Surabaya',
+    currentVersion: '1.0',
+    status: 'In Routing',
+    issueDate: '2025-09-01',
+    expiryDate: '2030-09-01',
+    fileUrl: '/sample-docs/tki-grounding-it-surabaya.pdf',
+    isCircular: true,
+    routes: [
+      { approverRole: 'MOC Controller', approverName: 'Hendrik Pratama', stepOrder: 1, status: 'Pending' }
+    ],
+    history: [
+      { id: 'h-14', timestamp: '2025-09-01 08:45', actorName: 'Staff Surabaya', actorRole: 'Initiator', location: 'IT Surabaya', action: 'Forwarded', notes: 'Tata kerja inspeksi sistem grounding tangki timbun', fileUrl: '/sample-docs/tki-grounding-it-surabaya.pdf', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-11',
+    documentNumber: 'PSI-ELTARI-2025-009',
+    title: 'Fire Risk Card Tangki 01 - AFT Eltari',
+    psiType: 'Informasi Peralatan',
+    lifecyclePhase: 'Operasi',
+    location: 'AFT Eltari',
+    currentVersion: '1.0',
+    status: 'Approved',
+    issueDate: '2025-02-20',
+    expiryDate: '2030-02-20',
+    fileUrl: '/sample-docs/fire-risk-card-tangki-01-aft-eltari.xlsx',
+    isCircular: false,
+    routes: [],
+    history: [
+      { id: 'h-15', timestamp: '2025-02-20 13:10', actorName: 'Staff Eltari', actorRole: 'Initiator', location: 'AFT Eltari', action: 'Created', notes: 'Kartu risiko kebakaran Tangki 01', fileUrl: '/sample-docs/fire-risk-card-tangki-01-aft-eltari.xlsx', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-12',
+    documentNumber: 'PSI-ELTARI-2025-011',
+    title: 'Analisa Perhitungan Bundwall - AFT Eltari',
+    psiType: 'Informasi Teknologi Proses',
+    lifecyclePhase: 'Operasi',
+    location: 'AFT Eltari',
+    currentVersion: '1.0',
+    status: 'Revision Required',
+    issueDate: '2025-05-10',
+    expiryDate: '2030-05-10',
+    fileUrl: '/sample-docs/analisa-bundwall-aft-eltari.xlsx',
+    isCircular: true,
+    routes: [
+      { approverRole: 'PSI Controller', approverName: 'Anton Kusuma', stepOrder: 1, status: 'Rejected', actionDate: '2025-05-14', comment: 'Perhitungan kapasitas tampung bundwall perlu direvisi mengikuti volume tangki terbaru.' }
+    ],
+    history: [
+      { id: 'h-16', timestamp: '2025-05-10 09:30', actorName: 'Staff Eltari', actorRole: 'Initiator', location: 'AFT Eltari', action: 'Forwarded', notes: 'Pengajuan analisa perhitungan bundwall', fileUrl: '/sample-docs/analisa-bundwall-aft-eltari.xlsx', version: '1.0' },
+      { id: 'h-17', timestamp: '2025-05-14 11:00', actorName: 'Anton Kusuma', actorRole: 'PSI Controller', location: 'AFT Eltari', action: 'Rejected', notes: 'Ditolak: perhitungan kapasitas tampung perlu direvisi.', fileUrl: '/sample-docs/analisa-bundwall-aft-eltari.xlsx', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-13',
+    documentNumber: 'PSI-MADIUN-2025-006',
+    title: 'Early Warning System - FT Madiun',
+    psiType: 'Informasi Peralatan',
+    lifecyclePhase: 'Operasi',
+    location: 'FT Madiun',
+    currentVersion: '1.0',
+    status: 'Approved',
+    issueDate: '2025-04-05',
+    expiryDate: '2030-04-05',
+    fileUrl: 'https://r2.cloudflare-pertamina.com/docs/EWS_FT_MADIUN.pdf',
+    isCircular: false,
+    routes: [],
+    history: [
+      { id: 'h-18', timestamp: '2025-04-05 10:00', actorName: 'Initiator Madiun', actorRole: 'Initiator', location: 'FT Madiun', action: 'Created', notes: 'Dokumentasi Early Warning System & FGD FT Madiun', fileUrl: 'https://r2.cloudflare-pertamina.com/docs/EWS_FT_MADIUN.pdf', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-14',
+    documentNumber: 'PSI-MADIUN-2019-003',
+    title: 'Sertifikat Penangkal Petir - FT Madiun',
+    psiType: 'Informasi Peralatan',
+    lifecyclePhase: 'Operasi',
+    location: 'FT Madiun',
+    currentVersion: '1.0',
+    status: 'Expired',
+    issueDate: '2019-06-01',
+    expiryDate: '2024-06-01',
+    fileUrl: '/sample-docs/sertifikat-penangkal-petir-ft-madiun.pdf',
+    isCircular: false,
+    routes: [],
+    history: [
+      { id: 'h-19', timestamp: '2019-06-01 09:00', actorName: 'Initiator Madiun', actorRole: 'Initiator', location: 'FT Madiun', action: 'Created', notes: 'Sertifikasi penangkal petir area tangki timbun', fileUrl: '/sample-docs/sertifikat-penangkal-petir-ft-madiun.pdf', version: '1.0' }
+    ]
+  },
+  {
+    id: 'doc-15',
+    documentNumber: 'PSI-SURABAYA-2025-022',
+    title: 'Tindak Lanjut Rekomendasi Audit PSAIMS - IT Surabaya',
+    psiType: 'Sistem Tata Kerja',
+    auditType: 'PSAIMS',
+    lifecyclePhase: 'Operasi',
+    location: 'IT Surabaya',
+    currentVersion: '1.0',
+    status: 'In Routing',
+    issueDate: '2025-10-01',
+    expiryDate: '2030-10-01',
+    fileUrl: '/sample-docs/tindak-lanjut-psaims-it-surabaya.xlsm',
+    isCircular: true,
+    routes: [
+      { approverRole: 'MOC Controller', approverName: 'Hendrik Pratama', stepOrder: 1, status: 'Pending' }
+    ],
+    history: [
+      { id: 'h-20', timestamp: '2025-10-01 08:00', actorName: 'Staff Surabaya', actorRole: 'Initiator', location: 'IT Surabaya', action: 'Forwarded', notes: 'Tindak lanjut rekomendasi hasil audit PSAIMS', fileUrl: '/sample-docs/tindak-lanjut-psaims-it-surabaya.xlsm', version: '1.0' }
     ]
   }
 ];
-
-// Poin #5 & #9 Klien: "sirkuler cuma untuk beberapa jenis PSI aja, yang lain langsung ke
-// riwayat versi". Nilai di bawah ini masih PLACEHOLDER (semua di-default wajib sirkuler)
-// sampai dikonfirmasi ke client kategori mana yang sebenarnya tidak perlu sirkuler.
-export const PSI_TYPE_REQUIRES_CIRCULAR: Record<PSIType, boolean> = {
-  'Informasi Bahan Berbahaya': true,
-  'Informasi Teknologi Proses': true,
-  'Informasi Peralatan': true,
-  'Sistem Tata Kerja': true,
-};
-
-export type LastUpdateType = 'Baru' | 'Direvisi' | 'Diperpanjang';
-
-// Poin #7 Klien (Dilema 5-Tahun): bedakan dokumen yang cuma "diperpanjang" (tanpa
-// perubahan teknis) dari yang benar "direvisi" (ada perubahan fasilitas/konten).
-// Dicari dari entri riwayat terakhir yang benar-benar berupa perubahan berkas/versi —
-// entri seperti Approved/Rejected/Forwarded dilewati karena bukan aksi update konten.
-export function getLastUpdateType(history: HistoryItem[]): LastUpdateType {
-  const contentActions: HistoryItem['action'][] = ['Created', 'Extended Validity', 'Revised'];
-  const lastContentUpdate = [...history].reverse().find((h) => contentActions.includes(h.action));
-
-  if (!lastContentUpdate || lastContentUpdate.action === 'Created') return 'Baru';
-  if (lastContentUpdate.action === 'Extended Validity') return 'Diperpanjang';
-  return 'Direvisi';
-}
-
-// Tahap sirkuler paling awal yang masih Pending untuk dokumen ini (null kalau tidak ada
-// yang pending, mis. dokumen sudah Approved atau tidak memakai sirkuler sama sekali).
-export function getPendingApprovalStepOrder(doc: DocumentItem): number | null {
-  const pendingSteps = doc.routes.filter((r) => r.status === 'Pending').map((r) => r.stepOrder);
-  return pendingSteps.length > 0 ? Math.min(...pendingSteps) : null;
-}
-
-// Apakah user ini berwenang menyetujui dokumen pada tahap sirkuler yang sedang pending.
-export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boolean {
-  if (doc.status !== 'In Routing') return false;
-  const stepOrder = getPendingApprovalStepOrder(doc);
-  if (stepOrder === null) return false;
-  return doc.routes.some(
-    (r) =>
-      r.stepOrder === stepOrder &&
-      r.status === 'Pending' &&
-      (r.approverName === user.name || user.role.includes('Controller') || user.isRegionalAdmin)
-  );
-}

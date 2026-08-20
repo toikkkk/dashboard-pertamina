@@ -1,31 +1,41 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
+import { Hourglass } from "lucide-react";
+import { usePsi } from "@/lib/psiStore";
 import KpiSummaryCards from "@/components/KpiSummaryCards";
-import DashboardOverviewCharts from "@/components/DashboardOverviewCharts";
+import StatusOverview from "@/components/StatusOverview";
+import DocsByLocationChart from "@/components/DocsByLocationChart";
+import UpcomingExpiryList from "@/components/UpcomingExpiryList";
 import ComplianceChart from "@/components/ComplianceChart";
-import { Plus } from "lucide-react";
 
 export default function DashboardPage() {
-  return (
-    <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+  const { activeUser } = usePsi();
+  const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
 
-      {/* KPI & SUMMARY */}
+  return (
+    <div>
+      {isPending && (
+        <div className="mb-3.5 flex items-start gap-2.5 px-4 py-3 rounded-[2px] border border-[#B45309] bg-[#FEF3C7] animate-fadeInUp">
+          <Hourglass className="w-4 h-4 text-[#B45309] flex-shrink-0 mt-0.5" strokeWidth={1.8} />
+          <p className="text-[12.5px] text-[#78350F] leading-relaxed">
+            <strong>Akun Anda menunggu aktivasi.</strong> Anda hanya bisa melihat ringkasan dashboard untuk sementara. Hubungi Admin Regional untuk ditetapkan lokasi &amp; peran agar bisa mengakses dokumen, sirkuler, dan fitur lainnya.
+          </p>
+        </div>
+      )}
+
       <KpiSummaryCards />
 
-      {/* VISUALISASI OVERVIEW */}
-      <DashboardOverviewCharts />
-      <ComplianceChart />
+      <StatusOverview />
 
-      {/* Floating Action Button: Buat Dokumen Baru */}
-      <Link
-        href="/upload"
-        title="Buat Dokumen Baru"
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-[#2E7D32] hover:bg-green-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all"
-      >
-        <Plus className="w-6 h-6" />
-      </Link>
+      <div className="grid grid-cols-2 gap-3.5 mb-3.5 animate-fadeInUp" style={{ animationDelay: "160ms" }}>
+        <DocsByLocationChart />
+        <UpcomingExpiryList />
+      </div>
+
+      <div className="animate-fadeInUp" style={{ animationDelay: "240ms" }}>
+        <ComplianceChart />
+      </div>
     </div>
   );
 }

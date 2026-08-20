@@ -1,8 +1,45 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { usePsi } from "@/lib/psiStore";
-import { CheckCircle, AlertTriangle, BarChart3, Filter, MapPin, Layers } from "lucide-react";
+import { BarChart3, MapPin } from "lucide-react";
+
+gsap.registerPlugin(useGSAP);
+
+const PSI_TYPES = [
+  "Informasi Bahan Berbahaya",
+  "Informasi Teknologi Proses",
+  "Informasi Peralatan",
+  "Sistem Tata Kerja",
+] as const;
+
+function barColor(pct: number) {
+  if (pct >= 100) return "#15803D";
+  if (pct >= 80) return "#16A34A";
+  if (pct >= 50) return "#B45309";
+  return "#DC2626";
+}
+
+function statusLabel(pct: number) {
+  if (pct >= 100) return "Tercapai";
+  if (pct >= 80) return "Hampir Tercapai";
+  if (pct >= 50) return "Dalam Proses";
+  return "Kritis";
+}
+
+// Unfilled meter track echoes the fill's own severity hue at low opacity, so the
+// whole bar reads as one state (per-row color, not a neutral gray for every row).
+function trackTint(pct: number) {
+  return `${barColor(pct)}22`;
+}
+
+function badgeTint(pct: number) {
+  if (pct >= 80) return "#DCFCE7";
+  if (pct >= 50) return "#FEF3C7";
+  return "#FEE2E2";
+}
 
 export default function ComplianceChart() {
   const {
@@ -16,239 +53,219 @@ export default function ComplianceChart() {
   } = usePsi();
 
   const metrics = getComplianceMetrics();
-
-  const psiTypes = [
-    "Informasi Bahan Berbahaya",
-    "Informasi Teknologi Proses",
-    "Informasi Peralatan",
-    "Sistem Tata Kerja",
-  ] as const;
-
-  const getBarColor = (pct: number) => {
-    if (pct === 100) return "bg-[#2E7D32]";
-    if (pct >= 80) return "bg-[#4CAF50]";
-    if (pct >= 50) return "bg-amber-500";
-    return "bg-[#D32F2F]";
-  };
-
-  const getStrokeColor = (pct: number) => {
-    if (pct === 100) return "#2E7D32";
-    if (pct >= 80) return "#4CAF50";
-    if (pct >= 50) return "#F59E0B";
-    return "#D32F2F";
-  };
+  const overallGap = Math.max(0, metrics.totalTarget - metrics.totalApproved);
 
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (metrics.percentage / 100) * circumference;
+  const strokeColor = metrics.percentage >= 80 ? "#15803D" : metrics.percentage >= 50 ? "#B45309" : "#DC2626";
+  const badgeBg = metrics.percentage >= 80 ? "#DCFCE7" : "#FEF3C7";
+  const badgeColor = metrics.percentage >= 80 ? "#15803D" : "#B45309";
+  const badgeLabel = metrics.percentage >= 80 ? "Memenuhi Standar" : "Perlu Dilengkapi";
 
-  const locationCompliance = locations.map((loc) => {
-    const locDocs = documents.filter((d) => d.location === loc.locationName);
-    const approved = locDocs.filter((d) => d.status === "Approved").length;
-    const totalTarget = Object.values(loc.targets).reduce((sum, t) => sum + t, 0);
-    const pct = totalTarget > 0 ? Math.min(100, Math.round((approved / totalTarget) * 100)) : 0;
-    return { name: loc.locationName, region: loc.region, approved, totalTarget, pct, count: locDocs.length };
-  });
+  // Worst-first so the panel leads with what actually needs attention, not filing
+  // order. Filtered before sort so a single-location/type view stays stable.
+  const typeCompliance = PSI_TYPES.map((type) => ({ type, data: metrics.byType[type] }))
+    .filter((t) => t.data && (selectedTypeFilter === "ALL" || selectedTypeFilter === t.type))
+    .sort((a, b) => a.data.pct - b.data.pct);
+
+  const locationCompliance = locations
+    .map((loc) => {
+      const locDocs = documents.filter((d) => d.location === loc.locationName);
+      const approved = locDocs.filter((d) => d.status === "Approved").length;
+      const totalTarget = Object.values(loc.targets).reduce((sum, t) => sum + t, 0);
+      const pct = totalTarget > 0 ? Math.min(100, Math.round((approved / totalTarget) * 100)) : 0;
+      return { name: loc.locationName, approved, totalTarget, pct };
+    })
+    .filter((loc) => selectedLocationFilter === "ALL" || loc.name === selectedLocationFilter)
+    .sort((a, b) => a.pct - b.pct);
+
+  const gaugeRef = useRef<SVGCircleElement>(null);
+  useGSAP(
+    () => {
+      if (!gaugeRef.current) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.to(gaugeRef.current, { strokeDashoffset, duration: 0.9, ease: "power3.out" });
+      });
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        gsap.set(gaugeRef.current, { strokeDashoffset });
+      });
+      return () => mm.revert();
+    },
+    { dependencies: [strokeDashoffset] }
+  );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#D9D9D9] p-4 sm:p-5 space-y-4">
-      {/* Header & Filter Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#D9D9D9]">
+    <div className="relative bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
+      <div className="flex items-start justify-between gap-3 pb-3 mb-3.5 border-b border-[#eceded] flex-wrap">
         <div>
-          <h2 className="text-base font-black text-[#284B63] flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[#3C6E71]" />
+          <h2 className="text-[13px] font-bold text-[#0F172A] flex items-center gap-2">
+            <BarChart3 className="w-[15px] h-[15px] text-[#0369A1]" strokeWidth={1.7} />
             <span>Kalkulasi Kepatuhan Dokumen PSI</span>
           </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Persentase dihitung dari jumlah dokumen yang sudah disetujui dibanding target dokumen yang ditetapkan, per Lokasi & per Jenis PSI.
-          </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-[#D9D9D9]/80 text-xs">
-          <div className="flex items-center gap-1 text-slate-600 font-bold pl-1.5">
-            <Filter className="w-3.5 h-3.5 text-[#284B63]" />
-            <span>Filter:</span>
-          </div>
-
+        <div className="flex gap-2">
           <select
             value={selectedLocationFilter}
             onChange={(e) => setSelectedLocationFilter(e.target.value)}
-            className="border border-[#D9D9D9] rounded-md px-2.5 py-1 bg-white font-bold text-[#353535] focus:outline-none focus:ring-2 focus:ring-[#284B63]"
+            className="text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Lokasi / Terminal</option>
             {locations.map((l) => (
-              <option key={l.locationName} value={l.locationName}>
-                {l.locationName} ({l.region})
-              </option>
+              <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
             ))}
           </select>
-
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className="border border-[#D9D9D9] rounded-md px-2.5 py-1 bg-white font-bold text-[#353535] focus:outline-none focus:ring-2 focus:ring-[#284B63]"
+            className="text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Jenis PSI</option>
-            {psiTypes.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
+            {PSI_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Grid Layout: Gauge + tabel breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Left Column: Overall Gauge Chart */}
-        <div className="lg:col-span-3 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl border border-[#D9D9D9]">
-          <h3 className="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-2 text-center">
-            Kepatuhan Keseluruhan
-          </h3>
-
-          <div className="relative w-32 h-32 flex items-center justify-center my-1">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="64" cy="64" r={radius} className="text-slate-200" strokeWidth="12" stroke="currentColor" fill="transparent" />
-              <circle
-                cx="64"
-                cy="64"
-                r={radius}
-                strokeWidth="12"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                stroke={getStrokeColor(metrics.percentage)}
-                fill="transparent"
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-2xl font-black font-mono text-[#353535] tracking-tight">{metrics.percentage}%</span>
-              <span className="text-[9px] font-extrabold text-slate-500 uppercase">Readiness</span>
-            </div>
-          </div>
-
-          <div className="mt-2 text-center text-[11px] space-y-1 w-full">
-            <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-md border border-[#D9D9D9] text-slate-700 font-semibold">
-              <span>Approved:</span>
-              <span className="font-mono font-bold text-emerald-700">{metrics.totalApproved}</span>
-            </div>
-            <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-md border border-[#D9D9D9] text-slate-700 font-semibold">
-              <span>Target:</span>
-              <span className="font-mono font-bold text-[#353535]">{metrics.totalTarget}</span>
-            </div>
-          </div>
-
-          <div className="mt-2 w-full text-center">
-            <div
-              className={`text-[10px] font-extrabold p-1.5 rounded-lg border flex items-center justify-center gap-1 ${
-                metrics.percentage >= 80 ? "bg-emerald-100 text-emerald-900 border-emerald-300" : "bg-amber-100 text-amber-900 border-amber-300"
-              }`}
-            >
-              {metrics.percentage >= 80 ? (
-                <>
-                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                  <span>Memenuhi Standar</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                  <span>Perlu Dilengkapi</span>
-                </>
-              )}
-            </div>
+      {/* Summary strip — gauge + the three headline numbers in one horizontal row,
+          instead of a narrow sidebar next to a much wider table stack. */}
+      <div className="flex items-center gap-5 bg-[#f7f8f8] border border-[#eceded] rounded-[2px] px-5 py-3.5 mb-4 flex-wrap">
+        <div className="relative w-[72px] h-[72px] flex-shrink-0">
+          <svg viewBox="0 0 128 128" width="72" height="72" className="-rotate-90">
+            <circle cx="64" cy="64" r={radius} fill="none" stroke="#eceded" strokeWidth="14" />
+            <circle
+              ref={gaugeRef}
+              cx="64" cy="64" r={radius} fill="none" stroke={strokeColor} strokeWidth="14" strokeLinecap="round"
+              strokeDasharray={circumference} strokeDashoffset={circumference}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-heading text-[16px] font-bold">{metrics.percentage}%</span>
           </div>
         </div>
 
-        {/* Right Columns: dua tabel breakdown */}
-        <div className="lg:col-span-9 space-y-4">
-          {/* Tabel A: Breakdown per Jenis PSI */}
-          <div className="border border-[#D9D9D9] rounded-xl overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-[#D9D9D9]">
-              <Layers className="w-3.5 h-3.5 text-[#3C6E71]" />
-              <h3 className="text-[11px] font-extrabold text-[#284B63] uppercase tracking-wider">
-                Kelengkapan per Jenis PSI
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-[10px] uppercase text-slate-400 font-bold">
-                    <th className="px-3 py-1.5">Jenis PSI</th>
-                    <th className="px-3 py-1.5">Capaian</th>
-                    <th className="px-3 py-1.5 w-1/3">Progres</th>
-                    <th className="px-3 py-1.5 text-right">%</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {psiTypes.map((type) => {
-                    const data = metrics.byType[type];
-                    if (!data || (selectedTypeFilter !== "ALL" && selectedTypeFilter !== type)) return null;
-                    return (
-                      <tr key={type} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-3 py-2 font-bold text-[#353535]">{type}</td>
-                        <td className="px-3 py-2 text-slate-500 font-mono whitespace-nowrap">
-                          <strong className="text-[#353535]">{data.approved}</strong> / {data.target}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${getBarColor(data.pct)}`} style={{ width: `${data.pct}%` }} />
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono font-black text-[#284B63]">{data.pct}%</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div className="leading-tight">
+          <div className="text-[10px] font-bold tracking-[.08em] text-[#6b6e72] uppercase">Kepatuhan Keseluruhan</div>
+        </div>
 
-          {/* Tabel B: Breakdown per Lokasi */}
-          <div className="border border-[#D9D9D9] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-[#D9D9D9]">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-[#2E7D32]" />
-                <h3 className="text-[11px] font-extrabold text-[#284B63] uppercase tracking-wider">
-                  Kelengkapan per Lokasi / Terminal ({selectedLocationFilter === "ALL" ? "Regional Jatimbalinus" : selectedLocationFilter})
-                </h3>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-[10px] uppercase text-slate-400 font-bold">
-                    <th className="px-3 py-1.5">Lokasi</th>
-                    <th className="px-3 py-1.5">Capaian</th>
-                    <th className="px-3 py-1.5 w-1/3">Progres</th>
-                    <th className="px-3 py-1.5 text-right">%</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {locationCompliance
-                    .filter((loc) => selectedLocationFilter === "ALL" || loc.name === selectedLocationFilter)
-                    .map((loc) => (
-                      <tr key={loc.name} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-3 py-2">
-                          <span className="font-bold text-[#353535] block">{loc.name}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold uppercase">{loc.region}</span>
-                        </td>
-                        <td className="px-3 py-2 text-slate-500 font-mono whitespace-nowrap">
-                          <strong className="text-[#353535]">{loc.approved}</strong> / {loc.totalTarget}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${getBarColor(loc.pct)}`} style={{ width: `${loc.pct}%` }} />
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono font-black text-[#284B63]">{loc.pct}%</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+        <div className="hidden md:block w-px h-10 bg-[#e2e5e9]" />
+
+        <div className="flex items-center gap-6 flex-wrap">
+          <div>
+            <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Approved</div>
+            <div className="font-heading text-[19px] font-bold text-[#15803D]">{metrics.totalApproved}</div>
           </div>
+          <div>
+            <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Target</div>
+            <div className="font-heading text-[19px] font-bold text-[#0F172A]">{metrics.totalTarget}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Kekurangan</div>
+            <div className="font-heading text-[19px] font-bold" style={{ color: overallGap > 0 ? "#DC2626" : "#15803D" }}>{overallGap}</div>
+          </div>
+        </div>
+
+        <div className="ml-auto px-3 py-1.5 text-[11px] font-bold rounded-[2px] flex-shrink-0" style={{ background: badgeBg, color: badgeColor }}>
+          {badgeLabel}
+        </div>
+      </div>
+
+      {/* Two breakdown tables, side by side */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-[7px]">
+              <BarChart3 className="w-[13px] h-[13px] text-[#0369A1]" strokeWidth={1.8} />
+              <span className="text-[11px] font-bold tracking-[.06em] text-[#3a3d40] uppercase">Kelengkapan per Jenis PSI</span>
+            </div>
+            <span className="text-[10px] text-[#9a9da0] whitespace-nowrap">
+              <span className="text-[#16A34A] font-bold">●</span> ≥80%
+              <span className="text-[#B45309] font-bold ml-2">●</span> 50–79%
+              <span className="text-[#DC2626] font-bold ml-2">●</span> &lt;50%
+            </span>
+          </div>
+          <table className="w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Jenis PSI</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Capaian</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Sisa</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5 w-[26%]">Progres</th>
+                <th className="text-right text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {typeCompliance.map(({ type, data }) => {
+                const gap = Math.max(0, data.target - data.approved);
+                return (
+                  <tr key={type} className="border-t border-[#f0f0f1]">
+                    <td className="py-2 pr-2 font-semibold">{type}</td>
+                    <td className="py-2 text-[#6b6e72] tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{data.approved}</strong> / {data.target}</td>
+                    <td className="py-2 tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
+                    <td className="py-2">
+                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(data.pct) }}>
+                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(data.pct), width: `${data.pct}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-2 text-right">
+                      <span
+                        className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] whitespace-nowrap"
+                        style={{ background: badgeTint(data.pct), color: barColor(data.pct) }}
+                      >
+                        {data.pct}% · {statusLabel(data.pct)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-[7px] mb-2">
+            <MapPin className="w-[13px] h-[13px] text-[#15803D]" strokeWidth={1.8} />
+            <span className="text-[11px] font-bold tracking-[.06em] text-[#3a3d40] uppercase">Kelengkapan per Lokasi / Terminal</span>
+          </div>
+          <table className="w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Lokasi</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Capaian</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Sisa</th>
+                <th className="text-left text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5 w-[26%]">Progres</th>
+                <th className="text-right text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase pb-1.5">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {locationCompliance.map((loc) => {
+                const gap = Math.max(0, loc.totalTarget - loc.approved);
+                return (
+                  <tr key={loc.name} className="border-t border-[#f0f0f1]">
+                    <td className="py-2 pr-2 font-semibold">{loc.name}</td>
+                    <td className="py-2 text-[#6b6e72] tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{loc.approved}</strong> / {loc.totalTarget}</td>
+                    <td className="py-2 tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
+                    <td className="py-2">
+                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(loc.pct) }}>
+                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(loc.pct), width: `${loc.pct}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-2 text-right">
+                      <span
+                        className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] whitespace-nowrap"
+                        style={{ background: badgeTint(loc.pct), color: barColor(loc.pct) }}
+                      >
+                        {loc.pct}% · {statusLabel(loc.pct)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

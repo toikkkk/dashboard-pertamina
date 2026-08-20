@@ -1,0 +1,52 @@
+// Every fileUrl the frontend ever sees points here (see lib/api/documents.ts's
+// fileDownloadUrl) — this is the sole read path into the private R2 bucket. RBAC:
+// if the file is linked to a curated document (as its current primary file or a
+// historical version snapshot), the requester needs access to that document's
+// location; an unlinked raw registry file is admin-only. 302s to a 5-minute
+// presigned GET URL rather than proxying bytes through this function.
+import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { db } from "@/lib/db/client";
+import { fileRegistry, documents, historyItems } from "@/lib/db/schema";
+import { r2, R2_BUCKET } from "@/lib/r2/client";
+import { requireSessionUser } from "@/lib/auth/session";
+import { assertLocationAccess, assertRegionalAdmin } from "@/lib/auth/rbac";
+import { withErrorHandling } from "@/lib/api/respond";
+
+export async function GET(_req: Request, { params }: { params: { fileId: string } }) {
+  return withErrorHandling(async () => {
+    const user = await requireSessionUser();
+
+    const [file] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, params.fileId)).limit(1);
+    if (!file || file.uploadStatus !== "uploaded") {
+      return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
+    }
+
+    const [asPrimary] = await db.select({ location: documents.location }).from(documents).where(eq(documents.primaryFileId, file.id)).limit(1);
+    const [asHistory] = await db
+      .select({ location: documents.location })
+      .from(historyItems)
+      .innerJoin(documents, eq(historyItems.documentId, documents.id))
+      .where(eq(historyItems.fileId, file.id))
+      .limit(1);
+
+    const linkedLocation = asPrimary?.location ?? asHistory?.location ?? null;
+    if (linkedLocation) {
+      assertLocationAccess(user, linkedLocation);
+    } else {
+      // Not part of any curated document — a raw archive file, admin-only until
+      // deliberately linked via POST /api/registry/[id]/link.
+      assertRegionalAdmin(user);
+    }
+
+    const url = await getSignedUrl(
+      r2,
+      new GetObjectCommand({ Bucket: R2_BUCKET, Key: file.r2ObjectKey }),
+      { expiresIn: 300 }
+    );
+
+    return NextResponse.redirect(url, { status: 302 });
+  });
+}

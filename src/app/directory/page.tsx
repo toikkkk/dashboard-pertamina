@@ -4,24 +4,47 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import {
-  FileText, Search, Filter, Eye, Sparkles, FolderOpen, ArrowUpRight,
-  Calendar, Clock, CheckCircle2, RefreshCw, AlertTriangle, Hourglass
-} from "lucide-react";
+import { Search, ArrowUp, ArrowDown, ChevronsUpDown, Eye, CheckCircle2 } from "lucide-react";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
+import DocumentPreviewModal from "@/components/DocumentPreviewModal";
+import { DocumentItem } from "@/lib/mockData";
+
+type SortKey = "issueDate" | "expiryDate" | "location" | "psiType" | "title" | "documentNumber" | "status" | "currentVersion";
+
+const STATUS_META: Record<string, { color: string; tint: string }> = {
+  Approved: { color: "#15803D", tint: "#DCFCE7" },
+  "In Routing": { color: "#B45309", tint: "#FEF3C7" },
+  "Revision Required": { color: "#6D28D9", tint: "#EDE9FE" },
+  Expired: { color: "#DC2626", tint: "#FEE2E2" },
+};
+
+function fmtDate(iso: string) {
+  if (!iso) return "-";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
 
 function DirectoryContent() {
-  const { documents, activeUser } = usePsi();
+  const { documents } = usePsi();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState<SortKey>("issueDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [downloadToast, setDownloadToast] = useState<string | null>(null);
+
+  const handleDownload = (doc: DocumentItem) => {
+    setDownloadToast(`Mengunduh berkas v${doc.currentVersion} (${doc.fileUrl.split("/").pop()}) — simulasi.`);
+    setTimeout(() => setDownloadToast(null), 2800);
+  };
 
   useEffect(() => {
     const q = searchParams.get("q");
     if (q) setSearchTerm(q);
-    
     const status = searchParams.get("status");
     if (status) setStatusFilter(status);
   }, [searchParams]);
@@ -34,161 +57,181 @@ function DirectoryContent() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return (
-          <span className="px-2.5 py-1 rounded-full text-white text-[11px] font-bold bg-[#2E7D32] shadow-sm inline-flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Approved (Valid)
-          </span>
-        );
-      case "In Routing":
-        return (
-          <span className="px-2.5 py-1 rounded-full text-white text-[11px] font-bold bg-amber-600 shadow-sm inline-flex items-center gap-1">
-            <RefreshCw className="w-3 h-3" /> In Routing
-          </span>
-        );
-      case "Revision Required":
-        return (
-          <span className="px-2.5 py-1 rounded-full text-white text-[11px] font-bold bg-purple-800 shadow-sm inline-flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Revision Required
-          </span>
-        );
-      case "Expired":
-        return (
-          <span className="px-2.5 py-1 rounded-full text-white text-[11px] font-extrabold bg-[#D32F2F] shadow-sm inline-flex items-center gap-1 animate-pulse">
-            <Hourglass className="w-3 h-3" /> Overdue
-          </span>
-        );
-      default:
-        return <span className="px-2.5 py-1 rounded-full text-white text-[11px] font-bold bg-blue-600">{status}</span>;
+  const sortedDocs = [...filteredDocs].sort((a, b) => {
+    let cmp = 0;
+    switch (sortBy) {
+      case "issueDate":
+        cmp = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+        break;
+      case "expiryDate":
+        cmp = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+        break;
+      case "location":
+        cmp = a.location.localeCompare(b.location);
+        break;
+      case "psiType":
+        cmp = a.psiType.localeCompare(b.psiType);
+        break;
+      case "title":
+        cmp = a.title.localeCompare(b.title);
+        break;
+      case "documentNumber":
+        cmp = a.documentNumber.localeCompare(b.documentNumber);
+        break;
+      case "status":
+        cmp = a.status.localeCompare(b.status);
+        break;
+      case "currentVersion":
+        cmp = (parseFloat(a.currentVersion) || 0) - (parseFloat(b.currentVersion) || 0);
+        break;
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const toggleSort = (key: SortKey) => {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
     }
   };
 
+  const SortIcon = ({ sortKey }: { sortKey: SortKey }) => {
+    if (sortBy !== sortKey) return <ChevronsUpDown className="w-3 h-3 text-[#c3c6c9]" strokeWidth={2} />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 text-[#0369A1]" strokeWidth={2.2} /> : <ArrowDown className="w-3 h-3 text-[#0369A1]" strokeWidth={2.2} />;
+  };
+
+  const sortableHeaderClass = "flex items-center gap-1 hover:text-[#0F172A] transition-colors duration-150";
+
   return (
-    <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div className="bg-white rounded-xl shadow-sm border border-[#D9D9D9] p-4 sm:p-5 relative overflow-hidden animate-fadeIn">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#D9D9D9] mb-3">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-[#284B63] text-xs font-extrabold border border-blue-200 mb-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Direktori Utama</span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-black text-[#284B63] flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-[#3C6E71]" />
-              <span>Direktori Dokumen PSI & MOC ({activeUser.isRegionalAdmin ? "Regional Jatimbalinus" : activeUser.location})</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Menampilkan daftar berkas beserta tanggal update terakhir dan status sirkuler per lokasi fasilitas.
-            </p>
-          </div>
-
-          {/* Controls */}
-          <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50/80 p-2 rounded-xl border border-[#D9D9D9]/80">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari nomor atau judul dokumen..."
-                className="pl-9 pr-3 py-2 border border-[#D9D9D9] rounded-lg bg-white w-full font-medium text-[#353535] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#284B63] transition shadow-inner"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 bg-white border border-[#D9D9D9] rounded-lg px-3 py-1.5 shadow-sm">
-              <Filter className="w-3.5 h-3.5 text-[#284B63]" />
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  const newParams = new URLSearchParams(searchParams.toString());
-                  if (e.target.value === "ALL") {
-                    newParams.delete("status");
-                  } else {
-                    newParams.set("status", e.target.value);
-                  }
-                  router.replace(`/directory?${newParams.toString()}`);
-                }}
-                className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="Approved">Approved (Valid)</option>
-                <option value="Expired">Overdue / Expired</option>
-                <option value="In Routing">In Routing (Sirkuler)</option>
-                <option value="Revision Required">Revision Required</option>
-              </select>
-            </div>
-          </div>
+    <div>
+      {downloadToast && (
+        <div className="fixed bottom-6 right-6 z-[110] flex items-center gap-2 px-4 py-3 rounded-[2px] bg-[#DCFCE7] border border-[#BBF7D0] shadow-[0_8px_24px_rgba(0,0,0,.12)] animate-fadeInUp">
+          <CheckCircle2 className="w-4 h-4 text-[#15803D] flex-shrink-0" strokeWidth={1.9} />
+          <span className="text-[12.5px] font-semibold text-[#15803D]">{downloadToast}</span>
         </div>
+      )}
 
-        {filteredDocs.length > 0 ? (
-          <div className="overflow-x-auto -mx-6 sm:mx-0 px-6 sm:px-0">
-            <table className="w-full text-left border-collapse text-xs">
+      {previewDoc && (
+        <DocumentPreviewModal
+          document={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          onDownload={() => handleDownload(previewDoc)}
+        />
+      )}
+
+      <div className="flex gap-2.5 mb-[18px] flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="w-3.5 h-3.5 text-[#9a9da0] absolute left-[11px] top-1/2 -translate-y-1/2" strokeWidth={1.8} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari judul atau nomor dokumen..."
+            className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#D6DEE8] rounded-[2px]"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            const newParams = new URLSearchParams(searchParams.toString());
+            if (e.target.value === "ALL") newParams.delete("status");
+            else newParams.set("status", e.target.value);
+            router.replace(`/directory?${newParams.toString()}`);
+          }}
+          className="text-[13px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-w-[170px]"
+        >
+          <option value="ALL">Semua Status</option>
+          <option value="Approved">Approved</option>
+          <option value="In Routing">In Routing</option>
+          <option value="Revision Required">Revision Required</option>
+          <option value="Expired">Expired</option>
+        </select>
+      </div>
+
+      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+        {sortedDocs.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[12.5px]">
               <thead>
-                <tr className="bg-slate-800 text-slate-100 uppercase tracking-wider font-extrabold text-[11px] border-b border-slate-700">
-                  <th className="py-2 px-3 rounded-tl-lg">No. Kasus / Dokumen</th>
-                  <th className="py-2 px-4">Judul Dokumen PSI</th>
-                  <th className="py-2 px-3">Lokasi / Terminal</th>
-                  <th className="py-2 px-3">Tipe PSI</th>
-                  <th className="py-2 px-3">Tanggal Update</th>
-                  <th className="py-2 px-2">Versi</th>
-                  <th className="py-2 px-3">Status</th>
-                  <th className="py-2 px-3 text-right rounded-tr-lg">Aksi & Riwayat</th>
+                <tr className="bg-[#fafafb]">
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("documentNumber")} className={sortableHeaderClass}>No. Kasus <SortIcon sortKey="documentNumber" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("title")} className={sortableHeaderClass}>Judul <SortIcon sortKey="title" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("location")} className={sortableHeaderClass}>Lokasi <SortIcon sortKey="location" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("psiType")} className={sortableHeaderClass}>Tipe PSI <SortIcon sortKey="psiType" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <div className="flex items-center gap-2.5">
+                      <button type="button" onClick={() => toggleSort("issueDate")} className={sortableHeaderClass}>Terbit <SortIcon sortKey="issueDate" /></button>
+                      <span className="text-[#d6d9dc] normal-case font-normal">/</span>
+                      <button type="button" onClick={() => toggleSort("expiryDate")} className={sortableHeaderClass}>Expired <SortIcon sortKey="expiryDate" /></button>
+                    </div>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("currentVersion")} className={sortableHeaderClass}>Versi <SortIcon sortKey="currentVersion" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">
+                    <button type="button" onClick={() => toggleSort("status")} className={sortableHeaderClass}>Status <SortIcon sortKey="status" /></button>
+                  </th>
+                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 border-x border-b border-[#D9D9D9] rounded-b-lg overflow-hidden">
-                {filteredDocs.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-blue-50/50 transition-colors group">
-                    <td className="py-2 px-3 font-mono font-bold text-slate-700 group-hover:text-[#284B63]">{doc.documentNumber}</td>
-                    <td className="py-2 px-4 font-extrabold text-[#284B63] text-sm group-hover:underline cursor-pointer">
-                      <Link href={`/document/${doc.id}`}>
-                        {doc.title}
-                      </Link>
-                    </td>
-                    <td className="py-2 px-3 font-bold text-slate-700">
-                      <span className="bg-slate-100 text-[#353535] px-2 py-1 rounded font-semibold border border-[#D9D9D9]/80">
-                        {doc.location}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 font-medium text-slate-600">{doc.psiType}</td>
-                    <td className="py-2 px-3 font-medium text-slate-700 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                        <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                        <span>{doc.issueDate}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-sans">
-                        <Clock className="w-2.5 h-2.5" />
-                        <span>Exp: {doc.expiryDate}</span>
-                      </div>
-                      <div className="mt-1">
+              <tbody>
+                {sortedDocs.map((doc, i) => {
+                  const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
+                  return (
+                    <tr
+                      key={doc.id}
+                      className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0369A1] transition-all duration-200 ease-out-expo animate-fadeInUp"
+                      style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                    >
+                      <td className="px-3.5 py-3 text-[#6b6e72] font-heading text-xs">{doc.documentNumber}</td>
+                      <td className="px-3.5 py-3 max-w-[220px]">
+                        <Link href={`/document/${doc.id}`} className="cursor-pointer font-semibold text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200">{doc.title}</Link>
+                      </td>
+                      <td className="px-3.5 py-3">{doc.location}</td>
+                      <td className="px-3.5 py-3 text-[#6b6e72]">{doc.psiType}</td>
+                      <td className="px-3.5 py-3">
+                        <div>{fmtDate(doc.issueDate)} <span className="text-[#9a9da0]">→</span> {fmtDate(doc.expiryDate)}</div>
                         <UpdateTypeBadge history={doc.history} />
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 font-mono font-bold text-center bg-slate-50 text-slate-700">v{doc.currentVersion}</td>
-                    <td className="py-2 px-3">{getStatusBadge(doc.status)}</td>
-                    <td className="py-2 px-3 text-right">
-                      <Link
-                        href={`/document/${doc.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#284B63] text-[#284B63] hover:bg-blue-50 active:scale-95 font-bold rounded-lg transition-all group/btn text-[11px]"
-                      >
-                        <Eye className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
-                        <span>Riwayat & Audit</span>
-                        <ArrowUpRight className="w-3 h-3 opacity-70" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3.5 py-3 tabular-nums">v{doc.currentVersion}</td>
+                      <td className="px-3.5 py-3">
+                        <span className="inline-flex items-center gap-[5px] text-[11px] font-bold px-2 py-[3px] rounded-[2px]" style={{ background: meta.tint, color: meta.color }}>
+                          {doc.status}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setPreviewDoc(doc)}
+                            className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200"
+                          >
+                            <Eye className="w-3.5 h-3.5" strokeWidth={1.9} />
+                            Lihat
+                          </button>
+                          <Link href={`/document/${doc.id}`} className="cursor-pointer text-xs font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200">Riwayat &amp; Audit →</Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-[#D9D9D9] text-slate-500 text-sm">
-            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3 opacity-60" />
-            <p className="font-bold text-slate-700">Tidak Ada Dokumen Sesuai Filter</p>
-            <p className="text-xs mt-1 text-slate-500 max-w-sm mx-auto">
-              Tidak ada dokumen yang cocok dengan kata kunci atau filter status pada wilayah otorisasi fasilitas Anda saat ini.
-            </p>
+          <div className="py-14 px-5 text-center">
+            <Search className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />
+            <p className="text-[13px] text-[#9a9da0]">Tidak ada dokumen yang cocok dengan pencarian atau filter Anda.</p>
           </div>
         )}
       </div>

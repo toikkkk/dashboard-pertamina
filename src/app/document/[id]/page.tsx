@@ -1,32 +1,44 @@
 "use client";
 
 import React from "react";
-import { usePsi } from "@/lib/psiStore";
+import useSWR from "swr";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { FileLock2 } from "lucide-react";
+import type { DocumentItem } from "@/lib/mockData";
+
+// Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
+// established, unfiltered exception for cross-location benchmarking widgets only —
+// see CLAUDE.md). Looking up a single document by id needs the real RBAC check, so
+// this fetches GET /api/documents/[id] directly, which 403s/404s server-side for a
+// document outside the caller's location instead of trusting the client to have
+// filtered correctly.
+const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
-  const { allDocuments } = usePsi();
-  const doc = allDocuments.find((d) => d.id === params.id);
+  const { data: doc, isLoading } = useSWR<DocumentItem | null>(`/api/documents/${params.id}`, fetcher);
+
+  if (isLoading) {
+    return <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat dokumen…</div>;
+  }
 
   if (!doc) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="bg-white rounded-xl p-8 shadow border border-[#D9D9D9]">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-[#284B63] mb-2">Dokumen Tidak Ditemukan atau Akses Ditolak</h2>
-          <p className="text-xs text-slate-500 mb-6">
-            Pastikan ID dokumen benar dan peran Anda (RBAC) memiliki hak akses untuk melihat dokumen pada lokasi fasilitas ini.
-          </p>
-          <Link href="/" className="inline-flex items-center gap-2 bg-[#284B63] text-white px-4 py-2 rounded font-semibold text-xs shadow hover:bg-[#1E3A4F]">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Dashboard</span>
-          </Link>
-        </div>
+      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+        <FileLock2 className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
+        <p className="text-sm font-bold text-[#3a3d40] mb-1">Dokumen tidak ditemukan atau akses ditolak</p>
+        <p className="text-[12.5px] text-[#9a9da0] mb-4">Dokumen mungkin tidak ada, atau berada di luar lokasi akses Anda.</p>
+        <Link href="/directory" className="cursor-pointer text-[12.5px] font-bold text-[#0369A1] hover:text-[#075985]">
+          ← Kembali ke Direktori
+        </Link>
       </div>
     );
   }
 
-  return <DocumentSplitViewer document={doc} />;
+  // Keyed by doc.id so navigating between two /document/[id] URLs (which Next.js
+  // otherwise reuses the same component instance for, since it's the same route
+  // pattern) fully remounts the viewer — resetting active tab, expanded history
+  // rows, and any in-progress approve/reject comment draft instead of carrying
+  // them over from whatever document was last viewed.
+  return <DocumentSplitViewer document={doc} key={doc.id} />;
 }

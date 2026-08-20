@@ -1,32 +1,43 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+// Backed by real API routes + Neon Postgres now (see src/app/api/**) instead of
+// localStorage. PsiContextType's public shape was deliberately kept as close as
+// possible to the client-only prototype's — the 16 files that call usePsi() barely
+// changed; only this provider's internals swap from useState+localStorage effects
+// to SWR + fetch. The few real signature changes (login/register now take a
+// password and are async; addNewDocument/reviseDocument take a fileId instead of a
+// fileUrl string) are exactly the places where "trust the client" genuinely had to
+// become "ask the server" — see CLAUDE.md's "Backend / database" section.
+import React, { createContext, useContext, useState } from "react";
+import useSWR from "swr";
 import {
   DocumentItem,
   SimulatedUser,
-  SIMULATED_USERS,
-  INITIAL_DOCUMENTS,
   REGIONAL_LOCATIONS,
   PSIType,
-  HistoryItem,
+  ApprovalRouteItem,
 } from "./mockData";
+
+type NewDocumentInput = Omit<DocumentItem, "id" | "history" | "currentVersion" | "status" | "issueDate" | "fileUrl" | "routes"> & {
+  fileId: string;
+  routes: ApprovalRouteItem[];
+};
 
 interface PsiContextType {
   activeUser: SimulatedUser;
-  setActiveUser: (user: SimulatedUser) => void;
   users: SimulatedUser[];
-  documents: DocumentItem[]; // Filtered by active user location unless Regional Admin
-  allDocuments: DocumentItem[];
+  documents: DocumentItem[]; // RBAC-filtered server-side, plus the location/type dropdown filters applied client-side
+  allDocuments: DocumentItem[]; // Deliberately unfiltered — cross-location benchmarking widgets only, see CLAUDE.md
   locations: typeof REGIONAL_LOCATIONS;
   selectedLocationFilter: string;
   setSelectedLocationFilter: (loc: string) => void;
   selectedTypeFilter: string;
   setSelectedTypeFilter: (type: string) => void;
-  approveStep: (docId: string, stepOrder: number, comment?: string) => void;
-  rejectStep: (docId: string, stepOrder: number, comment: string) => void;
-  extendValidity: (docId: string, notes?: string) => void;
-  reviseDocument: (docId: string, newVersion: string, newFileUrl: string, notes?: string) => void;
-  addNewDocument: (docData: Omit<DocumentItem, "id" | "history" | "currentVersion" | "status" | "issueDate">) => void;
+  approveStep: (docId: string, stepOrder: number, comment?: string) => Promise<void>;
+  rejectStep: (docId: string, stepOrder: number, comment: string) => Promise<void>;
+  extendValidity: (docId: string, notes?: string) => Promise<void>;
+  reviseDocument: (docId: string, newVersion: string, newFileId: string, notes?: string) => Promise<void>;
+  addNewDocument: (docData: NewDocumentInput) => Promise<void>;
   getComplianceMetrics: () => {
     totalApproved: number;
     totalTarget: number;
@@ -34,90 +45,157 @@ interface PsiContextType {
     byType: Record<PSIType, { approved: number; target: number; pct: number }>;
   };
   isLoggedIn: boolean;
-  login: (user: SimulatedUser) => void;
+  /** POSTs to /api/auth/login. Throws on failure (wrong email/password) — callers
+   * show the thrown message inline rather than this returning a boolean. */
+  login: (email: string, password: string) => Promise<SimulatedUser>;
   logout: () => void;
+  /** POSTs to /api/auth/register. Same pending-until-admin-assigns-location outcome
+   * as the client-only prototype (server always creates with location=NULL) — the
+   * only real change is that the password is now actually hashed and stored. */
+  register: (name: string, email: string, password: string) => Promise<SimulatedUser>;
+  /** PATCHes /api/admin/users/:id — server re-derives isRegionalAdmin from role. */
+  assignUserAccess: (userId: string, role: SimulatedUser["role"], location: string) => Promise<void>;
   isAuthLoaded: boolean;
 }
 
 const PsiContext = createContext<PsiContextType | undefined>(undefined);
 
+async function fetchJson(url: string, init?: RequestInit) {
+  const res = await fetch(url, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Permintaan gagal (${res.status}).`);
+  }
+  return res.json();
+}
+
+// Falls back to an empty/logged-out shape on ANY failure — including a non-2xx
+// response (e.g. no real DATABASE_URL yet, so the route's DB call throws and
+// withErrorHandling returns a 500 `{error: "..."}` body with no `user` key at all).
+// Without this normalization, `payload.user` would be `undefined` rather than
+// `null`, and `isLoggedIn` below would read `undefined !== null` as `true` —
+// silently treating a broken backend as "logged in with no user data" instead of
+// cleanly falling through to the login page.
+const bootstrapFetcher = async (url: string): Promise<BootstrapPayload> => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return EMPTY_BOOTSTRAP;
+    const body = await res.json();
+    if (!body || typeof body !== "object" || !("user" in body)) return EMPTY_BOOTSTRAP;
+    return body as BootstrapPayload;
+  } catch {
+    return EMPTY_BOOTSTRAP;
+  }
+};
+
+interface BootstrapPayload {
+  user: SimulatedUser | null;
+  documents: DocumentItem[];
+  allDocuments: DocumentItem[];
+  users: SimulatedUser[];
+  locations: typeof REGIONAL_LOCATIONS;
+}
+
+const EMPTY_BOOTSTRAP: BootstrapPayload = { user: null, documents: [], allDocuments: [], users: [], locations: [] };
+
+// Placeholder shown only while the bootstrap request is in flight — AuthGuard never
+// lets a component render with this value in practice (it gates on isAuthLoaded and
+// redirects to /login before any real page mounts), but every consumer destructures
+// activeUser.* directly without null checks, so a shape-complete default is needed.
+const PENDING_USER: SimulatedUser = {
+  id: "",
+  name: "",
+  role: "Penanggung Jawab PSI (Initiator)",
+  location: null,
+  isRegionalAdmin: false,
+};
+
 export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeUser, setActiveUserState] = useState<SimulatedUser>(SIMULATED_USERS[0]);
-  const [allDocuments, setAllDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  const { data, isLoading, mutate } = useSWR<BootstrapPayload>("/api/bootstrap", bootstrapFetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("ALL");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("ALL");
-  
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [isAuthLoaded, setIsAuthLoaded] = useState<boolean>(false);
 
-  // Load from localStorage if available on client mount
-  useEffect(() => {
-    const savedDocs = localStorage.getItem("phorse_psi_docs");
-    if (savedDocs) {
-      try {
-        setAllDocuments(JSON.parse(savedDocs));
-      } catch (e) {
-        console.error("Failed to parse local docs", e);
-      }
-    }
+  const payload = data ?? EMPTY_BOOTSTRAP;
+  const isAuthLoaded = !isLoading;
+  const isLoggedIn = Boolean(payload.user && payload.user.id);
+  const activeUser: SimulatedUser = payload.user ?? PENDING_USER;
+  // Real locations from Postgres once loaded; REGIONAL_LOCATIONS is only ever a
+  // pre-load fallback so components reading `locations[0]` before the bootstrap
+  // request resolves don't crash on an empty array.
+  const locations = payload.locations.length > 0 ? payload.locations : REGIONAL_LOCATIONS;
 
-    const savedAuthUser = localStorage.getItem("phorse_auth_user");
-    if (savedAuthUser) {
-      try {
-        const user = JSON.parse(savedAuthUser);
-        setActiveUserState(user);
-        setIsLoggedIn(true);
-      } catch (e) {
-        console.error("Failed to parse auth user", e);
-      }
-    }
-    
-    setIsAuthLoaded(true);
-  }, []);
+  const login = async (email: string, password: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    await mutate();
+    return user;
+  };
 
-  // Save to localStorage on changes
-  useEffect(() => {
-    localStorage.setItem("phorse_psi_docs", JSON.stringify(allDocuments));
-  }, [allDocuments]);
-
-  const login = (user: SimulatedUser) => {
-    setActiveUser(user);
-    setIsLoggedIn(true);
-    localStorage.setItem("phorse_auth_user", JSON.stringify(user));
+  const register = async (name: string, email: string, password: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+    await mutate();
+    return user;
   };
 
   const logout = () => {
-    setIsLoggedIn(false);
-    localStorage.removeItem("phorse_auth_user");
+    // Optimistic: clear the cached session immediately so AuthGuard redirects to
+    // /login right away, instead of waiting on the network round trip.
+    mutate(EMPTY_BOOTSTRAP, { revalidate: false });
+    void fetch("/api/auth/logout", { method: "POST" });
   };
 
-  const setActiveUser = (user: SimulatedUser) => {
-    setActiveUserState(user);
-    if (!user.isRegionalAdmin) {
-      setSelectedLocationFilter("ALL"); // Reset when switching to localized user
-    }
+  const assignUserAccess = async (userId: string, role: SimulatedUser["role"], location: string): Promise<void> => {
+    await fetchJson(`/api/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role, location }) });
+    await mutate();
   };
 
-  // DATA ISOLATION (Aturan Kritis #3): User dari Terminal A tidak boleh melihat dokumen Terminal B, kecuali Admin Regional
-  const documents = allDocuments.filter((doc) => {
-    if (!activeUser.isRegionalAdmin && doc.location !== activeUser.location) {
-      return false;
-    }
-    if (selectedLocationFilter !== "ALL" && doc.location !== selectedLocationFilter) {
-      return false;
-    }
-    if (selectedTypeFilter !== "ALL" && doc.psiType !== selectedTypeFilter) {
-      return false;
-    }
+  const approveStep = async (docId: string, stepOrder: number, comment?: string): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/approve`, { method: "POST", body: JSON.stringify({ stepOrder, comment }) });
+    await mutate();
+  };
+
+  const rejectStep = async (docId: string, stepOrder: number, comment: string): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/reject`, { method: "POST", body: JSON.stringify({ stepOrder, comment }) });
+    await mutate();
+  };
+
+  const extendValidity = async (docId: string, notes?: string): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/extend`, { method: "POST", body: JSON.stringify({ notes }) });
+    await mutate();
+  };
+
+  const reviseDocument = async (docId: string, newVersion: string, newFileId: string, notes?: string): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/revise`, { method: "POST", body: JSON.stringify({ newVersion, newFileId, notes }) });
+    await mutate();
+  };
+
+  const addNewDocument = async (docData: NewDocumentInput): Promise<void> => {
+    await fetchJson("/api/documents", { method: "POST", body: JSON.stringify(docData) });
+    await mutate();
+  };
+
+  // Location/type dropdown filters (ComplianceChart's selectors) applied on top of
+  // the server's already-RBAC-scoped list — same two-layer filtering the client-only
+  // prototype did, just with the RBAC layer now enforced server-side instead.
+  const documents = payload.documents.filter((doc) => {
+    if (selectedLocationFilter !== "ALL" && doc.location !== selectedLocationFilter) return false;
+    if (selectedTypeFilter !== "ALL" && doc.psiType !== selectedTypeFilter) return false;
     return true;
   });
 
-  // Calculate compliance formula: (Total Dokumen Approved / Target Master Data) * 100%
-  // Catatan: statistik kepatuhan (persentase) ini sengaja tidak dibatasi RBAC per-lokasi —
-  // semua user boleh membandingkan kepatuhan antar lokasi untuk benchmarking. RBAC per-lokasi
-  // tetap berlaku untuk daftar/detail dokumen sungguhan (lihat `documents` di context ini).
+  // Kept as a client-side computation (not a call to GET /api/compliance-metrics)
+  // since allDocuments + locations are already loaded via bootstrap — same formula
+  // as the client-only prototype, just fed by real data now. The API route exists
+  // for other future callers (reports, etc.) but the frontend doesn't need the
+  // round trip when it already has everything locally.
   const getComplianceMetrics = () => {
-    const targetLocations = REGIONAL_LOCATIONS.filter(
+    const targetLocations = locations.filter(
       (loc) => selectedLocationFilter === "ALL" || loc.locationName === selectedLocationFilter
     );
 
@@ -129,7 +207,6 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
 
     const byType = {} as Record<PSIType, { approved: number; target: number; pct: number }>;
-
     let totalTarget = 0;
     let totalApproved = 0;
 
@@ -143,7 +220,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         typeTarget += loc.targets[type] || 0;
       });
 
-      const approvedDocs = allDocuments.filter((d) => {
+      const approvedDocs = payload.allDocuments.filter((d) => {
         const matchesLoc = selectedLocationFilter === "ALL" || d.location === selectedLocationFilter;
         return matchesLoc && d.psiType === type && d.status === "Approved";
       }).length;
@@ -165,191 +242,14 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const approveStep = (docId: string, stepOrder: number, comment?: string) => {
-    setAllDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id !== docId) return doc;
-
-        // Mark matching pending route at this stepOrder as approved
-        const updatedRoutes = doc.routes.map((r) => {
-          if (r.stepOrder === stepOrder && r.status === "Pending" && (activeUser.role.includes("Controller") || activeUser.isRegionalAdmin || r.approverName === activeUser.name)) {
-            return {
-              ...r,
-              status: "Approved" as const,
-              actionDate: new Date().toISOString().split("T")[0],
-              comment: comment || "Disetujui oleh " + activeUser.name,
-            };
-          }
-          return r;
-        });
-
-        // Check if ALL steps are now approved
-        const allApproved = updatedRoutes.every((r) => r.status === "Approved");
-        const newStatus = allApproved ? ("Approved" as const) : ("In Routing" as const);
-
-        const newHistory: HistoryItem = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-          actorName: activeUser.name,
-          actorRole: activeUser.role,
-          location: doc.location,
-          action: "Approved",
-          notes: `Menyetujui tahap ${stepOrder}. ${comment || ""}`,
-          fileUrl: doc.fileUrl,
-          version: doc.currentVersion,
-        };
-
-        return {
-          ...doc,
-          routes: updatedRoutes,
-          status: newStatus,
-          history: [...doc.history, newHistory],
-        };
-      })
-    );
-  };
-
-  const rejectStep = (docId: string, stepOrder: number, comment: string) => {
-    setAllDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id !== docId) return doc;
-
-        const updatedRoutes = doc.routes.map((r) => {
-          if (r.stepOrder === stepOrder && r.status === "Pending") {
-            return {
-              ...r,
-              status: "Rejected" as const,
-              actionDate: new Date().toISOString().split("T")[0],
-              comment,
-            };
-          }
-          return r;
-        });
-
-        const newHistory: HistoryItem = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-          actorName: activeUser.name,
-          actorRole: activeUser.role,
-          location: doc.location,
-          action: "Rejected",
-          notes: `Menolak dokumen di tahap ${stepOrder}: ${comment}`,
-          fileUrl: doc.fileUrl,
-          version: doc.currentVersion,
-        };
-
-        return {
-          ...doc,
-          status: "Revision Required" as const,
-          routes: updatedRoutes,
-          history: [...doc.history, newHistory],
-        };
-      })
-    );
-  };
-
-  // 5-Year Dilemma: Option 2 (Update without changes -> just bump expiry_date + 5 years)
-  const extendValidity = (docId: string, notes?: string) => {
-    setAllDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id !== docId) return doc;
-
-        const currentYear = new Date(doc.expiryDate).getFullYear() || 2024;
-        const newExpiryYear = currentYear + 5;
-        const newExpiryDate = `${newExpiryYear}-12-31`;
-
-        const newHistory: HistoryItem = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-          actorName: activeUser.name,
-          actorRole: activeUser.role,
-          location: doc.location,
-          action: "Extended Validity",
-          notes: notes || `Perpanjangan validitas 5 tahun tanpa perubahan teknis (expired baru: ${newExpiryDate})`,
-          fileUrl: doc.fileUrl,
-          version: doc.currentVersion,
-        };
-
-        return {
-          ...doc,
-          status: "Approved",
-          expiryDate: newExpiryDate,
-          history: [...doc.history, newHistory],
-        };
-      })
-    );
-  };
-
-  // 5-Year Dilemma: Option 1 (Update with changes -> upload new file & bump version)
-  const reviseDocument = (docId: string, newVersion: string, newFileUrl: string, notes?: string) => {
-    setAllDocuments((prev) =>
-      prev.map((doc) => {
-        if (doc.id !== docId) return doc;
-
-        const newExpiryYear = new Date().getFullYear() + 5;
-        const newExpiryDate = `${newExpiryYear}-12-31`;
-
-        const newHistory: HistoryItem = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-          actorName: activeUser.name,
-          actorRole: activeUser.role,
-          location: doc.location,
-          action: "Revised",
-          notes: notes || `Revisi dokumen ke versi ${newVersion}`,
-          fileUrl: newFileUrl,
-          version: newVersion,
-        };
-
-        return {
-          ...doc,
-          currentVersion: newVersion,
-          fileUrl: newFileUrl,
-          status: doc.isCircular ? "In Routing" : "Approved",
-          expiryDate: newExpiryDate,
-          history: [...doc.history, newHistory],
-        };
-      })
-    );
-  };
-
-  const addNewDocument = (docData: Omit<DocumentItem, "id" | "history" | "currentVersion" | "status" | "issueDate">) => {
-    const id = `doc-${Date.now()}`;
-    const initialStatus = docData.isCircular ? "In Routing" : "Approved";
-
-    const initialHistory: HistoryItem = {
-      id: `h-${Date.now()}`,
-      timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-      actorName: activeUser.name,
-      actorRole: activeUser.role,
-      location: docData.location,
-      action: "Created",
-      notes: docData.isCircular ? "Diunggah & diajukan untuk sirkuler" : "Direct Approved tanpa sirkuler",
-      fileUrl: docData.fileUrl,
-      version: "1.0",
-    };
-
-    const newDoc: DocumentItem = {
-      ...docData,
-      id,
-      currentVersion: "1.0",
-      status: initialStatus,
-      issueDate: new Date().toISOString().split("T")[0],
-      history: [initialHistory],
-    };
-
-    setAllDocuments((prev) => [newDoc, ...prev]);
-  };
-
   return (
     <PsiContext.Provider
       value={{
         activeUser,
-        setActiveUser,
-        users: SIMULATED_USERS,
+        users: payload.users,
         documents,
-        allDocuments,
-        locations: REGIONAL_LOCATIONS,
+        allDocuments: payload.allDocuments,
+        locations,
         selectedLocationFilter,
         setSelectedLocationFilter,
         selectedTypeFilter,
@@ -363,6 +263,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoggedIn,
         login,
         logout,
+        register,
+        assignUserAccess,
         isAuthLoaded,
       }}
     >

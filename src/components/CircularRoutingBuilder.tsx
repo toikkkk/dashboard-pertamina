@@ -2,184 +2,127 @@
 
 import React, { useState } from "react";
 import { ApprovalRouteItem } from "@/lib/mockData";
-import { Users, Plus, Trash2, ArrowRight, Layers, Zap, Lock } from "lucide-react";
+import { Zap, Lock, Trash2, AlertTriangle } from "lucide-react";
 
 interface CircularRoutingBuilderProps {
   routes: ApprovalRouteItem[];
   onChange: (routes: ApprovalRouteItem[]) => void;
+  /** Shown when the parent form was submitted with zero approvers — a circular doc with no
+   * routes gets stuck "In Routing" forever since canUserApproveDoc() has nothing to match. */
+  error?: string;
 }
 
-export default function CircularRoutingBuilder({ routes, onChange }: CircularRoutingBuilderProps) {
-  const [selectedRole, setSelectedRole] = useState("PSI / MOC Controller");
-  const [approverName, setApproverName] = useState("");
-  const [stepOrder, setStepOrder] = useState<number>(1);
+const APPROVER_ROLE_PRESETS = [
+  "PSI Controller",
+  "MOC Controller",
+  "Facility Manager",
+  "HSE Manager",
+  "Aviation Safety Inspector",
+];
 
-  const availableRoles = [
-    "PSI / MOC Controller",
-    "Facility Manager / Kepala Terminal",
-    "HSE / Process Safety Engineer",
-    "Aviation Safety Inspector",
-    "Technical Function / Lead Engineer",
-  ];
+export default function CircularRoutingBuilder({ routes, onChange, error }: CircularRoutingBuilderProps) {
+  const [roleDraft, setRoleDraft] = useState(APPROVER_ROLE_PRESETS[0]);
+  const [nameDraft, setNameDraft] = useState("");
+  const [stepDraft, setStepDraft] = useState(1);
 
-  const handleAddApprover = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!approverName.trim()) return;
-
-    const newRoute: ApprovalRouteItem = {
-      approverRole: selectedRole,
-      approverName: approverName.trim(),
-      stepOrder: Number(stepOrder),
-      status: "Pending",
-    };
-
-    const updated = [...routes, newRoute].sort((a, b) => a.stepOrder - b.stepOrder);
-    onChange(updated);
-    setApproverName("");
+  const handleAdd = () => {
+    if (!nameDraft.trim()) return;
+    const newRoute: ApprovalRouteItem = { approverRole: roleDraft, approverName: nameDraft.trim(), stepOrder: stepDraft, status: "Pending" };
+    onChange([...routes, newRoute].sort((a, b) => a.stepOrder - b.stepOrder));
+    setNameDraft("");
   };
 
   const handleRemove = (index: number) => {
-    const updated = routes.filter((_, i) => i !== index);
-    onChange(updated);
+    onChange(routes.filter((_, i) => i !== index));
   };
 
-  // Group by step order to explain Sequential vs Parallel logic!
-  const stepGroups: Record<number, ApprovalRouteItem[]> = {};
-  routes.forEach((r) => {
-    if (!stepGroups[r.stepOrder]) stepGroups[r.stepOrder] = [];
-    stepGroups[r.stepOrder].push(r);
-  });
+  const stepNums = Array.from(new Set(routes.map((r) => r.stepOrder))).sort((a, b) => a - b);
 
   return (
-    <div className="bg-slate-50 border-2 border-blue-200 rounded-xl p-4 my-3">
-      <div className="flex items-center gap-2 text-[#284B63] font-bold text-sm mb-1.5">
-        <Layers className="w-4 h-4 text-[#3C6E71]" />
-        <span>Konfigurasi Alur Sirkuler (Sekuensial & Paralel)</span>
+    <div className="border border-[#eceded] rounded-[2px] p-4">
+      <p className="mb-3 text-xs font-bold text-[#3a3d40]">Circular Routing Builder</p>
+
+      <div className="grid grid-cols-[1fr_1fr_90px_90px] gap-2 mb-3.5">
+        <select
+          value={roleDraft}
+          onChange={(e) => setRoleDraft(e.target.value)}
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+        >
+          {APPROVER_ROLE_PRESETS.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={nameDraft}
+          onChange={(e) => setNameDraft(e.target.value)}
+          placeholder="Nama approver"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+        />
+        <select
+          value={stepDraft}
+          onChange={(e) => setStepDraft(Number(e.target.value))}
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+        >
+          <option value={1}>Tahap 1</option>
+          <option value={2}>Tahap 2</option>
+          <option value={3}>Tahap 3</option>
+        </select>
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="min-h-[34px] text-xs font-bold rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200"
+        >
+          + Tambah
+        </button>
       </div>
-      <p className="text-xs text-slate-600 mb-3">
-        Tentukan alur persetujuan dengan mengatur nomor tahap tiap approver. Approver dengan nomor tahap yang sama akan memeriksa secara <strong>Paralel (Bersamaan)</strong>. Nomor tahap yang berbeda akan berjalan <strong>Sekuensial (Bertahap)</strong> — misalnya Tahap 2 terkunci sampai Tahap 1 selesai.
-      </p>
 
-      {/* Input Form */}
-      <form onSubmit={handleAddApprover} className="grid grid-cols-1 md:grid-cols-12 gap-2.5 mb-4 bg-white p-3 rounded-lg border border-[#D9D9D9] shadow-sm text-xs">
-        <div className="md:col-span-4">
-          <label className="block font-semibold text-slate-700 mb-1">Peran / Jabatan Approver:</label>
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="w-full border border-[#D9D9D9] rounded px-2.5 py-1.5 bg-slate-50 font-medium"
-          >
-            {availableRoles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
+      {stepNums.length === 0 && (
+        <div
+          className="flex items-start gap-2 px-3 py-2.5 rounded-[2px] text-[11.5px]"
+          style={error ? { background: "#FEE2E2", color: "#DC2626" } : { background: "#FEF3C7", color: "#B45309" }}
+        >
+          <AlertTriangle className="w-[13px] h-[13px] flex-shrink-0 mt-0.5" strokeWidth={2} />
+          <span>{error || "Sirkuler aktif tapi belum ada approver — dokumen tidak akan bisa diproses siapapun sampai minimal satu approver ditambahkan."}</span>
         </div>
-        <div className="md:col-span-4">
-          <label className="block font-semibold text-slate-700 mb-1">Nama Approver / Controller:</label>
-          <input
-            type="text"
-            value={approverName}
-            onChange={(e) => setApproverName(e.target.value)}
-            placeholder="Contoh: Agnes Wijaya atau Hendrik"
-            className="w-full border border-[#D9D9D9] rounded px-2.5 py-1.5 bg-white"
-            required
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block font-semibold text-slate-700 mb-1">Nomor Tahap:</label>
-          <select
-            value={stepOrder}
-            onChange={(e) => setStepOrder(Number(e.target.value))}
-            className="w-full border border-[#D9D9D9] rounded px-2.5 py-1.5 bg-slate-50 font-bold font-mono text-center text-[#284B63]"
-          >
-            <option value={1}>Step 1</option>
-            <option value={2}>Step 2</option>
-            <option value={3}>Step 3</option>
-          </select>
-        </div>
-        <div className="md:col-span-2 flex items-end">
-          <button
-            type="submit"
-            className="w-full bg-[#284B63] hover:bg-[#1E3A4F] text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center gap-1 transition shadow text-xs h-[33px]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah</span>
-          </button>
-        </div>
-      </form>
+      )}
 
-      {/* Visual Workflow Map */}
-      {routes.length > 0 ? (
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Visualisasi Alur Sirkuler (Workflow Map):</h4>
-          <div className="flex flex-col gap-3">
-            {Object.keys(stepGroups)
-              .map(Number)
-              .sort((a, b) => a - b)
-              .map((stepNum, index) => {
-                const group = stepGroups[stepNum];
-                const isParallel = group.length > 1;
-
-                return (
-                  <div key={stepNum} className="bg-white p-3 rounded-lg border border-[#D9D9D9] shadow-sm relative">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                      <span className="text-xs font-bold text-[#284B63] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                        Tahap {stepNum}
-                      </span>
-                      <span
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded inline-flex items-center gap-1 ${
-                          isParallel ? "bg-purple-100 text-purple-800" : "bg-emerald-100 text-emerald-800"
-                        }`}
-                      >
-                        {isParallel ? <Zap className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                        <span>{isParallel ? "Paralel (Persetujuan Bersamaan)" : "Sekuensial (Bertahap)"}</span>
-                      </span>
+      {stepNums.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          {stepNums.map((step) => {
+            const approvers = routes
+              .map((r, idx) => ({ ...r, idx }))
+              .filter((r) => r.stepOrder === step);
+            const isParallel = approvers.length > 1;
+            return (
+              <div key={step} className="border border-[#eceded] rounded-[2px] p-2.5 bg-[#fafafb]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[11.5px] font-bold">Tahap {step}</span>
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[2px]"
+                    style={{ background: isParallel ? "#FEF3C7" : "#E0F2FE", color: isParallel ? "#B45309" : "#075985" }}
+                  >
+                    {isParallel ? <Zap className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                    {isParallel ? "Paralel" : "Sekuensial"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {approvers.map((a, idx) => (
+                    <div
+                      key={a.idx}
+                      className="flex items-center justify-between text-xs bg-white border border-[#eceded] rounded-[2px] px-2.5 py-1.5 animate-fadeInUp"
+                      style={{ animationDelay: `${idx * 40}ms` }}
+                    >
+                      <span><strong>{a.approverName}</strong> <span className="text-[#9a9da0]">— {a.approverRole}</span></span>
+                      <button type="button" onClick={() => handleRemove(a.idx)} className="p-0.5 rounded-[2px] transition-all duration-200 hover:bg-[#FEE2E2] active:scale-90">
+                        <Trash2 className="w-[13px] h-[13px] text-[#DC2626]" strokeWidth={1.8} />
+                      </button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {group.map((item, gIndex) => {
-                        // Find original index in routes
-                        const originalIndex = routes.findIndex(
-                          (r) => r.approverName === item.approverName && r.stepOrder === item.stepOrder
-                        );
-                        return (
-                          <div
-                            key={gIndex}
-                            className="flex items-center justify-between bg-slate-50 p-2.5 rounded border border-[#D9D9D9] text-xs"
-                          >
-                            <div>
-                              <div className="font-semibold text-[#353535]">{item.approverName}</div>
-                              <div className="text-slate-500 text-[11px]">{item.approverRole}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemove(originalIndex)}
-                              className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 transition"
-                              title="Hapus approver ini"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {index < Object.keys(stepGroups).length - 1 && (
-                      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-10 bg-slate-200 text-slate-700 p-1 rounded-full shadow">
-                        <ArrowRight className="w-3.5 h-3.5 rotate-90 text-[#284B63]" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-6 border-2 border-dashed border-[#D9D9D9] rounded-lg text-slate-500 text-xs font-medium bg-white/50">
-          <Users className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-          Belum ada approver dalam alur sirkuler. Tambahkan minimal 1 approver di atas untuk memulai sirkuler.
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
