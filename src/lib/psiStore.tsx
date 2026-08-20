@@ -67,7 +67,11 @@ async function fetchJson(url: string, init?: RequestInit) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Permintaan gagal (${res.status}).`);
+    // Prefer the first zod issue's message (e.g. the actual password-policy
+    // violation) over the generic "Input tidak valid." wrapper — falls back to it
+    // when there's no issues array (non-validation errors: 401/403/409/500).
+    const detail = Array.isArray(body.issues) && body.issues[0]?.message;
+    throw new Error(detail || body.error || `Permintaan gagal (${res.status}).`);
   }
   return res.json();
 }

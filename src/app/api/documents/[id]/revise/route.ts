@@ -31,7 +31,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     assertLocationAccess(user, docRow.location);
 
     const [newFile] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, newFileId)).limit(1);
-    if (!newFile) return NextResponse.json({ error: "Berkas baru tidak ditemukan." }, { status: 404 });
+    if (!newFile || newFile.uploadStatus !== "uploaded") {
+      return NextResponse.json({ error: "Berkas baru belum selesai diunggah atau tidak ditemukan." }, { status: 404 });
+    }
 
     const newExpiryYear = new Date().getFullYear() + 5;
     const newExpiryDate = `${newExpiryYear}-12-31`;

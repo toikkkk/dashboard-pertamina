@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import { deriveDemoEmail, SIMULATED_USERS } from "@/lib/mockData";
+import { deriveDemoEmail, SIMULATED_USERS, passwordPolicyIssues } from "@/lib/mockData";
 import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2 } from "lucide-react";
 
 function validateEmail(email: string) {
@@ -69,8 +69,9 @@ const SignIn2 = () => {
       setRegError("Format email tidak valid.");
       return;
     }
-    if (regPassword.length < 8) {
-      setRegError("Kata sandi minimal 8 karakter.");
+    const issues = passwordPolicyIssues(regPassword);
+    if (issues.length > 0) {
+      setRegError(`Kata sandi belum memenuhi syarat: ${issues.join(", ")}.`);
       return;
     }
     setRegError("");
@@ -260,6 +261,9 @@ const SignIn2 = () => {
                   }}
                 />
               </div>
+              <p className="text-[11px] text-[#9a9da0] leading-relaxed -mt-1.5">
+                Minimal 8 karakter, kombinasi huruf besar, huruf kecil, angka, dan karakter spesial (mis. ! . , ; @ #).
+              </p>
               {regError && <div className="text-[11.5px] text-[#DC2626] font-medium">{regError}</div>}
             </div>
 

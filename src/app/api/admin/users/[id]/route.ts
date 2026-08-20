@@ -1,17 +1,18 @@
 // Backs assignUserAccess(userId, role, location) — the only mutation path for role/
 // location, used both to activate a pending self-registered account and to edit an
-// already-active one (see admin/users/page.tsx's "Ubah" action). The last-admin
-// self-lockout guard stays client-side (admin/users/page.tsx already blocks the
-// save attempt before it gets here) — this route additionally re-derives
-// isRegionalAdmin from the submitted role rather than trusting a separate flag, so
-// the two can never disagree.
+// already-active one (see admin/users/page.tsx's "Ubah" action). This route
+// re-derives isRegionalAdmin from the submitted role rather than trusting a
+// separate flag, so the two can never disagree. The last-admin self-lockout guard
+// is enforced HERE now, not just client-side — admin/users/page.tsx's own check is
+// only a UX nicety; a direct API call must never be able to strip the last Admin
+// Regional's access and leave the tenant with no one who can onboard/manage users.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertRegionalAdmin } from "@/lib/auth/rbac";
+import { assertRegionalAdmin, ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 
 const bodySchema = z.object({
@@ -26,6 +27,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const { role, location } = bodySchema.parse(await req.json());
     const isRegionalAdmin = role === "Admin Regional";
+
+    if (!isRegionalAdmin) {
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(users)
+        .where(and(eq(users.isRegionalAdmin, true), ne(users.id, params.id)));
+      if (count === 0) {
+        throw new ForbiddenError("Tidak dapat mencabut akses Admin Regional terakhir yang tersisa.");
+      }
+    }
 
     const [updated] = await db
       .update(users)

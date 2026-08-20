@@ -2,8 +2,9 @@
 // filter — now enforced server-side). POST: backs addNewDocument(docData).
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { documents, historyItems, approvalRoutes } from "@/lib/db/schema";
+import { documents, historyItems, approvalRoutes, fileRegistry } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationAccess, assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
     assertOnboarded(user);
     const body = bodySchema.parse(await req.json());
     assertLocationAccess(user, body.location);
+
+    // Without this, an invalid/foreign fileId would surface as a raw Postgres FK
+    // violation (500) instead of a clean 404 — and, more importantly, nothing else
+    // here would catch a caller passing a fileId whose upload never actually
+    // finished (see /api/files/[fileId]/confirm), leaving the document pointing at
+    // bytes that don't exist in R2 yet.
+    const [file] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, body.fileId)).limit(1);
+    if (!file || file.uploadStatus !== "uploaded") {
+      return NextResponse.json({ error: "Berkas belum selesai diunggah atau tidak ditemukan." }, { status: 404 });
+    }
 
     const initialStatus = body.isCircular ? "In Routing" : "Approved";
     const issueDate = new Date().toISOString().split("T")[0];

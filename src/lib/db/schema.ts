@@ -68,6 +68,19 @@ export const sessions = pgTable("sessions", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Failed/succeeded login attempts, keyed by the email that was tried — the login
+// route counts recent failures per email before even checking the password, so a
+// scripted brute-force against one account gets locked out regardless of how many
+// different source IPs it comes from (IP alone is a weaker signal behind shared
+// NAT/corporate networks, which this app's real users likely sit behind).
+export const loginAttempts = pgTable("login_attempts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  success: boolean("success").notNull(),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // File registry — every physical file, migrated or app-uploaded. No workflow
 // semantics live here; `documents`/`historyItems` reference rows in this table.

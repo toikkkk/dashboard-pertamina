@@ -5,9 +5,9 @@
 // one genuinely new piece of logic, not just a relocation of existing code.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { users } from "@/lib/db/schema";
+import { users, loginAttempts } from "@/lib/db/schema";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
@@ -17,19 +17,52 @@ const bodySchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+const RATE_LIMIT_WINDOW_MINUTES = 15;
+const RATE_LIMIT_MAX_FAILURES = 5;
+
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
     const { email, password } = bodySchema.parse(await req.json());
+    const normalizedEmail = email.toLowerCase();
+    const ipAddress = req.headers.get("x-forwarded-for");
 
-    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+    const recordAttempt = (success: boolean) =>
+      db.insert(loginAttempts).values({ email: normalizedEmail, success, ipAddress });
+
+    // Checked BEFORE touching users/bcrypt — a scripted brute-force against one
+    // account gets a flat 429 regardless of whether the email exists, so this
+    // can't be used to distinguish valid from invalid emails either.
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
+    const [{ count: recentFailures }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loginAttempts)
+      .where(
+        and(
+          eq(loginAttempts.email, normalizedEmail),
+          eq(loginAttempts.success, false),
+          gt(loginAttempts.createdAt, windowStart)
+        )
+      );
+    if (recentFailures >= RATE_LIMIT_MAX_FAILURES) {
+      return NextResponse.json(
+        { error: `Terlalu banyak percobaan gagal. Coba lagi setelah ${RATE_LIMIT_WINDOW_MINUTES} menit.` },
+        { status: 429 }
+      );
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
     // Same generic message whether the email doesn't exist or the password is
     // wrong — don't leak which case it was.
-    const invalid = () => NextResponse.json({ error: "Email atau kata sandi salah." }, { status: 401 });
+    const invalid = async () => {
+      await recordAttempt(false);
+      return NextResponse.json({ error: "Email atau kata sandi salah." }, { status: 401 });
+    };
 
     if (!user) return invalid();
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) return invalid();
 
+    await recordAttempt(true);
     await createSession(user.id);
 
     return NextResponse.json({

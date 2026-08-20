@@ -60,6 +60,27 @@ export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boole
 // mocked @pertamina.com address consistently everywhere it's displayed or matched
 // against (login lookup, admin user list). Self-registered accounts always have a
 // real `email` already, so this is only ever a fallback for them (`u.email ?? ...`).
+export const PASSWORD_MIN_LENGTH = 8;
+
+// Shared password strength policy — imported by both the register API route's zod
+// schema and the register form's client-side check, so the inline hint the user
+// sees can never drift from what the server actually enforces. Deliberately NOT
+// applied to login (an existing password must always be checked against whatever
+// rules were in force when it was set, not today's rules).
+export function passwordPolicyIssues(password: string): string[] {
+  const issues: string[] = [];
+  if (password.length < PASSWORD_MIN_LENGTH) issues.push(`minimal ${PASSWORD_MIN_LENGTH} karakter`);
+  if (!/[A-Z]/.test(password)) issues.push("1 huruf kapital");
+  if (!/[a-z]/.test(password)) issues.push("1 huruf kecil");
+  if (!/[0-9]/.test(password)) issues.push("1 angka");
+  if (!/[^A-Za-z0-9]/.test(password)) issues.push("1 karakter spesial (mis. ! . , ; @ #)");
+  return issues;
+}
+
+export function isPasswordStrong(password: string): boolean {
+  return passwordPolicyIssues(password).length === 0;
+}
+
 export function deriveDemoEmail(name: string): string {
   // Collapse runs of separators (e.g. "Ir. Irwan" -> ". " -> one "." not two) and
   // trim leading/trailing dots — a name with an abbreviation like "Ir." otherwise
