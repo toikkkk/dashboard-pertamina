@@ -15,6 +15,17 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationAccess, assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 
+// "inline" (not "attachment") — DocumentContentPreview.tsx's PDF <iframe> and the
+// client-side spreadsheet parser both hit this same URL expecting it to render/be
+// fetchable, not force a save dialog. `inline` still gets the real filename applied
+// if the browser DOES end up saving it (right-click Save As, or a non-renderable
+// type like .xlsx that the browser can't display inline anyway) — only the R2
+// object key's hash-prefixed name was ever the problem, not the disposition type.
+function contentDispositionHeader(filename: string): string {
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+  return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 export async function GET(_req: Request, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
@@ -43,7 +54,11 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
 
     const url = await getSignedUrl(
       r2,
-      new GetObjectCommand({ Bucket: R2_BUCKET, Key: file.r2ObjectKey }),
+      new GetObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: file.r2ObjectKey,
+        ResponseContentDisposition: contentDispositionHeader(file.originalFilename),
+      }),
       { expiresIn: 300 }
     );
 
