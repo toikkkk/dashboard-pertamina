@@ -42,9 +42,17 @@ const SAMPLE_DOC_SOURCE_PATHS: Record<string, string> = {
 // wider rollout.
 const DEMO_PASSWORD = "Demo12345!";
 
+// Was previously just stripping the "/sample-docs/" prefix and using the flat
+// basename (e.g. "eca-ft-malang.pdf") directly as the file_registry lookup key —
+// but originalRelativePath rows from migrate.ts are the real nested archive paths
+// (e.g. "00. PSI/FT Malang/8. PCE & CRITICALITY (ECA)/.../ECA-FT MALANG_SIGN.PDF"),
+// so every lookup silently missed. SAMPLE_DOC_SOURCE_PATHS existed for exactly this
+// translation but was never actually consulted — only caught now that a real
+// migration exists to test this path against.
 function resolveSampleFileUrl(fileUrl: string): string | null {
   if (!fileUrl.startsWith("/sample-docs/")) return null;
-  return fileUrl.replace("/sample-docs/", "");
+  const basename = fileUrl.replace("/sample-docs/", "");
+  return SAMPLE_DOC_SOURCE_PATHS[basename] ?? null;
 }
 
 async function seedLocations() {

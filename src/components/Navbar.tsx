@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import {
   LayoutDashboard, AlertTriangle, FolderOpen, Search,
-  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog,
+  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive,
 } from "lucide-react";
 import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
 
@@ -72,7 +72,10 @@ export default function Navbar() {
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" as const },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
         ...(activeUser.isRegionalAdmin
-          ? [{ name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" as const }]
+          ? [
+              { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" as const },
+              { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
+            ]
           : []),
       ];
 
@@ -227,7 +230,7 @@ export default function Navbar() {
               <div className="text-left leading-[1.25]">
                 <div className="text-xs font-bold text-[#0F172A]">{activeUser.name}</div>
                 <div className="text-[10px]" style={{ color: isPending ? "#B45309" : "#748094" }}>
-                  {isPending ? "Menunggu Aktivasi" : `${activeUser.role} · ${activeUser.location}`}
+                  {isPending ? "Menunggu Aktivasi" : `${activeUser.role} · ${activeUser.location ?? "Semua Lokasi"}`}
                 </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-[#9aa3af] ml-0.5" strokeWidth={2} />
