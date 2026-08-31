@@ -3,17 +3,12 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import { deriveDemoEmail, SIMULATED_USERS, PASSWORD_REQUIREMENTS, passwordPolicyIssues } from "@/lib/mockData";
+import { PASSWORD_REQUIREMENTS, passwordPolicyIssues } from "@/lib/mockData";
 import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, Circle, ShieldCheck } from "lucide-react";
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
-
-// Must match scripts/seed-curated-documents.ts's DEMO_PASSWORD — every built-in demo
-// account is seeded with this same password so the "Akun Demo Cepat" quick-fill
-// below can log straight in.
-const DEMO_PASSWORD = "Demo12345!";
 
 const inputClass =
   "w-full pl-10 pr-3 py-2.5 rounded-[2px] border border-[#D6DEE8] focus:outline-none focus:border-[#0369A1] focus:ring-[3px] focus:ring-[#0369A1]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
@@ -129,12 +124,6 @@ const SignIn2 = () => {
     }
   };
 
-  const quickFill = (name: string) => {
-    setEmail(deriveDemoEmail(name));
-    setPassword(DEMO_PASSWORD);
-    setError("");
-  };
-
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#E9EEF3] p-6">
       <div className="w-full max-w-sm bg-white rounded-[4px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#D6DEE8] animate-fadeInUp">
@@ -235,25 +224,6 @@ const SignIn2 = () => {
             >
               {signingIn ? "Memproses…" : "Masuk"}
             </button>
-
-            <div className="flex items-center w-full mb-3">
-              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
-              <span className="mx-2.5 text-[10.5px] font-semibold text-[#9a9da0] uppercase tracking-wide">Akun demo cepat</span>
-              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
-            </div>
-            <div className="w-full flex flex-col gap-1.5">
-              {SIMULATED_USERS.slice(0, 4).map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => quickFill(u.name)}
-                  className="w-full flex items-center justify-between text-left px-3 py-2 rounded-[2px] border border-[#eceded] hover:border-[#0369A1] hover:bg-[#F5F7F9] hover:-translate-y-px hover:shadow-[0_2px_6px_rgba(15,23,42,.06)] active:translate-y-0 active:shadow-none transition-all duration-200 ease-out-expo"
-                >
-                  <span className="text-[12px] font-semibold text-[#0F172A]">{u.name}</span>
-                  <span className="text-[10.5px] text-[#9a9da0]">{u.role}</span>
-                </button>
-              ))}
-            </div>
           </>
         ) : regSuccess ? (
           <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
