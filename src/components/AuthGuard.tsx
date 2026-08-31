@@ -4,10 +4,16 @@ import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 
+// Reachable without a session — /login obviously, plus /reset-password since that's
+// exactly the page someone clicking a password-reset link from email lands on while
+// signed out (the whole point of the flow is recovering access without one).
+const PUBLIC_PATHS = ["/login", "/reset-password"];
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isAuthLoaded, activeUser } = usePsi();
   const pathname = usePathname();
   const router = useRouter();
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
   // Self-registered account with no location assigned yet. Not locked out entirely —
   // gets read-only access to the dashboard ("/") so they can see the portal is alive
@@ -17,10 +23,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const isPending = isLoggedIn && !activeUser.isRegionalAdmin && !activeUser.location;
 
   useEffect(() => {
-    if (isAuthLoaded && !isLoggedIn && pathname !== "/login") {
+    if (isAuthLoaded && !isLoggedIn && !isPublicPath) {
       router.push("/login");
     }
-  }, [isAuthLoaded, isLoggedIn, pathname, router]);
+  }, [isAuthLoaded, isLoggedIn, isPublicPath, router]);
 
   useEffect(() => {
     if (isAuthLoaded && isPending && pathname !== "/") {
@@ -37,7 +43,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isLoggedIn && pathname !== "/login") {
+  if (!isLoggedIn && !isPublicPath) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center">
         <p className="text-xs font-bold text-slate-500">Mengalihkan ke Portal Login...</p>

@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import { PASSWORD_REQUIREMENTS, passwordPolicyIssues } from "@/lib/mockData";
-import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, Circle } from "lucide-react";
+import { passwordPolicyIssues } from "@/lib/mockData";
+import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, KeyRound, ArrowLeft } from "lucide-react";
+import PasswordChecklist from "@/components/PasswordChecklist";
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -20,39 +21,17 @@ function FieldIcon({ children }: { children: React.ReactNode }) {
   return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9da0] transition-colors duration-200 group-focus-within:text-[#0369A1]">{children}</span>;
 }
 
-// Live checklist under the register password field — each requirement flips from a
-// hollow gray ring to a filled green check (popIn, the same spring the rest of the
-// app already uses for badges) the instant it's satisfied, instead of only surfacing
-// as an error list after a failed submit.
-function PasswordChecklist({ password }: { password: string }) {
-  const metCount = PASSWORD_REQUIREMENTS.filter((r) => r.met(password)).length;
-  const allMet = metCount === PASSWORD_REQUIREMENTS.length;
-  return (
-    <div className="rounded-[2px] border border-[#eceded] bg-[#F5F7F9] px-3 py-2.5 -mt-1.5 transition-colors duration-300" style={allMet ? { borderColor: "#BBF7D0", background: "#F0FDF4" } : undefined}>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-        {PASSWORD_REQUIREMENTS.map((req) => {
-          const met = req.met(password);
-          return (
-            <div key={req.key} className="flex items-center gap-1.5 text-[11px] transition-colors duration-200" style={{ color: met ? "#15803D" : "#9a9da0" }}>
-              {met ? (
-                <CheckCircle2 key="met" className="w-3.5 h-3.5 flex-shrink-0 animate-popIn" strokeWidth={2.3} />
-              ) : (
-                <Circle key="unmet" className="w-3.5 h-3.5 flex-shrink-0 text-[#d6d9dc]" strokeWidth={2} />
-              )}
-              <span className={met ? "font-semibold" : ""}>{req.label}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 const SignIn2 = () => {
   const router = useRouter();
-  const { login, register } = usePsi();
+  const { login, register, forgotPassword } = usePsi();
 
-  const [mode, setMode] = useState<"signin" | "register">("signin");
+  const [mode, setMode] = useState<"signin" | "register" | "forgot">("signin");
+
+  // Forgot password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [sendingForgot, setSendingForgot] = useState(false);
 
   // Sign in
   const [email, setEmail] = useState("");
@@ -118,6 +97,34 @@ const SignIn2 = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      setForgotError("Mohon isi email Anda.");
+      return;
+    }
+    if (!validateEmail(forgotEmail)) {
+      setForgotError("Format email tidak valid.");
+      return;
+    }
+    setForgotError("");
+    setSendingForgot(true);
+    try {
+      await forgotPassword(forgotEmail);
+      setForgotSent(true);
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : "Gagal mengirim tautan atur ulang.");
+    } finally {
+      setSendingForgot(false);
+    }
+  };
+
+  const backToSignIn = () => {
+    setMode("signin");
+    setForgotEmail("");
+    setForgotError("");
+    setForgotSent(false);
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#E9EEF3] p-6">
       <div className="w-full max-w-sm bg-white rounded-[4px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#D6DEE8] animate-fadeInUp">
@@ -127,45 +134,60 @@ const SignIn2 = () => {
         >
           {mode === "signin" ? (
             <LogIn className="w-6 h-6 text-white" strokeWidth={2} />
-          ) : (
+          ) : mode === "register" ? (
             <UserPlus className="w-6 h-6 text-white" strokeWidth={2} />
+          ) : (
+            <KeyRound className="w-6 h-6 text-white" strokeWidth={2} />
           )}
         </div>
 
         <h2 className="font-heading text-xl font-bold mb-1.5 text-center text-[#0F172A]">
-          {mode === "signin" ? "Masuk ke Portal PSI & MOC" : "Daftar Akun Baru"}
+          {mode === "signin" ? "Masuk ke Portal PSI & MOC" : mode === "register" ? "Daftar Akun Baru" : "Atur Ulang Kata Sandi"}
         </h2>
         <p className="text-[#6b6e72] text-[12.5px] mb-6 text-center leading-relaxed">
           {mode === "signin"
             ? "Regional Jatimbalinus — kelola dokumen Process Safety Information & Management of Change."
-            : "Akun akan dibuat, tapi belum bisa mengakses apa pun sampai Admin Regional menetapkan lokasi & peran Anda."}
+            : mode === "register"
+            ? "Akun akan dibuat, tapi belum bisa mengakses apa pun sampai Admin Regional menetapkan lokasi & peran Anda."
+            : "Masukkan email akun Anda — kami kirimkan tautan untuk membuat kata sandi baru."}
         </p>
 
-        {/* Mode switch — sliding pill indicator instead of a hard cut between tabs */}
-        <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[2px] p-1 mb-5">
-          <div
-            className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
-            style={{ transform: mode === "register" ? "translateX(calc(100%+4px))" : "translateX(0)" }}
-          />
+        {mode === "forgot" ? (
           <button
             type="button"
-            onClick={() => setMode("signin")}
-            className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
-              mode === "signin" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
-            }`}
+            onClick={backToSignIn}
+            className="w-full flex items-center gap-1.5 text-[12.5px] font-bold text-[#0369A1] hover:text-[#075985] mb-5 transition-colors duration-200"
           >
-            Masuk
+            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />
+            Kembali ke Masuk
           </button>
-          <button
-            type="button"
-            onClick={() => setMode("register")}
-            className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
-              mode === "register" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
-            }`}
-          >
-            Daftar
-          </button>
-        </div>
+        ) : (
+          /* Mode switch — sliding pill indicator instead of a hard cut between tabs */
+          <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[2px] p-1 mb-5">
+            <div
+              className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
+              style={{ transform: mode === "register" ? "translateX(calc(100%+4px))" : "translateX(0)" }}
+            />
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
+                mode === "signin" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
+              }`}
+            >
+              Masuk
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("register")}
+              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
+                mode === "register" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
+              }`}
+            >
+              Daftar
+            </button>
+          </div>
+        )}
 
         {mode === "signin" ? (
           <>
@@ -208,6 +230,13 @@ const SignIn2 = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="self-end text-[11.5px] font-bold text-[#0369A1] hover:text-[#075985] transition-colors duration-200 -mt-1.5"
+              >
+                Lupa kata sandi?
+              </button>
               {error && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{error}</div>}
             </div>
 
@@ -219,6 +248,44 @@ const SignIn2 = () => {
               {signingIn ? "Memproses…" : "Masuk"}
             </button>
           </>
+        ) : mode === "forgot" ? (
+          forgotSent ? (
+            <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
+              <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
+              <p className="text-[13px] font-bold text-[#0F172A]">Tautan terkirim</p>
+              <p className="text-[12px] text-[#6b6e72] leading-relaxed">
+                Kalau <strong>{forgotEmail}</strong> terdaftar, kami sudah mengirimkan tautan atur ulang kata sandi ke email tersebut. Berlaku 30 menit.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="w-full flex flex-col gap-3 mb-2">
+                <div className="relative group">
+                  <FieldIcon>
+                    <Mail className="w-4 h-4" />
+                  </FieldIcon>
+                  <input
+                    placeholder="Email"
+                    type="email"
+                    value={forgotEmail}
+                    className={inputClass}
+                    onChange={(e) => {
+                      setForgotEmail(e.target.value);
+                      setForgotError("");
+                    }}
+                  />
+                </div>
+                {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{forgotError}</div>}
+              </div>
+              <button
+                onClick={handleForgotPassword}
+                disabled={sendingForgot}
+                className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[2px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              >
+                {sendingForgot ? "Mengirim…" : "Kirim Tautan Atur Ulang"}
+              </button>
+            </>
+          )
         ) : regSuccess ? (
           <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
             <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />

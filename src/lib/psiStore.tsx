@@ -53,6 +53,13 @@ interface PsiContextType {
    * as the client-only prototype (server always creates with location=NULL) — the
    * only real change is that the password is now actually hashed and stored. */
   register: (name: string, email: string, password: string) => Promise<SimulatedUser>;
+  /** POSTs to /api/auth/forgot-password. Always resolves with a generic message
+   * regardless of whether the email is registered (anti-enumeration) — never throws
+   * for "email not found", only for genuine request failures. */
+  forgotPassword: (email: string) => Promise<{ message: string }>;
+  /** POSTs to /api/auth/reset-password. Throws (with the server's message) if the
+   * token is invalid/expired/used or the password fails policy. */
+  resetPassword: (token: string, password: string) => Promise<{ message: string }>;
   /** PATCHes /api/admin/users/:id — server re-derives isRegionalAdmin from role. */
   assignUserAccess: (userId: string, role: SimulatedUser["role"], location: string) => Promise<void>;
   isAuthLoaded: boolean;
@@ -145,6 +152,14 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const user = await fetchJson("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
     await mutate();
     return user;
+  };
+
+  const forgotPassword = async (email: string): Promise<{ message: string }> => {
+    return fetchJson("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+  };
+
+  const resetPassword = async (token: string, password: string): Promise<{ message: string }> => {
+    return fetchJson("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
   };
 
   const logout = () => {
@@ -268,6 +283,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         logout,
         register,
+        forgotPassword,
+        resetPassword,
         assignUserAccess,
         isAuthLoaded,
       }}

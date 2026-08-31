@@ -68,6 +68,18 @@ export const sessions = pgTable("sessions", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Password reset tokens — one-time, short-lived, sent by email. Only sha256(token) is
+// ever persisted (same pattern as sessions.tokenHash); the raw token lives solely in
+// the emailed link. `usedAt` makes a token single-use even before it expires.
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
 // Failed/succeeded login attempts, keyed by the email that was tried — the login
 // route counts recent failures per email before even checking the password, so a
 // scripted brute-force against one account gets locked out regardless of how many
