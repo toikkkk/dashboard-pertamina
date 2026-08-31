@@ -165,14 +165,14 @@ function SignIn2Content() {
         </div>
 
         <h2 className="font-heading text-xl font-bold mb-1.5 text-center text-[#0F172A]">
-          {mode === "signin" ? "Masuk ke Portal PSI & MOC" : mode === "register" ? "Daftar Akun Baru" : "Atur Ulang Kata Sandi"}
+          {mode === "signin" ? "Portal PSI & MOC" : mode === "register" ? "Daftar Akun Baru" : "Atur Ulang Kata Sandi"}
         </h2>
         <p className="text-[#6b6e72] text-[12.5px] mb-6 text-center leading-relaxed">
           {mode === "signin"
-            ? "Regional Jatimbalinus — kelola dokumen Process Safety Information & Management of Change."
+            ? "Kelola dokumen keselamatan proses Regional Jatimbalinus."
             : mode === "register"
-            ? "Akun akan dibuat, tapi belum bisa mengakses apa pun sampai Admin Regional menetapkan lokasi & peran Anda."
-            : "Masukkan email akun Anda — kami kirimkan tautan untuk membuat kata sandi baru."}
+            ? "Akun Anda perlu diaktifkan Admin Regional sebelum dapat digunakan."
+            : "Masukkan email Anda dan kami kirimkan tautan untuk membuat kata sandi baru."}
         </p>
 
         {mode === "forgot" ? (
