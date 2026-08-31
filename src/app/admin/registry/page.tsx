@@ -188,13 +188,7 @@ export default function AdminRegistryPage() {
         <Archive className="w-4 h-4 text-[#0369A1]" strokeWidth={1.8} />
         <h1 className="font-heading text-[15px] font-bold text-[#0F172A]">Arsip Registry</h1>
       </div>
-      <p className="text-[12.5px] text-[#6b6e72] mb-4 max-w-[720px] leading-relaxed">
-        Seluruh {total > 0 ? total.toLocaleString("id-ID") : ""} berkas asli hasil migrasi arsip — file mentah (evidence,
-        worksheet, form audit) yang belum tentu punya alur persetujuan. Tautkan satu per satu ke dokumen resmi hanya
-        kalau memang diperlukan; sisanya tetap bisa dicari &amp; diunduh di sini.
-      </p>
-
-      <div className="flex flex-wrap gap-2.5 mb-4">
+      <div className="flex flex-wrap gap-2.5 mb-4 mt-4">
         <form onSubmit={runSearch} className="relative flex-1 min-w-[220px] max-w-[360px]">
           <Search className="w-3.5 h-3.5 text-[#9a9da0] absolute left-[11px] top-1/2 -translate-y-1/2" strokeWidth={1.8} />
           <input
