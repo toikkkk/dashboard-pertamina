@@ -62,19 +62,27 @@ export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boole
 // real `email` already, so this is only ever a fallback for them (`u.email ?? ...`).
 export const PASSWORD_MIN_LENGTH = 8;
 
-// Shared password strength policy — imported by both the register API route's zod
-// schema and the register form's client-side check, so the inline hint the user
-// sees can never drift from what the server actually enforces. Deliberately NOT
-// applied to login (an existing password must always be checked against whatever
-// rules were in force when it was set, not today's rules).
+export interface PasswordRequirement {
+  key: string;
+  label: string;
+  met: (password: string) => boolean;
+}
+
+// Single source of truth for password strength — both the register API route's zod
+// schema and the register form's live checklist read this same list, so the
+// checkmarks the user watches fill in can never drift from what the server actually
+// enforces. Deliberately NOT applied to login (an existing password must always be
+// checked against whatever rules were in force when it was set, not today's rules).
+export const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  { key: "length", label: `Minimal ${PASSWORD_MIN_LENGTH} karakter`, met: (p) => p.length >= PASSWORD_MIN_LENGTH },
+  { key: "upper", label: "1 huruf kapital (A-Z)", met: (p) => /[A-Z]/.test(p) },
+  { key: "lower", label: "1 huruf kecil (a-z)", met: (p) => /[a-z]/.test(p) },
+  { key: "digit", label: "1 angka (0-9)", met: (p) => /[0-9]/.test(p) },
+  { key: "special", label: "1 simbol (!@#$ dll)", met: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
 export function passwordPolicyIssues(password: string): string[] {
-  const issues: string[] = [];
-  if (password.length < PASSWORD_MIN_LENGTH) issues.push(`minimal ${PASSWORD_MIN_LENGTH} karakter`);
-  if (!/[A-Z]/.test(password)) issues.push("1 huruf kapital");
-  if (!/[a-z]/.test(password)) issues.push("1 huruf kecil");
-  if (!/[0-9]/.test(password)) issues.push("1 angka");
-  if (!/[^A-Za-z0-9]/.test(password)) issues.push("1 karakter spesial (mis. ! . , ; @ #)");
-  return issues;
+  return PASSWORD_REQUIREMENTS.filter((r) => !r.met(password)).map((r) => r.label.toLowerCase());
 }
 
 export function isPasswordStrong(password: string): boolean {
