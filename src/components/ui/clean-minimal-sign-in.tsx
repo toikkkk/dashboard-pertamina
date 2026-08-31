@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { passwordPolicyIssues } from "@/lib/mockData";
 import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, KeyRound, ArrowLeft } from "lucide-react";
@@ -21,8 +21,22 @@ function FieldIcon({ children }: { children: React.ReactNode }) {
   return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9da0] transition-colors duration-200 group-focus-within:text-[#0369A1]">{children}</span>;
 }
 
-const SignIn2 = () => {
+// Official 4-color "G" mark — Google's brand guidelines require the real logo, not a
+// generic icon-font substitute, for any "Sign in with Google" control.
+function GoogleLogo() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.5C29.4 34.9 26.8 36 24 36c-5.3 0-9.6-3.1-11.3-7.6l-6.5 5C9.6 39.6 16.3 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.5 5.5C40.9 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z" />
+    </svg>
+  );
+}
+
+function SignIn2Content() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, register, forgotPassword } = usePsi();
 
   const [mode, setMode] = useState<"signin" | "register" | "forgot">("signin");
@@ -39,6 +53,15 @@ const SignIn2 = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+
+  // Surfaces a failure from the Google OAuth round trip (see
+  // /api/auth/google/callback, which redirects here with ?googleError=... instead of
+  // throwing — there's no client-side call to catch an error from, it's a full page
+  // redirect the whole way).
+  useEffect(() => {
+    const googleError = searchParams.get("googleError");
+    if (googleError) setError(googleError);
+  }, [searchParams]);
 
   // Register
   const [regName, setRegName] = useState("");
@@ -247,6 +270,20 @@ const SignIn2 = () => {
             >
               {signingIn ? "Memproses…" : "Masuk"}
             </button>
+
+            <div className="flex items-center w-full mb-4">
+              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
+              <span className="mx-2.5 text-[10.5px] font-semibold text-[#9a9da0] uppercase tracking-wide">atau</span>
+              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
+            </div>
+
+            <a
+              href="/api/auth/google"
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[2px] border border-[#D6DEE8] active:scale-[0.98] transition-all duration-200 ease-out-expo"
+            >
+              <GoogleLogo />
+              Masuk dengan Google
+            </a>
           </>
         ) : mode === "forgot" ? (
           forgotSent ? (
@@ -366,6 +403,14 @@ const SignIn2 = () => {
       </div>
     </div>
   );
-};
+}
+
+function SignIn2() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#E9EEF3]" />}>
+      <SignIn2Content />
+    </Suspense>
+  );
+}
 
 export { SignIn2 };
