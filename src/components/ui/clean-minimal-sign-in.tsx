@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { PASSWORD_REQUIREMENTS, passwordPolicyIssues } from "@/lib/mockData";
-import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, Circle, ShieldCheck } from "lucide-react";
+import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, Circle } from "lucide-react";
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -44,12 +44,6 @@ function PasswordChecklist({ password }: { password: string }) {
           );
         })}
       </div>
-      {allMet && (
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#BBF7D0] text-[11px] font-bold text-[#15803D] animate-fadeIn">
-          <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2.2} />
-          Kata sandi memenuhi semua syarat keamanan
-        </div>
-      )}
     </div>
   );
 }
