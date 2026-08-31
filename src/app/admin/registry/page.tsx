@@ -266,6 +266,7 @@ export default function AdminRegistryPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <a
                               href={`/api/files/${f.id}/download`}
+                              download
                               className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
                             >
                               <Download className="w-3 h-3" strokeWidth={2} />

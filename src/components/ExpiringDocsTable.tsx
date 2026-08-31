@@ -169,7 +169,7 @@ export default function ExpiringDocsTable() {
                               <input
                                 id={`reviseFileInput-${doc.id}`}
                                 type="file"
-                                accept=".pdf,.doc,.docx"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.jpg,.jpeg,.png"
                                 onChange={(e) => setRevisedFile(e.target.files?.[0] ?? null)}
                                 className="hidden"
                               />

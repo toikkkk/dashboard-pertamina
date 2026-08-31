@@ -147,7 +147,7 @@ export default function UploadPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Location Description</label>
+          <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Deskripsi Lokasi</label>
           <textarea
             value={locationDescription}
             onChange={(e) => setLocationDescription(e.target.value)}
@@ -185,7 +185,7 @@ export default function UploadPage() {
 
         <div className="mb-5">
           <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Upload Berkas <span className="text-[#DC2626]">*</span></label>
-          <input id="mainFileInput" type="file" accept=".pdf,.doc,.docx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
+          <input id="mainFileInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
           <label
             htmlFor="mainFileInput"
             className="flex items-center gap-[7px] min-h-[36px] px-3 py-1 text-[12.5px] rounded-[2px] bg-white cursor-pointer w-full transition-colors duration-200 hover:bg-[#f7f8f8]"
@@ -194,7 +194,7 @@ export default function UploadPage() {
             <UploadIcon className="w-[14px] h-[14px] text-[#6b6e72]" strokeWidth={1.7} />
             {file ? file.name : "Pilih Berkas"}
           </label>
-          <p className="mt-1 text-[10.5px] text-[#9a9da0]">Format PDF/DOC, maksimum 25MB.</p>
+          <p className="mt-1 text-[10.5px] text-[#9a9da0]">Format PDF, Word, Excel, atau gambar (JPG/PNG), maksimum 500MB.</p>
           {errors.file && <p className="mt-1 text-[11px] text-[#DC2626]">{errors.file}</p>}
         </div>
 

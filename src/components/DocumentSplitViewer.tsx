@@ -86,8 +86,8 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
 
   const handleDownload = (item?: HistoryItem) => {
     const version = item ? item.version : doc.currentVersion;
-    const fileUrl = item ? item.fileUrl : doc.fileUrl;
-    showBanner("success", `Mengunduh berkas v${version} (${fileUrl.split("/").pop()}) — simulasi.`);
+    const fileName = item ? item.fileName : doc.fileName;
+    showBanner("success", `Mengunduh berkas v${version} (${fileName ?? "berkas"}) — simulasi.`);
   };
 
   const toggleExpand = (id: string) => setExpandedIds((s) => ({ ...s, [id]: !s[id] }));
@@ -130,7 +130,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
             </button>
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
-            {getFileKind(doc.fileUrl) !== "none" ? (
+            {getFileKind(doc.fileName) !== "none" ? (
               <a
                 href={doc.fileUrl}
                 download
@@ -227,7 +227,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                           {h.notes && <div className="text-xs text-[#3a3d40] mt-1.5">{h.notes}</div>}
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
-                          {getFileKind(h.fileUrl) !== "none" ? (
+                          {getFileKind(h.fileName) !== "none" ? (
                             <a href={h.fileUrl} download className="text-[11px] font-bold px-2.5 py-1 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
                               Unduh Berkas v{h.version}
                             </a>
@@ -247,7 +247,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                             <tbody>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0] w-[34%]">Aksi</td><td className="py-[5px] font-semibold">{ACTION_LABELS[h.action]}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Versi Dokumen</td><td className="py-[5px] font-semibold">v{h.version}</td></tr>
-                              <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Nama Berkas</td><td className="py-[5px] font-semibold">{h.fileUrl.split("/").pop()}</td></tr>
+                              <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Nama Berkas</td><td className="py-[5px] font-semibold">{h.fileName ?? "-"}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Diproses Oleh</td><td className="py-[5px] font-semibold">{h.actorName}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Lokasi</td><td className="py-[5px] font-semibold">{h.location}</td></tr>
                             </tbody>

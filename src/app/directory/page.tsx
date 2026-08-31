@@ -38,7 +38,7 @@ function DirectoryContent() {
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
   const handleDownload = (doc: DocumentItem) => {
-    setDownloadToast(`Mengunduh berkas v${doc.currentVersion} (${doc.fileUrl.split("/").pop()}) — simulasi.`);
+    setDownloadToast(`Mengunduh berkas v${doc.currentVersion} (${doc.fileName ?? "berkas"}) — simulasi.`);
     setTimeout(() => setDownloadToast(null), 2800);
   };
 

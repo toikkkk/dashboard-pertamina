@@ -60,6 +60,8 @@ export interface HistoryItem {
   // download per-versi (bukan cuma versi/file terbaru dari dokumen induknya). Backed by
   // GET /api/files/:fileId/download once the backend is live (see file_registry).
   fileUrl: string;
+  /** Original filename of this version snapshot's file — see DocumentItem.fileName. */
+  fileName?: string;
   version: string;
   // Rincian field yang berubah pada aksi ini (nilai lama vs baru) — opsional, cuma
   // diisi untuk aksi yang benar-benar mengubah data dokumen.

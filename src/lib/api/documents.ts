@@ -41,7 +41,11 @@ function toRouteItem(row: typeof approvalRoutes.$inferSelect): ApprovalRouteItem
   };
 }
 
-function toHistoryItem(row: typeof historyItems.$inferSelect, diffs: (typeof historyDiffs.$inferSelect)[]): HistoryItem {
+function toHistoryItem(
+  row: typeof historyItems.$inferSelect,
+  diffs: (typeof historyDiffs.$inferSelect)[],
+  fileName: string | undefined
+): HistoryItem {
   return {
     id: row.id,
     timestamp: row.timestamp.toISOString().slice(0, 16).replace("T", " "),
@@ -51,6 +55,7 @@ function toHistoryItem(row: typeof historyItems.$inferSelect, diffs: (typeof his
     action: row.action as HistoryItem["action"],
     notes: row.notes ?? undefined,
     fileUrl: fileDownloadUrl(row.fileId),
+    fileName,
     version: row.version,
     diff: diffs.length
       ? diffs.map((d) => ({ field: d.field, oldValue: d.oldValue, newValue: d.newValue }))
@@ -73,9 +78,16 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
   ]);
 
   const historyIds = historyRows.map((h) => h.id);
-  const diffRows = historyIds.length
-    ? await db.select().from(historyDiffs).where(inArray(historyDiffs.historyItemId, historyIds))
-    : [];
+  const historyFileIds = Array.from(new Set(historyRows.map((h) => h.fileId)));
+  const [diffRows, historyFileRows] = await Promise.all([
+    historyIds.length
+      ? db.select().from(historyDiffs).where(inArray(historyDiffs.historyItemId, historyIds))
+      : Promise.resolve([]),
+    historyFileIds.length
+      ? db.select({ id: fileRegistry.id, originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(inArray(fileRegistry.id, historyFileIds))
+      : Promise.resolve([]),
+  ]);
+  const fileNameById = new Map(historyFileRows.map((f) => [f.id, f.originalFilename]));
 
   return {
     id: doc.id,
@@ -97,7 +109,7 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
       .map(toRouteItem),
     history: historyRows
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-      .map((h) => toHistoryItem(h, diffRows.filter((d) => d.historyItemId === h.id))),
+      .map((h) => toHistoryItem(h, diffRows.filter((d) => d.historyItemId === h.id), fileNameById.get(h.fileId))),
   };
 }
 
