@@ -189,7 +189,7 @@ function SignIn2Content() {
           <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[2px] p-1 mb-5">
             <div
               className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
-              style={{ transform: mode === "register" ? "translateX(calc(100%+4px))" : "translateX(0)" }}
+              style={{ transform: mode === "register" ? "translateX(calc(100% + 4px))" : "translateX(0)" }}
             />
             <button
               type="button"
