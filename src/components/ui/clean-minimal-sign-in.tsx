@@ -354,7 +354,7 @@ function SignIn2Content() {
                   <Mail className="w-4 h-4" />
                 </FieldIcon>
                 <input
-                  placeholder="Email @pertamina.com"
+                  placeholder="Email (mis. nama@gmail.com)"
                   type="email"
                   value={regEmail}
                   className={inputClass}
