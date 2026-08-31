@@ -79,6 +79,10 @@ export interface DocumentItem {
   issueDate: string;
   expiryDate: string; // ISO String or YYYY-MM-DD
   fileUrl: string;
+  /** Original filename of the primary file (e.g. "ECA-FT MALANG_SIGN.PDF") — lets the
+   * client tell PDF/spreadsheet/other apart for preview purposes, since fileUrl itself
+   * is an opaque /api/files/:id/download route with no extension in it. */
+  fileName?: string;
   routes: ApprovalRouteItem[];
   history: HistoryItem[];
   isCircular: boolean;

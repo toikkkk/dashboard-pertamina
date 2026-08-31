@@ -20,11 +20,11 @@ const STATUS_META: Record<string, { color: string; tint: string }> = {
 };
 
 // Rendering itself lives in DocumentContentPreview (shared with DocumentSplitViewer's
-// "Detail Dokumen" tab) — real PDF/spreadsheet content for the 10 sample documents
-// wired to public/sample-docs, a simulated letterhead fallback for the rest.
+// "Detail Dokumen" tab) — real PDF/spreadsheet content when the document's primary
+// file is one of those types, a plain metadata-grid fallback otherwise.
 export default function DocumentPreviewModal({ document: doc, onClose, onDownload }: DocumentPreviewModalProps) {
   const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
-  const isRealFile = getFileKind(doc.fileUrl) !== "none";
+  const isRealFile = getFileKind(doc.fileName) !== "none";
 
   return (
     <div

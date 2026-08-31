@@ -66,9 +66,10 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
   const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
   if (!doc) return null;
 
-  const [routeRows, historyRows] = await Promise.all([
+  const [routeRows, historyRows, [primaryFile]] = await Promise.all([
     db.select().from(approvalRoutes).where(eq(approvalRoutes.documentId, documentId)),
     db.select().from(historyItems).where(eq(historyItems.documentId, documentId)),
+    db.select({ originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(eq(fileRegistry.id, doc.primaryFileId)).limit(1),
   ]);
 
   const historyIds = historyRows.map((h) => h.id);
@@ -89,6 +90,7 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
     issueDate: doc.issueDate,
     expiryDate: doc.expiryDate,
     fileUrl: fileDownloadUrl(doc.primaryFileId),
+    fileName: primaryFile?.originalFilename,
     isCircular: doc.isCircular,
     routes: routeRows
       .sort((a, b) => a.stepOrder - b.stepOrder)

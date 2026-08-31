@@ -14,21 +14,23 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// Only files copied into public/sample-docs (real samples pulled from "02. Process
-// Safety") are ever real — everything else is still a fake `internal://...` reference
-// (see CLAUDE.md: this prototype has no real file storage). Detected by path prefix
-// rather than a flag on DocumentItem so it can't drift out of sync with what's actually
-// on disk.
-function getFileKind(fileUrl: string): "pdf" | "spreadsheet" | "none" {
-  if (!fileUrl.startsWith("/sample-docs/")) return "none";
-  const ext = fileUrl.split(".").pop()?.toLowerCase();
+// Real backend era: every fileUrl is an opaque /api/files/:id/download route (see
+// CLAUDE.md's "Backend / database" section) — no extension in the URL itself, so kind
+// is derived from the real file's original filename (doc.fileName, populated by
+// loadDocumentItem from file_registry) instead. Previously this checked for a
+// "/sample-docs/" URL prefix, back when only 10 hand-copied demo files were ever real —
+// that stopped being true the moment the real migration ran, silently sending every
+// document (including genuinely real ones) into the "no file" fallback below.
+function getFileKind(fileName: string | undefined): "pdf" | "spreadsheet" | "none" {
+  if (!fileName) return "none";
+  const ext = fileName.split(".").pop()?.toLowerCase();
   if (ext === "pdf") return "pdf";
   if (ext === "xlsx" || ext === "xls" || ext === "xlsm") return "spreadsheet";
   return "none";
 }
 
 export default function DocumentContentPreview({ document: doc }: { document: DocumentItem }) {
-  const kind = getFileKind(doc.fileUrl);
+  const kind = getFileKind(doc.fileName);
   const [sheetRows, setSheetRows] = useState<string[][] | null>(null);
   const [sheetError, setSheetError] = useState(false);
 
