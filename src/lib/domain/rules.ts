@@ -57,7 +57,7 @@ export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boole
 }
 
 // The 4 built-in demo users don't carry a real `email` field — this derives the same
-// mocked @pertamina.com address consistently everywhere it's displayed or matched
+// mocked @gmail.com address consistently everywhere it's displayed or matched
 // against (login lookup, admin user list). Self-registered accounts always have a
 // real `email` already, so this is only ever a fallback for them (`u.email ?? ...`).
 export const PASSWORD_MIN_LENGTH = 8;
@@ -92,11 +92,11 @@ export function isPasswordStrong(password: string): boolean {
 export function deriveDemoEmail(name: string): string {
   // Collapse runs of separators (e.g. "Ir. Irwan" -> ". " -> one "." not two) and
   // trim leading/trailing dots — a name with an abbreviation like "Ir." otherwise
-  // produces "ir..irwan...@pertamina.com", which the login/register routes' zod
+  // produces "ir..irwan...@gmail.com", which the login/register routes' zod
   // email schema (rejects consecutive dots, RFC-adjacent) then refuses forever.
   const local = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '');
-  return `${local}@pertamina.com`;
+  return `${local}@gmail.com`;
 }

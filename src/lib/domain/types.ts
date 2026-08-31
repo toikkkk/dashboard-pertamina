@@ -107,7 +107,7 @@ export interface SimulatedUser {
   location: string | null;
   isRegionalAdmin?: boolean;
   /** Only set for accounts created via the Register form — the 4 built-in demo users
-   * derive a mocked @pertamina.com address from their name instead (see login/page.tsx). */
+   * derive a mocked @gmail.com address from their name instead (see login/page.tsx). */
   email?: string;
 }
 
