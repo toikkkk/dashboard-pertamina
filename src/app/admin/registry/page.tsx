@@ -11,7 +11,7 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
-import { ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive, Eye } from "lucide-react";
+import { ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive, Eye, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import type { PSIType, LifecyclePhase } from "@/lib/mockData";
 import RegistryPreviewModal from "@/components/RegistryPreviewModal";
 
@@ -84,6 +84,42 @@ function fmtDate(iso: string | null): string {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+type SortKey = "filename" | "category" | "location" | "size" | "uploaded";
+
+function SortableHeader({
+  column,
+  label,
+  align = "left",
+  activeSort,
+  sortDir,
+  onSort,
+}: {
+  column: SortKey;
+  label: string;
+  align?: "left" | "right";
+  activeSort: SortKey;
+  sortDir: "asc" | "desc";
+  onSort: (column: SortKey) => void;
+}) {
+  const isActive = activeSort === column;
+  return (
+    <th className={`px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase ${align === "right" ? "text-right" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 hover:text-[#0369A1] transition-colors duration-200 ${isActive ? "text-[#0369A1]" : ""} ${align === "right" ? "flex-row-reverse" : ""}`}
+      >
+        {label}
+        {isActive ? (
+          sortDir === "asc" ? <ArrowUp className="w-3 h-3" strokeWidth={2.2} /> : <ArrowDown className="w-3 h-3" strokeWidth={2.2} />
+        ) : (
+          <ArrowUpDown className="w-3 h-3 text-[#c3c6c9]" strokeWidth={2} />
+        )}
+      </button>
+    </th>
+  );
+}
+
 interface LinkForm {
   documentNumber: string;
   title: string;
@@ -101,6 +137,8 @@ export default function AdminRegistryPage() {
   const [category, setCategory] = useState("ALL");
   const [subcategory, setSubcategory] = useState("ALL");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortKey>("filename");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [form, setForm] = useState<LinkForm | null>(null);
@@ -114,6 +152,8 @@ export default function AdminRegistryPage() {
   if (category !== "ALL") params.set("category", category);
   if (subcategory !== "ALL") params.set("subcategory", subcategory);
   params.set("page", String(page));
+  params.set("sortBy", sortBy);
+  params.set("sortDir", sortDir);
 
   const { data, isLoading, mutate } = useSWR<RegistryResponse>(
     activeUser.isRegionalAdmin ? `/api/registry?${params.toString()}` : null,
@@ -139,6 +179,16 @@ export default function AdminRegistryPage() {
     e?.preventDefault();
     setPage(1);
     setSearch(searchInput);
+  };
+
+  const toggleSort = (column: SortKey) => {
+    if (sortBy === column) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(column);
+      setSortDir("asc");
+    }
+    setPage(1);
   };
 
   const openLink = (file: RegistryFile) => {
@@ -254,11 +304,11 @@ export default function AdminRegistryPage() {
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="bg-[#fafafb]">
-                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Nama Berkas</th>
-                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Kategori</th>
-                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Lokasi</th>
-                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Ukuran</th>
-                  <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Diunggah</th>
+                  <SortableHeader column="filename" label="Nama Berkas" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader column="category" label="Kategori" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader column="location" label="Lokasi" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader column="size" label="Ukuran" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader column="uploaded" label="Diunggah" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Aksi</th>
                 </tr>
               </thead>

@@ -3,7 +3,8 @@
 // would be invisible in the product entirely (present in R2/Postgres, unreachable
 // from any UI). Admin-only browse/search over the raw file_registry ledger.
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
+import type { AnyColumn, SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { fileRegistry } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -15,6 +16,17 @@ const PAGE_SIZE = 50;
 // subfolder have pathSegments[1] = SQL NULL, which "= 'some string'" can never match
 // (NULL isn't equal to anything, including itself), so it needs its own IS NULL branch.
 const NO_SUBCATEGORY = "__none__";
+
+// Allowlist mapping ?sortBy=... to a real column/expression — never interpolate the
+// query param directly into SQL. `location` sorts by whichever of
+// locationCanonical/locationRaw is set, matching what the table actually displays.
+const SORT_COLUMNS: Record<string, SQL | AnyColumn> = {
+  filename: fileRegistry.originalFilename,
+  category: fileRegistry.category,
+  location: sql`coalesce(${fileRegistry.locationCanonical}, ${fileRegistry.locationRaw})`,
+  size: fileRegistry.sizeBytes,
+  uploaded: fileRegistry.uploadedAt,
+};
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -32,6 +44,8 @@ export async function GET(req: NextRequest) {
     const subcategory = searchParams.get("subcategory");
     const search = searchParams.get("search");
     const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
+    const sortColumn = SORT_COLUMNS[searchParams.get("sortBy") ?? ""] ?? fileRegistry.originalFilename;
+    const sortDir = searchParams.get("sortDir") === "desc" ? desc : asc;
 
     const conditions = [eq(fileRegistry.uploadStatus, "uploaded")];
     if (category) conditions.push(eq(fileRegistry.category, category));
@@ -56,6 +70,11 @@ export async function GET(req: NextRequest) {
         .select()
         .from(fileRegistry)
         .where(and(...conditions))
+        // `id` as a secondary key makes pagination deterministic across requests —
+        // without it, rows tied on the primary sort column (e.g. many files
+        // uploaded the same second) could be ordered differently page to page,
+        // causing a row to be skipped or repeated across the page boundary.
+        .orderBy(sortDir(sortColumn), fileRegistry.id)
         .limit(PAGE_SIZE)
         .offset((page - 1) * PAGE_SIZE),
       db
