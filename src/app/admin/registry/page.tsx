@@ -11,8 +11,9 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
-import { ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive } from "lucide-react";
+import { ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive, Eye } from "lucide-react";
 import type { PSIType, LifecyclePhase } from "@/lib/mockData";
+import RegistryPreviewModal from "@/components/RegistryPreviewModal";
 
 interface RegistryFile {
   id: string;
@@ -106,6 +107,7 @@ export default function AdminRegistryPage() {
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<RegistryFile | null>(null);
 
   const params = new URLSearchParams();
   if (search.trim()) params.set("search", search.trim());
@@ -283,6 +285,13 @@ export default function AdminRegistryPage() {
                           </span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setPreviewFile(f)}
+                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                            >
+                              <Eye className="w-3 h-3" strokeWidth={2} />
+                              Lihat
+                            </button>
                             <a
                               href={`/api/files/${f.id}/download`}
                               download
@@ -435,6 +444,14 @@ export default function AdminRegistryPage() {
           </div>
         )}
       </div>
+
+      {previewFile && (
+        <RegistryPreviewModal
+          file={previewFile}
+          categoryLabel={CATEGORY_LABELS[previewFile.category] ?? previewFile.category}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
     </div>
   );
 }

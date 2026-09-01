@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DocumentItem } from "@/lib/mockData";
 import { X, Download, ExternalLink } from "lucide-react";
 import DocumentContentPreview, { getFileKind } from "@/components/DocumentContentPreview";
+import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
 
 interface DocumentPreviewModalProps {
   document: DocumentItem;
@@ -49,7 +50,12 @@ export default function DocumentPreviewModal({ document: doc, onClose, onDownloa
 
         <div className="p-6">
           <h3 className="font-heading text-[15px] font-bold mb-3.5 leading-snug">{doc.title}</h3>
-          <DocumentContentPreview document={doc} />
+          <DocumentContentPreview
+            fileUrl={doc.fileUrl}
+            fileName={doc.fileName}
+            title={doc.title}
+            fallback={<DocumentMetadataFallback document={doc} />}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-t border-[#eceded] sticky bottom-0 bg-white">

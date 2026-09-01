@@ -2,35 +2,42 @@
 
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
-import { DocumentItem } from "@/lib/mockData";
 import { FileWarning, FileCheck2 } from "lucide-react";
 
 const SHEET_ROW_CAP = 40;
 
-function fmtDate(iso: string) {
-  if (!iso) return "-";
-  const d = new Date(iso + "T00:00:00");
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 // Real backend era: every fileUrl is an opaque /api/files/:id/download route (see
 // CLAUDE.md's "Backend / database" section) — no extension in the URL itself, so kind
-// is derived from the real file's original filename (doc.fileName, populated by
-// loadDocumentItem from file_registry) instead. Previously this checked for a
-// "/sample-docs/" URL prefix, back when only 10 hand-copied demo files were ever real —
-// that stopped being true the moment the real migration ran, silently sending every
-// document (including genuinely real ones) into the "no file" fallback below.
-function getFileKind(fileName: string | undefined): "pdf" | "spreadsheet" | "none" {
+// is derived from the real file's original filename instead. Previously this checked
+// for a "/sample-docs/" URL prefix, back when only 10 hand-copied demo files were ever
+// real — that stopped being true the moment the real migration ran, silently sending
+// every document (including genuinely real ones) into the "no file" fallback below.
+function getFileKind(fileName: string | undefined): "pdf" | "spreadsheet" | "image" | "none" {
   if (!fileName) return "none";
   const ext = fileName.split(".").pop()?.toLowerCase();
   if (ext === "pdf") return "pdf";
   if (ext === "xlsx" || ext === "xls" || ext === "xlsm") return "spreadsheet";
+  // A large share of the raw archive's "Evidence" folders are inspection photos —
+  // without this, every one of them fell into the metadata-grid fallback despite
+  // being trivially previewable.
+  if (ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "gif" || ext === "bmp" || ext === "webp") return "image";
   return "none";
 }
 
-export default function DocumentContentPreview({ document: doc }: { document: DocumentItem }) {
-  const kind = getFileKind(doc.fileName);
+interface DocumentContentPreviewProps {
+  fileUrl: string;
+  fileName?: string;
+  title: string;
+  /** Rendered when the file type has no built-in preview (or there's no file at all).
+   * Kept as a caller-supplied node rather than baked in here — a curated document's
+   * fallback (compliance metadata grid) and a raw registry file's fallback (archive
+   * metadata) show genuinely different fields, so neither belongs hardcoded into this
+   * shared preview component. */
+  fallback: React.ReactNode;
+}
+
+export default function DocumentContentPreview({ fileUrl, fileName, title, fallback }: DocumentContentPreviewProps) {
+  const kind = getFileKind(fileName);
   const [sheetRows, setSheetRows] = useState<string[][] | null>(null);
   const [sheetError, setSheetError] = useState(false);
 
@@ -39,7 +46,7 @@ export default function DocumentContentPreview({ document: doc }: { document: Do
     let cancelled = false;
     setSheetRows(null);
     setSheetError(false);
-    fetch(doc.fileUrl)
+    fetch(fileUrl)
       .then((r) => r.arrayBuffer())
       .then((buf) => {
         if (cancelled) return;
@@ -54,13 +61,25 @@ export default function DocumentContentPreview({ document: doc }: { document: Do
     return () => {
       cancelled = true;
     };
-  }, [doc.fileUrl, kind]);
+  }, [fileUrl, kind]);
+
+  if (kind === "image") {
+    return (
+      <div>
+        <RealFileBadge />
+        <div className="flex items-center justify-center border border-[#D6DEE8] rounded-[2px] bg-[#fafafb] p-3 max-h-[70vh] overflow-auto">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote, private (RBAC-gated) source; next/image's optimizer needs a whitelisted domain, not applicable to a same-origin proxy route like this */}
+          <img src={fileUrl} alt={title} className="max-w-full max-h-[66vh] object-contain" />
+        </div>
+      </div>
+    );
+  }
 
   if (kind === "pdf") {
     return (
       <div>
         <RealFileBadge />
-        <iframe src={doc.fileUrl} title={doc.title} className="w-full h-[70vh] border border-[#D6DEE8] rounded-[2px] bg-[#fafafb]" />
+        <iframe src={fileUrl} title={title} className="w-full h-[70vh] border border-[#D6DEE8] rounded-[2px] bg-[#fafafb]" />
       </div>
     );
   }
@@ -113,34 +132,7 @@ export default function DocumentContentPreview({ document: doc }: { document: Do
     );
   }
 
-  // Fallback for the remaining mock documents that don't have a real file behind them —
-  // a plain metadata grid (all real DocumentItem fields, nothing fabricated). Previously
-  // this rendered a simulated letterhead + fake "TERVERIFIKASI · PKI" stamp, then an amber
-  // "berkas belum tersedia" warning banner on top of a metadata grid — both dropped per
-  // explicit feedback; the grid alone reads cleanly without needing to call out what it
-  // *isn't*.
-  return (
-    <div>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-[#fafafb] border border-[#eceded] rounded-[2px] p-6">
-        <InfoField label="No. Dokumen" value={doc.documentNumber} />
-        <InfoField label="Jenis PSI" value={doc.psiType} />
-        <InfoField label="Judul" value={doc.title} span />
-        <InfoField label="Lokasi" value={doc.location} />
-        <InfoField label="Versi Berlaku" value={`v${doc.currentVersion}`} />
-        <InfoField label="Tanggal Terbit" value={fmtDate(doc.issueDate)} />
-        <InfoField label="Berlaku s.d." value={fmtDate(doc.expiryDate)} />
-      </div>
-    </div>
-  );
-}
-
-function InfoField({ label, value, span }: { label: string; value: string; span?: boolean }) {
-  return (
-    <div className={span ? "col-span-2" : undefined}>
-      <div className="text-[10px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">{label}</div>
-      <div className="text-[13px] font-semibold text-[#0F172A]">{value}</div>
-    </div>
-  );
+  return <div>{fallback}</div>;
 }
 
 function RealFileBadge() {

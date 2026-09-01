@@ -6,6 +6,7 @@ import { usePsi } from "@/lib/psiStore";
 import { Download, Info } from "lucide-react";
 import RoutingStatusPanel from "@/components/RoutingStatusPanel";
 import DocumentContentPreview, { getFileKind } from "@/components/DocumentContentPreview";
+import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
 
 interface DocumentSplitViewerProps {
   document: DocumentItem;
@@ -183,7 +184,12 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         <div className="min-w-0">
           {tab === "detail" && (
             <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-8 animate-fadeIn">
-              <DocumentContentPreview document={doc} />
+              <DocumentContentPreview
+                fileUrl={doc.fileUrl}
+                fileName={doc.fileName}
+                title={doc.title}
+                fallback={<DocumentMetadataFallback document={doc} />}
+              />
             </div>
           )}
 
