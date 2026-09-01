@@ -153,7 +153,47 @@ function DirectoryContent() {
 
       <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {sortedDocs.length > 0 ? (
-          <div className="overflow-x-auto">
+          <>
+            {/* Card list below lg — a table with 8 columns has nowhere to go on a
+                narrow screen but a horizontal scrollbar, which "works" but isn't the
+                neat, purpose-built mobile presentation this was asked for. Same data,
+                same actions, just re-laid-out per row instead of per column. */}
+            <div className="lg:hidden divide-y divide-[#f0f0f1]">
+              {sortedDocs.map((doc, i) => {
+                const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
+                return (
+                  <div key={doc.id} className="p-3.5 animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <span className="font-heading text-[11px] text-[#9a9da0]">{doc.documentNumber}</span>
+                      <span className="inline-flex items-center gap-[5px] text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] flex-shrink-0" style={{ background: meta.tint, color: meta.color }}>
+                        {doc.status}
+                      </span>
+                    </div>
+                    <Link href={`/document/${doc.id}`} className="block font-semibold text-[13.5px] text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200 mb-1.5">
+                      {doc.title}
+                    </Link>
+                    <div className="text-[12px] text-[#6b6e72] mb-1">{doc.location} · {doc.psiType}</div>
+                    <div className="flex items-center gap-2 text-[11.5px] text-[#9a9da0] mb-2">
+                      <span>{fmtDate(doc.issueDate)} <span>→</span> {fmtDate(doc.expiryDate)}</span>
+                      <span className="tabular-nums">· v{doc.currentVersion}</span>
+                    </div>
+                    <UpdateTypeBadge history={doc.history} />
+                    <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-[#f5f5f6]">
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="cursor-pointer flex items-center gap-1 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200"
+                      >
+                        <Eye className="w-3.5 h-3.5" strokeWidth={1.9} />
+                        Lihat
+                      </button>
+                      <Link href={`/document/${doc.id}`} className="cursor-pointer text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200">Riwayat &amp; Audit →</Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="bg-[#fafafb]">
@@ -227,7 +267,8 @@ function DirectoryContent() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         ) : (
           <div className="py-14 px-5 text-center">
             <Search className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />

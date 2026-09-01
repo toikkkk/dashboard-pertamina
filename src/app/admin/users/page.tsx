@@ -155,6 +155,89 @@ export default function AdminUsersPage() {
             <p className="text-[13px] text-[#9a9da0]">Tidak ada user yang cocok dengan pencarian Anda.</p>
           </div>
         ) : (
+        <>
+        {/* Card list below lg — the 5-column table below was previously just
+            silently clipping its last 2 columns (Lokasi, Aksi) off-screen on a
+            narrow viewport with no way to reach them at all (no scroll container),
+            not merely "cramped" — the "Ubah" button was completely unreachable. */}
+        <div className="lg:hidden divide-y divide-[#f0f0f1]">
+          {activeUsers.map((u) => (
+            <div key={u.id} className="p-3.5">
+              <div className="font-semibold text-[13.5px] text-[#0F172A]">{u.name}</div>
+              <div className="text-[12px] text-[#6b6e72] mb-2">{u.email ?? deriveDemoEmail(u.name)}</div>
+
+              {editingId === u.id ? (
+                <div className="flex flex-col gap-2 mt-2">
+                  <select
+                    value={draftRole[u.id] ?? u.role}
+                    onChange={(e) => setDraftRole((s) => ({ ...s, [u.id]: e.target.value as SimulatedUser["role"] }))}
+                    className="text-[12.5px] px-2.5 py-2 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold w-full"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={draftLocation[u.id] ?? u.location ?? locations[0].locationName}
+                    onChange={(e) => setDraftLocation((s) => ({ ...s, [u.id]: e.target.value }))}
+                    className="text-[12.5px] px-2.5 py-2 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold w-full"
+                  >
+                    {locations.map((l) => (
+                      <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveEdit(u)}
+                      className="flex-1 text-[12.5px] font-bold px-3 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200"
+                    >
+                      Simpan
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="text-[12.5px] font-bold px-3 py-2 rounded-[2px] border border-[#D6DEE8] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                  {lockoutWarningId === u.id && (
+                    <p className="px-2.5 py-2 bg-[#FEF3C7] rounded-[2px] text-[11.5px] font-semibold text-[#92400E]">
+                      Tidak bisa disimpan — {u.name} satu-satunya Admin Regional saat ini. Tunjuk admin lain dulu sebelum menurunkan perannya.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="inline-flex items-center text-[11px] font-bold px-2 py-[3px] rounded-[2px]"
+                      style={{ background: u.isRegionalAdmin ? "#EDE9FE" : "#E0F2FE", color: u.isRegionalAdmin ? "#6D28D9" : "#075985" }}
+                    >
+                      {u.role}
+                    </span>
+                    <span className="text-[11.5px] text-[#6b6e72]">{u.location}</span>
+                  </div>
+                  {justUpdated === u.id ? (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#15803D]">
+                      <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                      Tersimpan
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(u)}
+                      className="inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#0369A1] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                    >
+                      <Pencil className="w-3 h-3" strokeWidth={2} />
+                      Ubah
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-[#fafafb]">
@@ -253,6 +336,8 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
         )}
       </div>
     </div>

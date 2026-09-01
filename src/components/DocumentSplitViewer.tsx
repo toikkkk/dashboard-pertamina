@@ -153,16 +153,18 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         </div>
       </div>
 
-      <div className="grid grid-cols-[200px_1fr] gap-4 items-start">
-        {/* Tab rail */}
-        <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-col gap-0.5">
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 items-start">
+        {/* Tab rail — a horizontal scrollable row on mobile instead of the 200px
+            vertical sidebar (which had nowhere to go on a narrow screen but to force
+            the whole page wider), full vertical list from lg up */}
+        <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center justify-between px-2.5 py-2.5 rounded-[2px] text-[12.5px] font-semibold text-left transition-all duration-200 ease-out-expo ${
+                className={`flex items-center justify-between gap-1.5 px-2.5 py-2.5 rounded-[2px] text-[12.5px] font-semibold text-left transition-all duration-200 ease-out-expo whitespace-nowrap flex-shrink-0 ${
                   active ? "bg-[#E0F2FE] text-[#075985]" : "text-[#3a3d40] hover:bg-[#f7f7f8]"
                 }`}
               >

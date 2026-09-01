@@ -42,7 +42,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
     <div className="border border-[#eceded] rounded-[2px] p-4">
       <p className="mb-3 text-xs font-bold text-[#3a3d40]">Circular Routing Builder</p>
 
-      <div className="grid grid-cols-[1fr_1fr_90px_90px] gap-2 mb-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_90px_90px] gap-2 mb-3.5">
         <select
           value={roleDraft}
           onChange={(e) => setRoleDraft(e.target.value)}

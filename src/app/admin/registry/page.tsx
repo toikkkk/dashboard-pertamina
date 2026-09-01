@@ -105,6 +105,118 @@ function FileTypeIcon({ filename }: { filename: string }) {
   return <FileGeneric className="w-4 h-4 flex-shrink-0 text-[#9a9da0]" strokeWidth={1.8} />;
 }
 
+// Shared between the desktop table's expand-row and the mobile card list's
+// expand-section — same fields either way, just embedded in a different parent.
+function LinkDocumentForm({
+  form,
+  setForm,
+  locations,
+  linkError,
+  linking,
+  onSubmit,
+  onCancel,
+}: {
+  form: LinkForm;
+  setForm: (f: LinkForm) => void;
+  locations: { locationName: string }[];
+  linkError: string | null;
+  linking: boolean;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-3">
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Nomor Dokumen</label>
+          <input
+            type="text"
+            value={form.documentNumber}
+            onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
+            placeholder="mis. PSI-MLG-2026-045"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Judul Dokumen</label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Jenis PSI</label>
+          <select
+            value={form.psiType}
+            onChange={(e) => setForm({ ...form, psiType: e.target.value as PSIType })}
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+          >
+            {PSI_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Lokasi</label>
+          <select
+            value={form.location}
+            onChange={(e) => setForm({ ...form, location: e.target.value })}
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+          >
+            {locations.map((l) => <option key={l.locationName} value={l.locationName}>{l.locationName}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Fase</label>
+          <select
+            value={form.lifecyclePhase}
+            onChange={(e) => setForm({ ...form, lifecyclePhase: e.target.value as LifecyclePhase })}
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+          >
+            {LIFECYCLE_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Tanggal Terbit</label>
+          <input
+            type="date"
+            value={form.issueDate}
+            onChange={(e) => setForm({ ...form, issueDate: e.target.value })}
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Tanggal Kedaluwarsa</label>
+          <input
+            type="date"
+            value={form.expiryDate}
+            onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+          />
+        </div>
+      </div>
+      {linkError && <p className="mb-2.5 text-[11.5px] font-semibold text-[#DC2626]">{linkError}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={onSubmit}
+          disabled={linking}
+          className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {linking ? "Menyimpan…" : "Simpan sebagai Dokumen"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={linking}
+          className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60"
+        >
+          Batal
+        </button>
+      </div>
+    </>
+  );
+}
+
 type SortKey = "filename" | "category" | "location" | "size" | "uploaded";
 
 function SortableHeader({
@@ -321,7 +433,84 @@ export default function AdminRegistryPage() {
             <p className="text-[13px] text-[#9a9da0]">Tidak ada berkas yang cocok.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Card list below lg — same reasoning as Directory's table: a 6-column
+                table has nowhere neat to go on a narrow screen. */}
+            <div className="lg:hidden divide-y divide-[#f0f0f1]">
+              {items.map((f) => (
+                <div key={f.id} className="p-3.5">
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <FileTypeIcon filename={f.originalFilename} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-[13px] text-[#0F172A] break-words" title={f.originalRelativePath}>{f.originalFilename}</div>
+                      <div className="flex items-center flex-wrap gap-1.5 mt-1">
+                        <span className="inline-flex text-[10.5px] font-semibold px-1.5 py-[2px] rounded-[2px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
+                          {CATEGORY_LABELS[f.category] ?? f.category}
+                        </span>
+                        <span className="text-[11px] text-[#6b6e72]">
+                          {f.locationCanonical ?? f.locationRaw ?? <span className="font-semibold text-[#B45309]">Perlu ditinjau</span>}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#9a9da0] mt-1 tabular-nums">{formatBytes(f.sizeBytes)} · {fmtDate(f.uploadedAt)}</div>
+                    </div>
+                  </div>
+
+                  {linkSuccess === f.id ? (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#15803D]">
+                      <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                      Tertaut
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setPreviewFile(f)}
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                      >
+                        <Eye className="w-3 h-3" strokeWidth={2} />
+                        Lihat
+                      </button>
+                      <a
+                        href={`/api/files/${f.id}/download`}
+                        download
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                      >
+                        <Download className="w-3 h-3" strokeWidth={2} />
+                        Unduh
+                      </a>
+                      <button
+                        onClick={() => openLink(f)}
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#0369A1] text-[#0369A1] hover:bg-[#E0F2FE] active:scale-[0.97] transition-all duration-200"
+                      >
+                        <Link2 className="w-3 h-3" strokeWidth={2} />
+                        Jadikan Dokumen
+                      </button>
+                    </div>
+                  )}
+
+                  {linkingId === f.id && form && (
+                    <div className="mt-3 pt-3 border-t border-[#eceded] animate-fadeInUp">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[12.5px] font-bold text-[#3a3d40]">Jadikan Dokumen Resmi</p>
+                        <button onClick={() => openLink(f)} aria-label="Batal" className="text-[#9a9da0] hover:text-[#0F172A]">
+                          <X className="w-4 h-4" strokeWidth={2} />
+                        </button>
+                      </div>
+                      <LinkDocumentForm
+                        form={form}
+                        setForm={setForm}
+                        locations={locations}
+                        linkError={linkError}
+                        linking={linking}
+                        onSubmit={() => submitLink(f.id)}
+                        onCancel={() => openLink(f)}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="bg-[#fafafb]">
@@ -400,93 +589,15 @@ export default function AdminRegistryPage() {
                                 <X className="w-4 h-4" strokeWidth={2} />
                               </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-3.5 mb-3">
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Nomor Dokumen</label>
-                                <input
-                                  type="text"
-                                  value={form.documentNumber}
-                                  onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
-                                  placeholder="mis. PSI-MLG-2026-045"
-                                  className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
-                                />
-                              </div>
-                              <div className="col-span-2">
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Judul Dokumen</label>
-                                <input
-                                  type="text"
-                                  value={form.title}
-                                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                  className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Jenis PSI</label>
-                                <select
-                                  value={form.psiType}
-                                  onChange={(e) => setForm({ ...form, psiType: e.target.value as PSIType })}
-                                  className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
-                                >
-                                  {PSI_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Lokasi</label>
-                                <select
-                                  value={form.location}
-                                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                                  className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
-                                >
-                                  {locations.map((l) => <option key={l.locationName} value={l.locationName}>{l.locationName}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Fase</label>
-                                <select
-                                  value={form.lifecyclePhase}
-                                  onChange={(e) => setForm({ ...form, lifecyclePhase: e.target.value as LifecyclePhase })}
-                                  className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
-                                >
-                                  {LIFECYCLE_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Tanggal Terbit</label>
-                                <input
-                                  type="date"
-                                  value={form.issueDate}
-                                  onChange={(e) => setForm({ ...form, issueDate: e.target.value })}
-                                  className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Tanggal Kedaluwarsa</label>
-                                <input
-                                  type="date"
-                                  value={form.expiryDate}
-                                  onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-                                  className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
-                                />
-                              </div>
-                            </div>
-                            {linkError && <p className="mb-2.5 text-[11.5px] font-semibold text-[#DC2626]">{linkError}</p>}
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => submitLink(f.id)}
-                                disabled={linking}
-                                className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                              >
-                                {linking ? "Menyimpan…" : "Simpan sebagai Dokumen"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openLink(f)}
-                                disabled={linking}
-                                className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60"
-                              >
-                                Batal
-                              </button>
-                            </div>
+                            <LinkDocumentForm
+                              form={form}
+                              setForm={setForm}
+                              locations={locations}
+                              linkError={linkError}
+                              linking={linking}
+                              onSubmit={() => submitLink(f.id)}
+                              onCancel={() => openLink(f)}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -496,6 +607,7 @@ export default function AdminRegistryPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {totalPages > 1 && (

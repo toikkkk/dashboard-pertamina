@@ -24,14 +24,14 @@ interface KpiCardDef {
 // generic-admin-template tell, and the stat tile contract (label/value/delta) never
 // called for one. Color is reserved for the number + meter fill; the label stays a
 // neutral text token (text shouldn't wear the data color — only the mark should).
-function KpiColumn({ card, totalDocs, isFirst }: { card: KpiCardDef; totalDocs: number; isFirst: boolean }) {
+function KpiColumn({ card, totalDocs }: { card: KpiCardDef; totalDocs: number }) {
   const router = useRouter();
   const animatedCount = useCountUp(card.count, 700);
 
   return (
     <div
       onClick={() => router.push(card.path)}
-      className={`kpi-card flex-1 min-w-[160px] p-5 cursor-pointer transition-colors duration-200 hover:bg-[#fafafb] ${isFirst ? "" : "border-l border-[#eceded]"}`}
+      className="kpi-card flex-1 lg:min-w-[160px] bg-white p-4 lg:p-5 cursor-pointer transition-colors duration-200 hover:bg-[#fafafb]"
     >
       <div className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#6b6e72] mb-2.5">{card.label}</div>
       {/* Proportional (non-tabular) figures on the hero value — tabular-nums is reserved for
@@ -90,10 +90,16 @@ export default function KpiSummaryCards() {
   return (
     <div
       ref={containerRef}
-      className="flex bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5 overflow-hidden"
+      // 2x2 grid on mobile, single row on lg+ — same component either way, just the
+      // container's flow direction changes. `gap-px bg-[#eceded]` draws the hairline
+      // dividers (each card is opaque white, so the gap's background shows through
+      // as a 1px line) instead of per-item border-l classes, which only made sense
+      // for a single row and would've needed different logic entirely for a 2-column
+      // grid's row dividers too.
+      className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5 overflow-hidden"
     >
-      {cards.map((c, i) => (
-        <KpiColumn key={c.label} card={c} totalDocs={totalDocs} isFirst={i === 0} />
+      {cards.map((c) => (
+        <KpiColumn key={c.label} card={c} totalDocs={totalDocs} />
       ))}
     </div>
   );

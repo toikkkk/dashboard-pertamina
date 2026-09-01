@@ -28,7 +28,7 @@ export default function DashboardPage() {
 
       <StatusOverview />
 
-      <div className="grid grid-cols-2 gap-3.5 mb-3.5 animate-fadeInUp" style={{ animationDelay: "160ms" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-3.5 animate-fadeInUp" style={{ animationDelay: "160ms" }}>
         <DocsByLocationChart />
         <UpcomingExpiryList />
       </div>

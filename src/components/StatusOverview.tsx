@@ -89,7 +89,11 @@ export default function StatusOverview() {
         {hovered && (
           <div
             className="absolute bottom-full mb-2 z-20 bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_8px_20px_rgba(0,0,0,.15)] px-2.5 py-1.5 whitespace-nowrap animate-popIn pointer-events-none -translate-x-1/2"
-            style={{ left: `${hovered.offset + hovered.pct / 2}%` }}
+            // Clamped away from the 0/100% edges — centered on a segment near either
+            // end otherwise pushes half the (whitespace-nowrap) tooltip content past
+            // the bar's own bounds, wide enough on a narrow viewport to force the
+            // whole page to scroll horizontally for as long as it's open.
+            style={{ left: `${Math.min(Math.max(hovered.offset + hovered.pct / 2, 15), 85)}%` }}
           >
             <span className="text-[11.5px] font-bold text-[#0F172A]">{hovered.label}</span>
             <span className="text-[11px] text-[#6b6e72]"> — {hovered.count} ({Math.round(hovered.pct)}%)</span>

@@ -106,11 +106,15 @@ export default function ComplianceChart() {
           </h2>
         </div>
 
-        <div className="flex gap-2">
+        {/* min-w-0 lets each <select> shrink below its longest-option natural width
+            (a <select>'s intrinsic width follows its content otherwise, which is
+            what pushed this row past a narrow viewport — flex-wrap alone doesn't
+            help an item that refuses to shrink in the first place) */}
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <select
             value={selectedLocationFilter}
             onChange={(e) => setSelectedLocationFilter(e.target.value)}
-            className="text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Lokasi / Terminal</option>
             {locations.map((l) => (
@@ -120,7 +124,7 @@ export default function ComplianceChart() {
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className="text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Jenis PSI</option>
             {PSI_TYPES.map((t) => (
@@ -173,9 +177,10 @@ export default function ComplianceChart() {
         </div>
       </div>
 
-      {/* Two breakdown tables, side by side */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+      {/* Two breakdown tables — stacked on mobile (each is a real 5-column table,
+          illegible squeezed into half of a narrow screen), side by side from lg up */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-[7px]">
               <BarChart3 className="w-[13px] h-[13px] text-[#0369A1]" strokeWidth={1.8} />
@@ -225,7 +230,7 @@ export default function ComplianceChart() {
           </table>
         </div>
 
-        <div>
+        <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center gap-[7px] mb-2">
             <MapPin className="w-[13px] h-[13px] text-[#15803D]" strokeWidth={1.8} />
             <span className="text-[11px] font-bold tracking-[.06em] text-[#3a3d40] uppercase">Kelengkapan per Lokasi / Terminal</span>
