@@ -11,7 +11,10 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
-import { ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive, Eye, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import {
+  ShieldAlert, Search, Download, Link2, X, CheckCircle2, ChevronLeft, ChevronRight, Archive, Eye,
+  ArrowUp, ArrowDown, ArrowUpDown, FileText, FileSpreadsheet, FileImage, FileVideo, FileArchive, Presentation, File as FileGeneric,
+} from "lucide-react";
 import type { PSIType, LifecyclePhase } from "@/lib/mockData";
 import RegistryPreviewModal from "@/components/RegistryPreviewModal";
 
@@ -83,6 +86,24 @@ function fmtDate(iso: string | null): string {
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+// Per-extension icon + color — the single biggest thing that made this table hard to
+// scan while sorting (e.g. by Ukuran) was that every row looked identical regardless
+// of file type. Colors reuse the app's existing semantic palette rather than
+// introducing new ones (PDF/doc red-adjacent, spreadsheet green, image violet,
+// video/brand blue, archive amber) — never the only signal (filename + extension
+// text stay visible too), just a faster visual anchor when scanning many rows.
+function FileTypeIcon({ filename }: { filename: string }) {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return <FileText className="w-4 h-4 flex-shrink-0" style={{ color: "#DC2626" }} strokeWidth={1.8} />;
+  if (["xlsx", "xls", "xlsm", "csv"].includes(ext)) return <FileSpreadsheet className="w-4 h-4 flex-shrink-0" style={{ color: "#15803D" }} strokeWidth={1.8} />;
+  if (["doc", "docx"].includes(ext)) return <FileText className="w-4 h-4 flex-shrink-0" style={{ color: "#1D4ED8" }} strokeWidth={1.8} />;
+  if (["ppt", "pptx"].includes(ext)) return <Presentation className="w-4 h-4 flex-shrink-0" style={{ color: "#EA580C" }} strokeWidth={1.8} />;
+  if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext)) return <FileImage className="w-4 h-4 flex-shrink-0" style={{ color: "#6D28D9" }} strokeWidth={1.8} />;
+  if (["mp4", "mov", "avi", "mkv"].includes(ext)) return <FileVideo className="w-4 h-4 flex-shrink-0" style={{ color: "#0369A1" }} strokeWidth={1.8} />;
+  if (["zip", "rar", "7z"].includes(ext)) return <FileArchive className="w-4 h-4 flex-shrink-0" style={{ color: "#B45309" }} strokeWidth={1.8} />;
+  return <FileGeneric className="w-4 h-4 flex-shrink-0 text-[#9a9da0]" strokeWidth={1.8} />;
+}
 
 type SortKey = "filename" | "category" | "location" | "size" | "uploaded";
 
@@ -307,7 +328,7 @@ export default function AdminRegistryPage() {
                   <SortableHeader column="filename" label="Nama Berkas" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader column="category" label="Kategori" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader column="location" label="Lokasi" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader column="size" label="Ukuran" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader column="size" label="Ukuran" align="right" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader column="uploaded" label="Diunggah" activeSort={sortBy} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Aksi</th>
                 </tr>
@@ -316,16 +337,23 @@ export default function AdminRegistryPage() {
                 {items.map((f) => (
                   <React.Fragment key={f.id}>
                     <tr className="border-t border-[#f0f0f1] hover:bg-[#fafafb] transition-colors">
-                      <td className="px-3.5 py-3 font-semibold text-[#0F172A] max-w-[280px]">
-                        <div className="truncate" title={f.originalRelativePath}>{f.originalFilename}</div>
+                      <td className="px-3.5 py-3 max-w-[300px]">
+                        <div className="flex items-center gap-2.5">
+                          <FileTypeIcon filename={f.originalFilename} />
+                          <div className="truncate font-semibold text-[#0F172A]" title={f.originalRelativePath}>{f.originalFilename}</div>
+                        </div>
                       </td>
-                      <td className="px-3.5 py-3 text-[#6b6e72]">{CATEGORY_LABELS[f.category] ?? f.category}</td>
+                      <td className="px-3.5 py-3">
+                        <span className="inline-flex text-[11px] font-semibold px-2 py-[3px] rounded-[2px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
+                          {CATEGORY_LABELS[f.category] ?? f.category}
+                        </span>
+                      </td>
                       <td className="px-3.5 py-3 text-[#6b6e72]">
                         {f.locationCanonical ?? f.locationRaw ?? (
                           <span className="text-[11px] font-semibold text-[#B45309]">Perlu ditinjau</span>
                         )}
                       </td>
-                      <td className="px-3.5 py-3 text-[#6b6e72] whitespace-nowrap">{formatBytes(f.sizeBytes)}</td>
+                      <td className="px-3.5 py-3 text-[#6b6e72] text-right tabular-nums whitespace-nowrap">{formatBytes(f.sizeBytes)}</td>
                       <td className="px-3.5 py-3 text-[#6b6e72] whitespace-nowrap">{fmtDate(f.uploadedAt)}</td>
                       <td className="px-3.5 py-3 text-right whitespace-nowrap">
                         {linkSuccess === f.id ? (
