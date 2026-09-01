@@ -11,6 +11,10 @@ import { assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 
 const PAGE_SIZE = 50;
+// Sentinel the frontend sends for the "(Tanpa sub-kategori)" bucket — files with no
+// subfolder have pathSegments[1] = SQL NULL, which "= 'some string'" can never match
+// (NULL isn't equal to anything, including itself), so it needs its own IS NULL branch.
+const NO_SUBCATEGORY = "__none__";
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -19,14 +23,35 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
+    // "Sub-kategori" — the immediate subfolder under the chosen category (e.g. under
+    // "02. PHA": Evidence / P&ID, PFD, Layout / Report PHA, MAH, SECE). Filtering by
+    // category alone was flattening these together — a real client complaint, since
+    // some categories nest 3+ levels deep before reaching an actual location. This
+    // reads pathSegments[1] (already captured per-file by migrate.ts), so it works
+    // for any category without hardcoding its folder names.
+    const subcategory = searchParams.get("subcategory");
     const search = searchParams.get("search");
     const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
 
     const conditions = [eq(fileRegistry.uploadStatus, "uploaded")];
     if (category) conditions.push(eq(fileRegistry.category, category));
+    if (subcategory === NO_SUBCATEGORY) {
+      conditions.push(sql`${fileRegistry.pathSegments}->>1 IS NULL`);
+    } else if (subcategory) {
+      conditions.push(sql`${fileRegistry.pathSegments}->>1 = ${subcategory}`);
+    }
     if (search) conditions.push(ilike(fileRegistry.originalFilename, `%${search}%`));
 
-    const [rows, [{ count }]] = await Promise.all([
+    const subcategoryQuery = category
+      ? db
+          .select({ sub: sql<string>`${fileRegistry.pathSegments}->>1`, count: sql<number>`count(*)::int` })
+          .from(fileRegistry)
+          .where(and(eq(fileRegistry.uploadStatus, "uploaded"), eq(fileRegistry.category, category)))
+          .groupBy(sql`${fileRegistry.pathSegments}->>1`)
+          .orderBy(sql`count(*) desc`)
+      : null;
+
+    const [rows, [{ count }], subcategoryRows] = await Promise.all([
       db
         .select()
         .from(fileRegistry)
@@ -37,8 +62,20 @@ export async function GET(req: NextRequest) {
         .select({ count: sql<number>`count(*)::int` })
         .from(fileRegistry)
         .where(and(...conditions)),
+      subcategoryQuery ?? Promise.resolve([]),
     ]);
 
-    return NextResponse.json({ items: rows, total: count, page, pageSize: PAGE_SIZE });
+    // A null subfolder means the file sits directly under the category with no
+    // further nesting — surfaced as a distinct "(Tanpa sub-kategori)" bucket rather
+    // than silently dropped, so the counts always add up to the category total.
+    // `value` is what the frontend sends back as ?subcategory=... to select this
+    // bucket; `label` is what it displays — they differ only for the null bucket.
+    const subcategories = subcategoryRows.map((r) => ({
+      value: r.sub ?? NO_SUBCATEGORY,
+      label: r.sub ?? "(Tanpa sub-kategori)",
+      count: r.count,
+    }));
+
+    return NextResponse.json({ items: rows, total: count, page, pageSize: PAGE_SIZE, subcategories });
   });
 }

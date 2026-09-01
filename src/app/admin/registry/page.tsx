@@ -27,11 +27,18 @@ interface RegistryFile {
   needsLocationReview: boolean;
 }
 
+interface RegistrySubcategory {
+  value: string;
+  label: string;
+  count: number;
+}
+
 interface RegistryResponse {
   items: RegistryFile[];
   total: number;
   page: number;
   pageSize: number;
+  subcategories: RegistrySubcategory[];
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -91,6 +98,7 @@ export default function AdminRegistryPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [category, setCategory] = useState("ALL");
+  const [subcategory, setSubcategory] = useState("ALL");
   const [page, setPage] = useState(1);
 
   const [linkingId, setLinkingId] = useState<string | null>(null);
@@ -102,6 +110,7 @@ export default function AdminRegistryPage() {
   const params = new URLSearchParams();
   if (search.trim()) params.set("search", search.trim());
   if (category !== "ALL") params.set("category", category);
+  if (subcategory !== "ALL") params.set("subcategory", subcategory);
   params.set("page", String(page));
 
   const { data, isLoading, mutate } = useSWR<RegistryResponse>(
@@ -203,6 +212,7 @@ export default function AdminRegistryPage() {
           value={category}
           onChange={(e) => {
             setCategory(e.target.value);
+            setSubcategory("ALL");
             setPage(1);
           }}
           className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-h-[36px]"
@@ -212,6 +222,21 @@ export default function AdminRegistryPage() {
             <option key={slug} value={slug}>{label}</option>
           ))}
         </select>
+        {category !== "ALL" && (data?.subcategories.length ?? 0) > 1 && (
+          <select
+            value={subcategory}
+            onChange={(e) => {
+              setSubcategory(e.target.value);
+              setPage(1);
+            }}
+            className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-h-[36px] animate-fadeIn"
+          >
+            <option value="ALL">Semua Sub-Kategori</option>
+            {data?.subcategories.map((s) => (
+              <option key={s.value} value={s.value}>{s.label} ({s.count.toLocaleString("id-ID")})</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
