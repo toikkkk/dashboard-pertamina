@@ -79,7 +79,13 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
     return (
       <div>
         <RealFileBadge />
-        <iframe src={fileUrl} title={title} className="w-full h-[70vh] border border-[#D6DEE8] rounded-[2px] bg-[#fafafb]" />
+        {/* <embed>, not <iframe> — an iframe pointed at a cross-origin PDF (our
+            presigned R2 redirect) inconsistently fell back to a native download
+            prompt instead of rendering inline, even with Content-Disposition:
+            inline set. <embed type="application/pdf"> hands the URL to the
+            browser's PDF plugin directly rather than trying to navigate a
+            sub-document into it, which renders reliably instead. */}
+        <embed src={fileUrl} type="application/pdf" title={title} className="w-full h-[70vh] border border-[#D6DEE8] rounded-[2px] bg-[#fafafb]" />
       </div>
     );
   }
