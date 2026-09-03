@@ -6,6 +6,7 @@ import { usePsi } from "@/lib/psiStore";
 import { canUserApproveDoc, getPendingApprovalStepOrder } from "@/lib/mockData";
 import { ClipboardCheck, Zap, Lock, MapPin, FileText, ArrowRight } from "lucide-react";
 import RouteStepper from "@/components/RouteStepper";
+import StatusTag from "@/components/StatusTag";
 
 function fmtDate(ts: string) {
   if (!ts) return "-";
@@ -43,13 +44,10 @@ export default function ApprovalsPage() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="font-heading text-[11.5px] text-[#9a9da0]">{doc.documentNumber}</span>
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[2px]"
-                      style={{ background: isParallel ? "#FEF3C7" : "#E0F2FE", color: isParallel ? "#B45309" : "#075985" }}
-                    >
-                      {isParallel ? <Zap className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
-                      Tahap {stepOrder} dari {totalSteps}
+                    <span className="font-mono text-[11.5px] text-[#9a9da0]">{doc.documentNumber}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      {isParallel ? <Zap className="w-2.5 h-2.5 text-[#B45309]" /> : <Lock className="w-2.5 h-2.5 text-[#075985]" />}
+                      <StatusTag color={isParallel ? "#B45309" : "#075985"} label={`Tahap ${stepOrder} dari ${totalSteps}`} size="sm" />
                     </span>
                   </div>
                   <div className="text-[14px] font-bold text-[#0F172A] group-hover:text-[#0369A1] transition-colors truncate mb-1.5">{doc.title}</div>

@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePsi } from "@/lib/psiStore";
 import { BarChart3, MapPin } from "lucide-react";
+import StatusTag from "@/components/StatusTag";
 
 gsap.registerPlugin(useGSAP);
 
@@ -35,12 +36,6 @@ function trackTint(pct: number) {
   return `${barColor(pct)}22`;
 }
 
-function badgeTint(pct: number) {
-  if (pct >= 80) return "#DCFCE7";
-  if (pct >= 50) return "#FEF3C7";
-  return "#FEE2E2";
-}
-
 export default function ComplianceChart() {
   const {
     locations,
@@ -59,7 +54,6 @@ export default function ComplianceChart() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (metrics.percentage / 100) * circumference;
   const strokeColor = metrics.percentage >= 80 ? "#15803D" : metrics.percentage >= 50 ? "#B45309" : "#DC2626";
-  const badgeBg = metrics.percentage >= 80 ? "#DCFCE7" : "#FEF3C7";
   const badgeColor = metrics.percentage >= 80 ? "#15803D" : "#B45309";
   const badgeLabel = metrics.percentage >= 80 ? "Memenuhi Standar" : "Perlu Dilengkapi";
 
@@ -147,7 +141,7 @@ export default function ComplianceChart() {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-heading text-[16px] font-bold">{metrics.percentage}%</span>
+            <span className="font-mono text-[16px] font-semibold tabular-nums">{metrics.percentage}%</span>
           </div>
         </div>
 
@@ -160,20 +154,20 @@ export default function ComplianceChart() {
         <div className="flex items-center gap-6 flex-wrap">
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Approved</div>
-            <div className="font-heading text-[19px] font-bold text-[#15803D]">{metrics.totalApproved}</div>
+            <div className="font-mono text-[19px] font-semibold tabular-nums text-[#15803D]">{metrics.totalApproved}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Target</div>
-            <div className="font-heading text-[19px] font-bold text-[#0F172A]">{metrics.totalTarget}</div>
+            <div className="font-mono text-[19px] font-semibold tabular-nums text-[#0F172A]">{metrics.totalTarget}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Kekurangan</div>
-            <div className="font-heading text-[19px] font-bold" style={{ color: overallGap > 0 ? "#DC2626" : "#15803D" }}>{overallGap}</div>
+            <div className="font-mono text-[19px] font-semibold tabular-nums" style={{ color: overallGap > 0 ? "#DC2626" : "#15803D" }}>{overallGap}</div>
           </div>
         </div>
 
-        <div className="ml-auto px-3 py-1.5 text-[11px] font-bold rounded-[2px] flex-shrink-0" style={{ background: badgeBg, color: badgeColor }}>
-          {badgeLabel}
+        <div className="ml-auto flex-shrink-0">
+          <StatusTag color={badgeColor} label={badgeLabel} />
         </div>
       </div>
 
@@ -208,20 +202,15 @@ export default function ComplianceChart() {
                 return (
                   <tr key={type} className="border-t border-[#f0f0f1]">
                     <td className="py-2 pr-2 font-semibold">{type}</td>
-                    <td className="py-2 text-[#6b6e72] tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{data.approved}</strong> / {data.target}</td>
-                    <td className="py-2 tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
+                    <td className="py-2 text-[#6b6e72] font-mono tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{data.approved}</strong> / {data.target}</td>
+                    <td className="py-2 font-mono tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
                     <td className="py-2">
-                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(data.pct) }}>
-                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(data.pct), width: `${data.pct}%` }} />
+                      <div className="h-[5px] rounded-[1px] overflow-hidden" style={{ background: trackTint(data.pct) }}>
+                        <div className="h-full rounded-[1px] transition-all duration-700 ease-out-expo" style={{ background: barColor(data.pct), width: `${data.pct}%` }} />
                       </div>
                     </td>
                     <td className="py-2 text-right">
-                      <span
-                        className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] whitespace-nowrap"
-                        style={{ background: badgeTint(data.pct), color: barColor(data.pct) }}
-                      >
-                        {data.pct}% · {statusLabel(data.pct)}
-                      </span>
+                      <StatusTag color={barColor(data.pct)} label={`${data.pct}% · ${statusLabel(data.pct)}`} size="sm" />
                     </td>
                   </tr>
                 );
@@ -251,20 +240,15 @@ export default function ComplianceChart() {
                 return (
                   <tr key={loc.name} className="border-t border-[#f0f0f1]">
                     <td className="py-2 pr-2 font-semibold">{loc.name}</td>
-                    <td className="py-2 text-[#6b6e72] tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{loc.approved}</strong> / {loc.totalTarget}</td>
-                    <td className="py-2 tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
+                    <td className="py-2 text-[#6b6e72] font-mono tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{loc.approved}</strong> / {loc.totalTarget}</td>
+                    <td className="py-2 font-mono tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
                     <td className="py-2">
-                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(loc.pct) }}>
-                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(loc.pct), width: `${loc.pct}%` }} />
+                      <div className="h-[5px] rounded-[1px] overflow-hidden" style={{ background: trackTint(loc.pct) }}>
+                        <div className="h-full rounded-[1px] transition-all duration-700 ease-out-expo" style={{ background: barColor(loc.pct), width: `${loc.pct}%` }} />
                       </div>
                     </td>
                     <td className="py-2 text-right">
-                      <span
-                        className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] whitespace-nowrap"
-                        style={{ background: badgeTint(loc.pct), color: barColor(loc.pct) }}
-                      >
-                        {loc.pct}% · {statusLabel(loc.pct)}
-                      </span>
+                      <StatusTag color={barColor(loc.pct)} label={`${loc.pct}% · ${statusLabel(loc.pct)}`} size="sm" />
                     </td>
                   </tr>
                 );

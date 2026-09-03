@@ -41,9 +41,10 @@ export default function UpcomingExpiryList() {
               </div>
               <div className="min-w-0">
                 <div className="text-[12px] font-semibold text-[#0F172A] group-hover:text-[#0369A1] truncate transition-colors">{d.title}</div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10.5px] text-[#9a9da0]">{fmtDate(d.expiryDate)}</span>
-                  <span className="text-[10px] font-semibold px-1.5 py-px rounded-[2px] bg-[#eceded] text-[#6b6e72]">{d.location}</span>
+                <div className="flex items-center gap-1 mt-0.5 text-[10.5px]">
+                  <span className="font-mono text-[#9a9da0] tabular-nums">{fmtDate(d.expiryDate)}</span>
+                  <span className="text-[#c3c6c9]">·</span>
+                  <span className="font-semibold text-[#6b6e72]">{d.location}</span>
                 </div>
               </div>
             </Link>

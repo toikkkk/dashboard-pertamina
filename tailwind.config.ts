@@ -25,6 +25,8 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-body)", "system-ui", "sans-serif"],
         heading: ["var(--font-heading)", "system-ui", "sans-serif"],
+        // Tabular figures and short data tokens only — see layout.tsx.
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: {
         lg: "2px",

@@ -4,12 +4,10 @@ import React from "react";
 import { DocumentItem } from "@/lib/mockData";
 import { Zap, Lock, Clock, CheckCircle2, XCircle, AlertOctagon } from "lucide-react";
 import RouteStepper from "@/components/RouteStepper";
+import StatusTag from "@/components/StatusTag";
+import { ROUTE_STATUS_META } from "@/lib/domain/statusStyle";
 
-const ROUTE_STATUS_META = {
-  Pending: { label: "Menunggu", color: "#B45309", tint: "#FEF3C7", icon: Clock },
-  Approved: { label: "Disetujui", color: "#15803D", tint: "#DCFCE7", icon: CheckCircle2 },
-  Rejected: { label: "Ditolak", color: "#DC2626", tint: "#FEE2E2", icon: XCircle },
-} as const;
+const ROUTE_STATUS_ICON = { Pending: Clock, Approved: CheckCircle2, Rejected: XCircle } as const;
 
 function fmtDate(iso?: string) {
   if (!iso) return null;
@@ -98,24 +96,17 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
             >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-[12px] font-bold text-[#0F172A]">Tahap {step}</span>
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[2px]"
-                  style={{ background: isParallel ? "#FEF3C7" : "#E0F2FE", color: isParallel ? "#B45309" : "#075985" }}
-                >
-                  {isParallel ? <Zap className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
-                  {isParallel ? "Paralel" : "Sekuensial"}
+                <span className="inline-flex items-center gap-1.5">
+                  {isParallel ? <Zap className="w-2.5 h-2.5 text-[#B45309]" /> : <Lock className="w-2.5 h-2.5 text-[#075985]" />}
+                  <StatusTag color={isParallel ? "#B45309" : "#075985"} label={isParallel ? "Paralel" : "Sekuensial"} size="sm" />
                 </span>
-                {isActiveStep && (
-                  <span className="text-[10px] font-bold px-[7px] py-[2px] rounded-[2px] bg-[#0369A1] text-white">
-                    Tahap Aktif
-                  </span>
-                )}
+                {isActiveStep && <StatusTag color="#0369A1" label="Tahap Aktif" size="sm" />}
               </div>
 
               <div className="flex flex-col gap-1.5">
                 {approvers.map((r, i) => {
                   const meta = ROUTE_STATUS_META[r.status];
-                  const Icon = meta.icon;
+                  const Icon = ROUTE_STATUS_ICON[r.status];
                   const date = fmtDate(r.actionDate);
                   return (
                     <div key={i} className="bg-white border border-[#eceded] rounded-[2px] px-3 py-2">
@@ -124,12 +115,9 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
                           <div className="text-[12px] font-semibold text-[#0F172A] truncate">{r.approverName}</div>
                           <div className="text-[10.5px] text-[#9a9da0]">{r.approverRole}</div>
                         </div>
-                        <span
-                          className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-1 rounded-[2px] flex-shrink-0"
-                          style={{ background: meta.tint, color: meta.color }}
-                        >
-                          <Icon className="w-3 h-3" strokeWidth={2} />
-                          {meta.label}
+                        <span className="inline-flex items-center gap-1.5 flex-shrink-0">
+                          <Icon className="w-3 h-3" strokeWidth={2} style={{ color: meta.color }} />
+                          <StatusTag color={meta.color} label={meta.label} size="sm" />
                         </span>
                       </div>
                       {date && (

@@ -34,13 +34,13 @@ function KpiColumn({ card, totalDocs }: { card: KpiCardDef; totalDocs: number })
       className="kpi-card flex-1 lg:min-w-[160px] bg-white p-4 lg:p-5 cursor-pointer transition-colors duration-200 hover:bg-[#fafafb]"
     >
       <div className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#6b6e72] mb-2.5">{card.label}</div>
-      {/* Proportional (non-tabular) figures on the hero value — tabular-nums is reserved for
-          columns that align vertically (table rows, axis ticks), not a standalone display number. */}
+      {/* Mono tabular figures on the hero value — reserved for data tokens per the
+          "Presisi Korporat" token set (see statusStyle.ts), not a stylistic default. */}
       <div className="flex items-baseline gap-2 mb-3">
-        <span className="font-heading text-[30px] font-bold leading-none" style={{ color: card.color }}>{animatedCount}</span>
-        <span className="text-[12px] font-semibold text-[#9a9da0] tabular-nums">/ {totalDocs} · {card.rate}%</span>
+        <span className="font-mono text-[28px] font-semibold leading-none tabular-nums" style={{ color: card.color }}>{animatedCount}</span>
+        <span className="font-mono text-[12px] font-medium text-[#9a9da0] tabular-nums">/ {totalDocs} · {card.rate}%</span>
       </div>
-      <div className="h-[3px] bg-[#eceded] rounded-full overflow-hidden">
+      <div className="h-[3px] bg-[#eceded] rounded-[1px] overflow-hidden">
         <div className="h-full transition-all duration-700 ease-out-expo" style={{ background: card.color, width: `${card.rate}%` }} />
       </div>
     </div>

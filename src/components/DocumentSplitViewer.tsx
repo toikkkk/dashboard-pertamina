@@ -7,6 +7,8 @@ import { Download, Info } from "lucide-react";
 import RoutingStatusPanel from "@/components/RoutingStatusPanel";
 import DocumentContentPreview, { getFileKind } from "@/components/DocumentContentPreview";
 import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
+import StatusTag from "@/components/StatusTag";
+import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 interface DocumentSplitViewerProps {
   document: DocumentItem;
@@ -35,13 +37,6 @@ const ACTION_COLOR: Record<HistoryItem["action"], string> = {
   Closed: "#15803D",
 };
 
-const STATUS_META: Record<string, { color: string; tint: string }> = {
-  Approved: { color: "#15803D", tint: "#DCFCE7" },
-  "In Routing": { color: "#B45309", tint: "#FEF3C7" },
-  "Revision Required": { color: "#6D28D9", tint: "#EDE9FE" },
-  Expired: { color: "#DC2626", tint: "#FEE2E2" },
-};
-
 const TABS = [
   { key: "detail", label: "Detail Dokumen" },
   { key: "history", label: "Riwayat Proses" },
@@ -62,7 +57,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
 
   const pendingStepOrder = getPendingApprovalStepOrder(doc);
   const canApprove = canUserApproveDoc(doc, activeUser);
-  const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
+  const meta = DOCUMENT_STATUS_META[doc.status];
 
   const showBanner = (tone: "success" | "error", message: string) => {
     setBanner({ tone, message });
@@ -112,10 +107,8 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2.5 mb-2">
-              <span className="font-heading text-[12.5px] text-[#9a9da0]">{doc.documentNumber}</span>
-              <span className="inline-flex items-center gap-[5px] text-[11px] font-bold px-2 py-[3px] rounded-[2px]" style={{ background: meta.tint, color: meta.color }}>
-                {doc.status}
-              </span>
+              <span className="font-mono text-[12.5px] text-[#9a9da0]">{doc.documentNumber}</span>
+              <StatusTag color={meta.color} label={doc.status} />
             </div>
             <h2 className="font-heading text-[23px] font-bold mb-2.5">{doc.title}</h2>
             <div className="flex gap-2 flex-wrap mb-2">

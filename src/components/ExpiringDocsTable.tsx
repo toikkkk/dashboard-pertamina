@@ -4,15 +4,10 @@ import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { CheckCircle2, Upload as UploadIcon, RefreshCw } from "lucide-react";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
+import StatusTag from "@/components/StatusTag";
 import { isDocOverdue } from "@/lib/mockData";
 import { uploadFileToR2 } from "@/lib/uploadFile";
-
-const STATUS_META: Record<string, { color: string; tint: string }> = {
-  Approved: { color: "#15803D", tint: "#DCFCE7" },
-  "In Routing": { color: "#B45309", tint: "#FEF3C7" },
-  "Revision Required": { color: "#6D28D9", tint: "#EDE9FE" },
-  Expired: { color: "#DC2626", tint: "#FEE2E2" },
-};
+import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 function fmtDate(iso: string) {
   if (!iso) return "-";
@@ -185,10 +180,8 @@ export default function ExpiringDocsTable() {
           return (
             <div key={doc.id} className="px-3.5 py-3 animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
               <div className="flex items-start justify-between gap-2 mb-1">
-                <span className="text-[#6b6e72] font-heading text-xs">{doc.documentNumber}</span>
-                <span className="inline-flex items-center gap-[5px] text-[11px] font-bold px-2 py-[3px] rounded-[2px] flex-shrink-0" style={{ background: STATUS_META.Expired.tint, color: STATUS_META.Expired.color }}>
-                  Expired
-                </span>
+                <span className="text-[#6b6e72] font-mono text-xs">{doc.documentNumber}</span>
+                <span className="flex-shrink-0"><StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" size="sm" /></span>
               </div>
               <div className="font-semibold text-[13px] mb-0.5">{doc.title}</div>
               <div className="mb-1"><UpdateTypeBadge history={doc.history} /></div>
@@ -261,14 +254,13 @@ export default function ExpiringDocsTable() {
             // Every row here is overdue by definition (that's the filter above) — show
             // "Expired" consistently rather than a stale stored status like "Approved"
             // that was only ever accurate before its expiryDate passed.
-            const meta = STATUS_META.Expired;
             const vNum = parseFloat(doc.currentVersion) || 1;
             const suggestedVersion = (vNum + 1).toFixed(1);
             const isRevising = selectedDocForRevise === doc.id;
             return (
               <React.Fragment key={doc.id}>
                 <tr className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0369A1] transition-all duration-200 ease-out-expo animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
-                  <td className="px-3.5 py-3 text-[#6b6e72] font-heading text-xs">{doc.documentNumber}</td>
+                  <td className="px-3.5 py-3 text-[#6b6e72] font-mono text-xs">{doc.documentNumber}</td>
                   <td className="px-3.5 py-3 font-semibold max-w-[220px]">
                     {doc.title}
                     <div className="mt-0.5"><UpdateTypeBadge history={doc.history} /></div>
@@ -276,9 +268,7 @@ export default function ExpiringDocsTable() {
                   <td className="px-3.5 py-3">{doc.location}</td>
                   <td className="px-3.5 py-3">{fmtDate(doc.expiryDate)}</td>
                   <td className="px-3.5 py-3">
-                    <span className="inline-flex items-center gap-[5px] text-[11px] font-bold px-2 py-[3px] rounded-[2px]" style={{ background: meta.tint, color: meta.color }}>
-                      Expired
-                    </span>
+                    <StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" />
                   </td>
                   <td className="px-3.5 py-3">
                     <div className="flex gap-2">

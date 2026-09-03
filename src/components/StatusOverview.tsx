@@ -5,16 +5,20 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePsi } from "@/lib/psiStore";
 import { DocumentStatus, isDocOverdue } from "@/lib/mockData";
+import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 gsap.registerPlugin(useGSAP);
 
-const STATUS_META: { key: DocumentStatus; label: string; color: string }[] = [
-  { key: "Approved", label: "Approved", color: "#15803D" },
-  { key: "In Routing", label: "In Routing", color: "#B45309" },
-  { key: "Revision Required", label: "Perlu Revisi", color: "#6D28D9" },
-  { key: "Expired", label: "Expired", color: "#DC2626" },
-  { key: "Draft", label: "Draft", color: "#6b6e72" },
+// Same order as before ("Perlu Revisi" is this widget's own label for
+// Revision Required, kept distinct from statusStyle's generic label).
+const STATUS_ORDER: { key: DocumentStatus; label: string }[] = [
+  { key: "Approved", label: "Approved" },
+  { key: "In Routing", label: "In Routing" },
+  { key: "Revision Required", label: "Perlu Revisi" },
+  { key: "Expired", label: "Expired" },
+  { key: "Draft", label: "Draft" },
 ];
+const STATUS_META = STATUS_ORDER.map((s) => ({ ...s, color: DOCUMENT_STATUS_META[s.key].color }));
 
 export default function StatusOverview() {
   const { documents } = usePsi();
@@ -70,7 +74,7 @@ export default function StatusOverview() {
           own overflow-hidden to keep segments inside the rounded-pill shape, and anything
           absolutely positioned inside an overflow-hidden ancestor gets clipped with it. */}
       <div className="relative">
-        <div ref={barRef} className="flex h-[22px] rounded-full overflow-hidden gap-[2px] bg-[#eceded]">
+        <div ref={barRef} className="flex h-[22px] rounded-[2px] overflow-hidden gap-[2px] bg-[#eceded]">
           {segments.map((seg) => (
             <div
               key={seg.key}
@@ -109,9 +113,9 @@ export default function StatusOverview() {
             onMouseEnter={() => setHoverKey(seg.key)}
             onMouseLeave={() => setHoverKey(null)}
           >
-            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: seg.color }} />
+            <span className="w-2 h-[3px] rounded-[1px] flex-shrink-0" style={{ background: seg.color }} />
             <span className="font-semibold text-[#3a3d40]">{seg.label}</span>
-            <span className="text-[#9a9da0]">{seg.count} · {Math.round(seg.pct)}%</span>
+            <span className="font-mono text-[#9a9da0] tabular-nums">{seg.count} · {Math.round(seg.pct)}%</span>
           </div>
         ))}
       </div>

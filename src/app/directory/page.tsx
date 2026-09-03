@@ -7,16 +7,11 @@ import { usePsi } from "@/lib/psiStore";
 import { Search, ArrowUp, ArrowDown, ChevronsUpDown, Eye, CheckCircle2 } from "lucide-react";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import DocumentPreviewModal from "@/components/DocumentPreviewModal";
+import StatusTag from "@/components/StatusTag";
 import { DocumentItem } from "@/lib/mockData";
+import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 type SortKey = "issueDate" | "expiryDate" | "location" | "psiType" | "title" | "documentNumber" | "status" | "currentVersion";
-
-const STATUS_META: Record<string, { color: string; tint: string }> = {
-  Approved: { color: "#15803D", tint: "#DCFCE7" },
-  "In Routing": { color: "#B45309", tint: "#FEF3C7" },
-  "Revision Required": { color: "#6D28D9", tint: "#EDE9FE" },
-  Expired: { color: "#DC2626", tint: "#FEE2E2" },
-};
 
 function fmtDate(iso: string) {
   if (!iso) return "-";
@@ -160,14 +155,12 @@ function DirectoryContent() {
                 same actions, just re-laid-out per row instead of per column. */}
             <div className="lg:hidden divide-y divide-[#f0f0f1]">
               {sortedDocs.map((doc, i) => {
-                const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
+                const meta = DOCUMENT_STATUS_META[doc.status];
                 return (
                   <div key={doc.id} className="p-3.5 animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <span className="font-heading text-[11px] text-[#9a9da0]">{doc.documentNumber}</span>
-                      <span className="inline-flex items-center gap-[5px] text-[10.5px] font-bold px-2 py-[3px] rounded-[2px] flex-shrink-0" style={{ background: meta.tint, color: meta.color }}>
-                        {doc.status}
-                      </span>
+                      <span className="font-mono text-[11px] text-[#9a9da0]">{doc.documentNumber}</span>
+                      <span className="flex-shrink-0"><StatusTag color={meta.color} label={doc.status} size="sm" /></span>
                     </div>
                     <Link href={`/document/${doc.id}`} className="block font-semibold text-[13.5px] text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200 mb-1.5">
                       {doc.title}
@@ -175,7 +168,7 @@ function DirectoryContent() {
                     <div className="text-[12px] text-[#6b6e72] mb-1">{doc.location} · {doc.psiType}</div>
                     <div className="flex items-center gap-2 text-[11.5px] text-[#9a9da0] mb-2">
                       <span>{fmtDate(doc.issueDate)} <span>→</span> {fmtDate(doc.expiryDate)}</span>
-                      <span className="tabular-nums">· v{doc.currentVersion}</span>
+                      <span className="font-mono tabular-nums">· v{doc.currentVersion}</span>
                     </div>
                     <UpdateTypeBadge history={doc.history} />
                     <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-[#f5f5f6]">
@@ -227,14 +220,14 @@ function DirectoryContent() {
               </thead>
               <tbody>
                 {sortedDocs.map((doc, i) => {
-                  const meta = STATUS_META[doc.status] ?? { color: "#6b6e72", tint: "#eceded" };
+                  const meta = DOCUMENT_STATUS_META[doc.status];
                   return (
                     <tr
                       key={doc.id}
                       className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0369A1] transition-all duration-200 ease-out-expo animate-fadeInUp"
                       style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                     >
-                      <td className="px-3.5 py-3 text-[#6b6e72] font-heading text-xs">{doc.documentNumber}</td>
+                      <td className="px-3.5 py-3 text-[#6b6e72] font-mono text-xs">{doc.documentNumber}</td>
                       <td className="px-3.5 py-3 max-w-[220px]">
                         <Link href={`/document/${doc.id}`} className="cursor-pointer font-semibold text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200">{doc.title}</Link>
                       </td>
@@ -244,11 +237,9 @@ function DirectoryContent() {
                         <div>{fmtDate(doc.issueDate)} <span className="text-[#9a9da0]">→</span> {fmtDate(doc.expiryDate)}</div>
                         <UpdateTypeBadge history={doc.history} />
                       </td>
-                      <td className="px-3.5 py-3 tabular-nums">v{doc.currentVersion}</td>
+                      <td className="px-3.5 py-3 font-mono tabular-nums">v{doc.currentVersion}</td>
                       <td className="px-3.5 py-3">
-                        <span className="inline-flex items-center gap-[5px] text-[11px] font-bold px-2 py-[3px] rounded-[2px]" style={{ background: meta.tint, color: meta.color }}>
-                          {doc.status}
-                        </span>
+                        <StatusTag color={meta.color} label={doc.status} />
                       </td>
                       <td className="px-3.5 py-3">
                         <div className="flex items-center gap-3">

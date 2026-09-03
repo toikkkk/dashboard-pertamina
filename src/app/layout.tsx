@@ -1,12 +1,17 @@
 import "./globals.css";
 import React from "react";
-import { Archivo, Public_Sans } from "next/font/google";
+import { Archivo, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import ClientProvider from "@/components/ClientProvider";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 
 const archivo = Archivo({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+// Reserved for tabular figures and short data tokens only (KPI numbers, gauge %,
+// table Capaian/Sisa/pct columns) — never for labels or prose, which stay in
+// Public Sans/Archivo. See src/lib/domain/statusStyle.ts for the rest of the
+// "Presisi Korporat" token set.
+const ibmPlexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-mono", display: "swap" });
 
 export const metadata = {
   title: "Portal Dokumen PSI & MOC | Pertamina Regional Jatimbalinus",
@@ -19,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${archivo.variable} ${publicSans.variable}`}>
+    <html lang="id" className={`${archivo.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-screen flex flex-col antialiased" style={{ background: "#E9EEF3" }}>
         <ClientProvider>
           <AuthGuard>
