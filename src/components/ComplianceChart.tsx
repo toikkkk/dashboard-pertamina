@@ -183,12 +183,17 @@ export default function ComplianceChart() {
         </div>
       </div>
 
-      {/* Two breakdown tables for Admin Regional — stacked on mobile (each is a real
-          5-column table, illegible squeezed into half of a narrow screen), side by
-          side from lg up. A location-scoped user only ever has one row in the
-          per-location table (nothing to compare against), so it's dropped entirely
-          for them and the Jenis PSI table takes the full width instead. */}
-      <div className={`grid grid-cols-1 ${isAdmin ? "lg:grid-cols-2" : ""} gap-4`}>
+      {/* Both breakdown tables are Admin-Regional-only — dropped entirely for a
+          location-scoped user, not just re-filtered down to a near-empty state.
+          The per-location table was an obvious case (one row, nothing to compare).
+          The per-Jenis-PSI table turned out to be one too, on user feedback: with a
+          single location's small per-type targets (e.g. target=2), almost every row
+          reads "Kritis" from the very first document — a threshold calibrated for
+          comparing terminals against each other, not for a brand-new location's
+          natural early-stage numbers. The gauge/summary strip above already covers
+          "how is my location doing overall" without that false-alarm framing. */}
+      {isAdmin && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-[7px]">
@@ -234,7 +239,6 @@ export default function ComplianceChart() {
           </table>
         </div>
 
-        {isAdmin && (
         <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center gap-[7px] mb-2">
             <MapPin className="w-[13px] h-[13px] text-[#15803D]" strokeWidth={1.8} />
@@ -272,8 +276,8 @@ export default function ComplianceChart() {
             </tbody>
           </table>
         </div>
-        )}
       </div>
+      )}
     </div>
   );
 }
