@@ -190,7 +190,7 @@ export default function Navbar() {
               <Link
                 href="/upload"
                 aria-label="Dokumen Baru"
-                className="flex items-center gap-[7px] bg-[#0F172A] hover:bg-[#1E293B] active:scale-[0.97] rounded-full px-2.5 lg:pl-3.5 lg:pr-4 py-2 transition-all duration-200 lg:ml-1"
+                className="flex items-center gap-[7px] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] rounded-full px-2.5 lg:pl-3.5 lg:pr-4 py-2 transition-all duration-200 lg:ml-1"
               >
                 <Plus className="w-[16px] h-[16px] lg:w-[15px] lg:h-[15px] text-white flex-shrink-0" strokeWidth={2.2} />
                 <span className="hidden lg:inline text-[12.5px] font-bold text-white whitespace-nowrap">Dokumen Baru</span>
@@ -351,7 +351,7 @@ export default function Navbar() {
             <div className="p-2 pt-0">
               <Link
                 href="/upload"
-                className="flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-[#1E293B] active:scale-[0.98] rounded-[2px] py-3 transition-all duration-200"
+                className="flex items-center justify-center gap-2 bg-[#0369A1] hover:bg-[#075985] active:scale-[0.98] rounded-full py-3 transition-all duration-200"
               >
                 <Plus className="w-4 h-4 text-white" strokeWidth={2.2} />
                 <span className="text-[13.5px] font-bold text-white">Dokumen Baru</span>

@@ -141,7 +141,7 @@ export default function ComplianceChart() {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-mono text-[16px] font-semibold tabular-nums">{metrics.percentage}%</span>
+            <span className="font-heading text-[16px] font-bold">{metrics.percentage}%</span>
           </div>
         </div>
 
@@ -154,15 +154,15 @@ export default function ComplianceChart() {
         <div className="flex items-center gap-6 flex-wrap">
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Approved</div>
-            <div className="font-mono text-[19px] font-semibold tabular-nums text-[#15803D]">{metrics.totalApproved}</div>
+            <div className="font-heading text-[19px] font-bold text-[#15803D]">{metrics.totalApproved}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Target</div>
-            <div className="font-mono text-[19px] font-semibold tabular-nums text-[#0F172A]">{metrics.totalTarget}</div>
+            <div className="font-heading text-[19px] font-bold text-[#0F172A]">{metrics.totalTarget}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold tracking-[.06em] text-[#9a9da0] uppercase mb-0.5">Kekurangan</div>
-            <div className="font-mono text-[19px] font-semibold tabular-nums" style={{ color: overallGap > 0 ? "#DC2626" : "#15803D" }}>{overallGap}</div>
+            <div className="font-heading text-[19px] font-bold" style={{ color: overallGap > 0 ? "#DC2626" : "#15803D" }}>{overallGap}</div>
           </div>
         </div>
 
