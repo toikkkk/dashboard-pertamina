@@ -96,8 +96,10 @@ export default function StatusOverview() {
             // Clamped away from the 0/100% edges — centered on a segment near either
             // end otherwise pushes half the (whitespace-nowrap) tooltip content past
             // the bar's own bounds, wide enough on a narrow viewport to force the
-            // whole page to scroll horizontally for as long as it's open.
-            style={{ left: `${Math.min(Math.max(hovered.offset + hovered.pct / 2, 15), 85)}%` }}
+            // whole page to scroll horizontally for as long as it's open. 30/70 (not
+            // 15/85) because the longest label ("Revision Required — 2 (18%)") is wide
+            // enough that a 15%-from-edge anchor still overflowed a 375px viewport.
+            style={{ left: `${Math.min(Math.max(hovered.offset + hovered.pct / 2, 30), 70)}%` }}
           >
             <span className="text-[11.5px] font-bold text-[#0F172A]">{hovered.label}</span>
             <span className="text-[11px] text-[#6b6e72]"> — {hovered.count} ({Math.round(hovered.pct)}%)</span>

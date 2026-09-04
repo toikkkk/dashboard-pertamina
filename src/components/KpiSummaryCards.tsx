@@ -24,7 +24,12 @@ interface KpiCardDef {
 // generic-admin-template tell, and the stat tile contract (label/value/delta) never
 // called for one. Color is reserved for the number + meter fill; the label stays a
 // neutral text token (text shouldn't wear the data color — only the mark should).
-function KpiColumn({ card, totalDocs }: { card: KpiCardDef; totalDocs: number }) {
+//
+// Each cell shows only its own share (%), not "/ N total" — the total now lives once
+// in the strip's own header (see KpiSummaryCards below) instead of repeated 4x, which
+// was pure redundancy: the same "of 11" fact printed four times in a row taught the
+// reader nothing new after the first read.
+function KpiColumn({ card }: { card: KpiCardDef }) {
   const router = useRouter();
   const animatedCount = useCountUp(card.count, 700);
 
@@ -37,8 +42,8 @@ function KpiColumn({ card, totalDocs }: { card: KpiCardDef; totalDocs: number })
       {/* Mono tabular figures on the hero value — reserved for data tokens per the
           "Presisi Korporat" token set (see statusStyle.ts), not a stylistic default. */}
       <div className="flex items-baseline gap-2 mb-3">
-        <span className="font-mono text-[28px] font-semibold leading-none tabular-nums" style={{ color: card.color }}>{animatedCount}</span>
-        <span className="font-mono text-[12px] font-medium text-[#9a9da0] tabular-nums">/ {totalDocs} · {card.rate}%</span>
+        <span className="font-mono text-[30px] font-semibold leading-none tabular-nums" style={{ color: card.color }}>{animatedCount}</span>
+        <span className="font-mono text-[12px] font-medium text-[#9a9da0] tabular-nums">{card.rate}%</span>
       </div>
       <div className="h-[3px] bg-[#eceded] rounded-[1px] overflow-hidden">
         <div className="h-full transition-all duration-700 ease-out-expo" style={{ background: card.color, width: `${card.rate}%` }} />
@@ -88,19 +93,29 @@ export default function KpiSummaryCards() {
   );
 
   return (
-    <div
-      ref={containerRef}
-      // 2x2 grid on mobile, single row on lg+ — same component either way, just the
-      // container's flow direction changes. `gap-px bg-[#eceded]` draws the hairline
-      // dividers (each card is opaque white, so the gap's background shows through
-      // as a 1px line) instead of per-item border-l classes, which only made sense
-      // for a single row and would've needed different logic entirely for a 2-column
-      // grid's row dividers too.
-      className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5 overflow-hidden"
-    >
-      {cards.map((c) => (
-        <KpiColumn key={c.label} card={c} totalDocs={totalDocs} />
-      ))}
+    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
+      {/* Same header pattern every sibling widget on this dashboard already uses
+          (title left, "N dokumen total" right) — this strip was the one widget
+          without a title, which read as inconsistent next to Distribusi Status/
+          Dokumen per Terminal/etc. right below it. */}
+      <div className="flex items-baseline justify-between px-4 lg:px-5 pt-3.5 pb-3">
+        <h3 className="text-[13px] font-bold text-[#0F172A]">Ringkasan Dokumen</h3>
+        <span className="text-[11px] font-semibold text-[#6b6e72]">{totalDocs} dokumen total</span>
+      </div>
+      <div
+        ref={containerRef}
+        // 2x2 grid on mobile, single row on lg+ — same component either way, just the
+        // container's flow direction changes. `gap-px bg-[#eceded]` draws the hairline
+        // dividers (each card is opaque white, so the gap's background shows through
+        // as a 1px line) instead of per-item border-l classes, which only made sense
+        // for a single row and would've needed different logic entirely for a 2-column
+        // grid's row dividers too.
+        className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border-t border-[#D6DEE8] overflow-hidden rounded-b-[2px]"
+      >
+        {cards.map((c) => (
+          <KpiColumn key={c.label} card={c} />
+        ))}
+      </div>
     </div>
   );
 }
