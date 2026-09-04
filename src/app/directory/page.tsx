@@ -102,7 +102,7 @@ function DirectoryContent() {
   return (
     <div>
       {downloadToast && (
-        <div className="fixed bottom-6 right-6 z-[110] flex items-center gap-2 px-4 py-3 rounded-[2px] bg-[#DCFCE7] border border-[#BBF7D0] shadow-[0_8px_24px_rgba(0,0,0,.12)] animate-fadeInUp">
+        <div className="fixed bottom-6 right-6 z-[110] flex items-center gap-2 px-4 py-3 rounded-[8px] bg-[#DCFCE7] border border-[#BBF7D0] shadow-[0_8px_24px_rgba(0,0,0,.12)] animate-fadeInUp">
           <CheckCircle2 className="w-4 h-4 text-[#15803D] flex-shrink-0" strokeWidth={1.9} />
           <span className="text-[12.5px] font-semibold text-[#15803D]">{downloadToast}</span>
         </div>
@@ -124,7 +124,7 @@ function DirectoryContent() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari judul atau nomor dokumen..."
-            className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
         <select
@@ -136,7 +136,7 @@ function DirectoryContent() {
             else newParams.set("status", e.target.value);
             router.replace(`/directory?${newParams.toString()}`);
           }}
-          className="text-[13px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-w-[170px]"
+          className="text-[13px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold min-w-[170px]"
         >
           <option value="ALL">Semua Status</option>
           <option value="Approved">Approved</option>
@@ -146,7 +146,7 @@ function DirectoryContent() {
         </select>
       </div>
 
-      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {sortedDocs.length > 0 ? (
           <>
             {/* Card list below lg — a table with 8 columns has nowhere to go on a

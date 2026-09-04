@@ -55,7 +55,7 @@ function ReviseForm({
             placeholder={suggestedVersion}
             value={newVersionInput}
             onChange={(e) => setNewVersionInput(e.target.value)}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
         <div>
@@ -69,7 +69,7 @@ function ReviseForm({
           />
           <label
             htmlFor={`reviseFileInput-${docId}`}
-            className="flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 text-xs border border-[#D6DEE8] rounded-[2px] bg-white cursor-pointer transition-colors duration-200 hover:bg-[#f7f8f8] hover:border-[#9a9da0]"
+            className="flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 text-xs border border-[#D6DEE8] rounded-[8px] bg-white cursor-pointer transition-colors duration-200 hover:bg-[#f7f8f8] hover:border-[#9a9da0]"
             style={{ color: revisedFile ? "#0F172A" : "#9a9da0" }}
           >
             <UploadIcon className="w-[13px] h-[13px] text-[#6b6e72]" strokeWidth={1.7} />
@@ -83,7 +83,7 @@ function ReviseForm({
             placeholder="Ringkas perubahan..."
             value={revisionNotes}
             onChange={(e) => setRevisionNotes(e.target.value)}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
       </div>
@@ -92,7 +92,7 @@ function ReviseForm({
         <button
           type="submit"
           disabled={revising}
-          className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+          className="text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
         >
           {revising ? "Mengunggah…" : "Simpan Revisi"}
         </button>
@@ -160,7 +160,7 @@ export default function ExpiringDocsTable() {
   }
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
       {actionSuccessMsg && (
         <div
           className={`px-4 py-2.5 bg-[#DCFCE7] border-b border-[#BBF7D0] text-[12.5px] font-semibold text-[#15803D] flex items-center gap-2 ${
@@ -191,14 +191,14 @@ export default function ExpiringDocsTable() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleExtend(doc.id)}
-                  className="flex-1 justify-center text-[11.5px] font-bold px-2.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
+                  className="flex-1 justify-center text-[11.5px] font-bold px-2.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
                 >
                   <RefreshCw className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
                   Perpanjang
                 </button>
                 <button
                   onClick={() => openRevise(doc.id, suggestedVersion)}
-                  className="flex-1 justify-center text-[11.5px] font-bold px-2.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
+                  className="flex-1 justify-center text-[11.5px] font-bold px-2.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
                 >
                   <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
                   Revisi File
@@ -226,7 +226,7 @@ export default function ExpiringDocsTable() {
                     type="button"
                     onClick={() => setSelectedDocForRevise(null)}
                     disabled={revising}
-                    className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Batal
                   </button>
@@ -274,14 +274,14 @@ export default function ExpiringDocsTable() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleExtend(doc.id)}
-                        className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
+                        className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
                       >
                         <RefreshCw className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
                         Perpanjang Validitas
                       </button>
                       <button
                         onClick={() => openRevise(doc.id, suggestedVersion)}
-                        className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
+                        className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
                       >
                         <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
                         Revisi File
@@ -313,7 +313,7 @@ export default function ExpiringDocsTable() {
                           type="button"
                           onClick={() => setSelectedDocForRevise(null)}
                           disabled={revising}
-                          className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           Batal
                         </button>

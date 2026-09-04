@@ -134,7 +134,7 @@ function LinkDocumentForm({
             value={form.documentNumber}
             onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
             placeholder="mis. PSI-MLG-2026-045"
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
         <div className="sm:col-span-2">
@@ -143,7 +143,7 @@ function LinkDocumentForm({
             type="text"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
         <div>
@@ -151,7 +151,7 @@ function LinkDocumentForm({
           <select
             value={form.psiType}
             onChange={(e) => setForm({ ...form, psiType: e.target.value as PSIType })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px] bg-white"
           >
             {PSI_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -161,7 +161,7 @@ function LinkDocumentForm({
           <select
             value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px] bg-white"
           >
             {locations.map((l) => <option key={l.locationName} value={l.locationName}>{l.locationName}</option>)}
           </select>
@@ -171,7 +171,7 @@ function LinkDocumentForm({
           <select
             value={form.lifecyclePhase}
             onChange={(e) => setForm({ ...form, lifecyclePhase: e.target.value as LifecyclePhase })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px] bg-white"
+            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px] bg-white"
           >
             {LIFECYCLE_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -182,7 +182,7 @@ function LinkDocumentForm({
             type="date"
             value={form.issueDate}
             onChange={(e) => setForm({ ...form, issueDate: e.target.value })}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
         <div>
@@ -191,7 +191,7 @@ function LinkDocumentForm({
             type="date"
             value={form.expiryDate}
             onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
       </div>
@@ -200,7 +200,7 @@ function LinkDocumentForm({
         <button
           onClick={onSubmit}
           disabled={linking}
-          className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {linking ? "Menyimpan…" : "Simpan sebagai Dokumen"}
         </button>
@@ -208,7 +208,7 @@ function LinkDocumentForm({
           type="button"
           onClick={onCancel}
           disabled={linking}
-          className="text-xs font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60"
+          className="text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60"
         >
           Batal
         </button>
@@ -295,7 +295,7 @@ export default function AdminRegistryPage() {
 
   if (!activeUser.isRegionalAdmin) {
     return (
-      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
         <ShieldAlert className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
         <p className="text-sm font-bold text-[#3a3d40] mb-1">Halaman khusus Admin Regional</p>
         <p className="text-[12.5px] text-[#9a9da0]">Anda tidak memiliki wewenang untuk mengakses arsip registry.</p>
@@ -390,7 +390,7 @@ export default function AdminRegistryPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Cari nama berkas..."
-            className="w-full min-h-[36px] pl-[32px] pr-3 py-1.5 text-[12.5px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[36px] pl-[32px] pr-3 py-1.5 text-[12.5px] border border-[#D6DEE8] rounded-[8px]"
           />
         </form>
         <select
@@ -400,7 +400,7 @@ export default function AdminRegistryPage() {
             setSubcategory("ALL");
             setPage(1);
           }}
-          className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-h-[36px]"
+          className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold min-h-[36px]"
         >
           <option value="ALL">Semua Kategori</option>
           {Object.entries(CATEGORY_LABELS).map(([slug, label]) => (
@@ -414,7 +414,7 @@ export default function AdminRegistryPage() {
               setSubcategory(e.target.value);
               setPage(1);
             }}
-            className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold min-h-[36px] animate-fadeIn"
+            className="text-[12.5px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold min-h-[36px] animate-fadeIn"
           >
             <option value="ALL">Semua Sub-Kategori</option>
             {data?.subcategories.map((s) => (
@@ -424,7 +424,7 @@ export default function AdminRegistryPage() {
         )}
       </div>
 
-      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {isLoading ? (
           <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat arsip…</div>
         ) : items.length === 0 ? (
@@ -444,7 +444,7 @@ export default function AdminRegistryPage() {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-[13px] text-[#0F172A] break-words" title={f.originalRelativePath}>{f.originalFilename}</div>
                       <div className="flex items-center flex-wrap gap-1.5 mt-1">
-                        <span className="inline-flex text-[10.5px] font-semibold px-1.5 py-[2px] rounded-[2px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
+                        <span className="inline-flex text-[10.5px] font-semibold px-1.5 py-[2px] rounded-[8px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
                           {CATEGORY_LABELS[f.category] ?? f.category}
                         </span>
                         <span className="text-[11px] text-[#6b6e72]">
@@ -464,7 +464,7 @@ export default function AdminRegistryPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setPreviewFile(f)}
-                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
                       >
                         <Eye className="w-3 h-3" strokeWidth={2} />
                         Lihat
@@ -472,14 +472,14 @@ export default function AdminRegistryPage() {
                       <a
                         href={`/api/files/${f.id}/download`}
                         download
-                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
                       >
                         <Download className="w-3 h-3" strokeWidth={2} />
                         Unduh
                       </a>
                       <button
                         onClick={() => openLink(f)}
-                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#0369A1] text-[#0369A1] hover:bg-[#E0F2FE] active:scale-[0.97] transition-all duration-200"
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0369A1] text-[#0369A1] hover:bg-[#E0F2FE] active:scale-[0.97] transition-all duration-200"
                       >
                         <Link2 className="w-3 h-3" strokeWidth={2} />
                         Jadikan Dokumen
@@ -533,7 +533,7 @@ export default function AdminRegistryPage() {
                         </div>
                       </td>
                       <td className="px-3.5 py-3">
-                        <span className="inline-flex text-[11px] font-semibold px-2 py-[3px] rounded-[2px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
+                        <span className="inline-flex text-[11px] font-semibold px-2 py-[3px] rounded-[8px] bg-[#F5F7F9] text-[#6b6e72] whitespace-nowrap">
                           {CATEGORY_LABELS[f.category] ?? f.category}
                         </span>
                       </td>
@@ -554,7 +554,7 @@ export default function AdminRegistryPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => setPreviewFile(f)}
-                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
                             >
                               <Eye className="w-3 h-3" strokeWidth={2} />
                               Lihat
@@ -562,14 +562,14 @@ export default function AdminRegistryPage() {
                             <a
                               href={`/api/files/${f.id}/download`}
                               download
-                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#D6DEE8] text-[#3a3d40] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
                             >
                               <Download className="w-3 h-3" strokeWidth={2} />
                               Unduh
                             </a>
                             <button
                               onClick={() => openLink(f)}
-                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[2px] border border-[#0369A1] text-[#0369A1] hover:bg-[#E0F2FE] active:scale-[0.97] transition-all duration-200"
+                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0369A1] text-[#0369A1] hover:bg-[#E0F2FE] active:scale-[0.97] transition-all duration-200"
                             >
                               <Link2 className="w-3 h-3" strokeWidth={2} />
                               Jadikan Dokumen
@@ -619,14 +619,14 @@ export default function AdminRegistryPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[2px] border border-[#D6DEE8] hover:bg-white active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#D6DEE8] hover:bg-white active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[2px] border border-[#D6DEE8] hover:bg-white active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#D6DEE8] hover:bg-white active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-3.5 h-3.5" strokeWidth={2} />
               </button>

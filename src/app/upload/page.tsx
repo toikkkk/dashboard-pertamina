@@ -94,7 +94,7 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <form onSubmit={handleSubmit} className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-6">
+      <form onSubmit={handleSubmit} className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Tanggal dan Waktu</label>
@@ -102,7 +102,7 @@ export default function UploadPage() {
               type="datetime-local"
               value={dateAndTimestamp}
               onChange={(e) => setDateAndTimestamp(e.target.value)}
-              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[2px]"
+              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[8px]"
             />
             <p className="mt-1 text-[10.5px] text-[#9a9da0]">Tanggal terbit resmi akan tercatat otomatis oleh sistem saat disimpan.</p>
           </div>
@@ -112,7 +112,7 @@ export default function UploadPage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               disabled={!activeUser.isRegionalAdmin}
-              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[2px]"
+              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[8px]"
               style={{ background: activeUser.isRegionalAdmin ? "#fff" : "#F8FAFC" }}
             >
               {(activeUser.isRegionalAdmin ? locations.map((l) => l.locationName) : [activeUser.location ?? locations[0].locationName]).map((loc) => (
@@ -129,7 +129,7 @@ export default function UploadPage() {
             value={responsibleFunction}
             onChange={(e) => setResponsibleFunction(e.target.value)}
             placeholder="mis. Fungsi HSE FT Malang"
-            className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[2px]"
+            className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[8px]"
           />
         </div>
 
@@ -140,7 +140,7 @@ export default function UploadPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="mis. Informasi Bahan Berbahaya Tangki T-102"
-            className="w-full min-h-[36px] px-2.5 py-1 text-[13px] rounded-[2px]"
+            className="w-full min-h-[36px] px-2.5 py-1 text-[13px] rounded-[8px]"
             style={{ border: `1px solid ${errors.title ? "#DC2626" : "#D6DEE8"}` }}
           />
           {errors.title && <p className="mt-1 text-[11px] text-[#DC2626]">{errors.title}</p>}
@@ -152,7 +152,7 @@ export default function UploadPage() {
             value={locationDescription}
             onChange={(e) => setLocationDescription(e.target.value)}
             placeholder="Deskripsi lokasi fisik / unit terkait..."
-            className="w-full min-h-[70px] px-2.5 py-2 text-[13px] border border-[#D6DEE8] rounded-[2px] resize-y"
+            className="w-full min-h-[70px] px-2.5 py-2 text-[13px] border border-[#D6DEE8] rounded-[8px] resize-y"
           />
         </div>
 
@@ -162,7 +162,7 @@ export default function UploadPage() {
             <button
               type="button"
               onClick={() => setShowTypeModal(true)}
-              className="w-full min-h-[36px] px-3 py-1 text-[13px] border border-[#D6DEE8] rounded-[2px] bg-white flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0]"
+              className="w-full min-h-[36px] px-3 py-1 text-[13px] border border-[#D6DEE8] rounded-[8px] bg-white flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0]"
             >
               <span style={{ color: psiType ? "#0F172A" : "#9a9da0" }}>{psiType ?? "Pilih jenis PSI..."}</span>
               <ChevronDown className="w-[13px] h-[13px] text-[#9a9da0]" strokeWidth={2} />
@@ -173,7 +173,7 @@ export default function UploadPage() {
             <select
               value={auditType}
               onChange={(e) => setAuditType(e.target.value as AuditType | "")}
-              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[2px] bg-white"
+              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#D6DEE8] rounded-[8px] bg-white"
             >
               <option value="">Tidak ditentukan</option>
               {AUDIT_TYPES.map((t) => (
@@ -188,7 +188,7 @@ export default function UploadPage() {
           <input id="mainFileInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
           <label
             htmlFor="mainFileInput"
-            className="flex items-center gap-[7px] min-h-[36px] px-3 py-1 text-[12.5px] rounded-[2px] bg-white cursor-pointer w-full transition-colors duration-200 hover:bg-[#f7f8f8]"
+            className="flex items-center gap-[7px] min-h-[36px] px-3 py-1 text-[12.5px] rounded-[8px] bg-white cursor-pointer w-full transition-colors duration-200 hover:bg-[#f7f8f8]"
             style={{ border: `1px solid ${errors.file ? "#DC2626" : "#D6DEE8"}`, color: file ? "#0F172A" : "#9a9da0" }}
           >
             <UploadIcon className="w-[14px] h-[14px] text-[#6b6e72]" strokeWidth={1.7} />
@@ -198,7 +198,7 @@ export default function UploadPage() {
           {errors.file && <p className="mt-1 text-[11px] text-[#DC2626]">{errors.file}</p>}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3.5 bg-[#f7f8f8] border border-[#eceded] rounded-[2px] mb-4">
+        <div className="flex items-center justify-between px-4 py-3.5 bg-[#f7f8f8] border border-[#eceded] rounded-[8px] mb-4">
           <div>
             <div className="text-[12.5px] font-bold text-[#3a3d40]">Sirkuler Persetujuan</div>
             <div className="text-[11px] text-[#9a9da0]">Otomatis disarankan berdasarkan Jenis PSI, dapat diubah manual.</div>
@@ -229,14 +229,14 @@ export default function UploadPage() {
         )}
 
         {successNotice && (
-          <div className="mb-3.5 px-4 py-2.5 bg-[#DCFCE7] border border-[#BBF7D0] rounded-[2px] text-[12.5px] font-semibold text-[#15803D] flex items-center gap-2">
+          <div className="mb-3.5 px-4 py-2.5 bg-[#DCFCE7] border border-[#BBF7D0] rounded-[8px] text-[12.5px] font-semibold text-[#15803D] flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {submitError && (
-          <div className="mb-3.5 px-4 py-2.5 bg-[#FEE2E2] border border-[#FECACA] rounded-[2px] text-[12.5px] font-semibold text-[#DC2626]">
+          <div className="mb-3.5 px-4 py-2.5 bg-[#FEE2E2] border border-[#FECACA] rounded-[8px] text-[12.5px] font-semibold text-[#DC2626]">
             {submitError}
           </div>
         )}
@@ -244,7 +244,7 @@ export default function UploadPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-[44px] px-6 font-heading font-bold text-[14.5px] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white rounded-[2px] transition disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+          className="min-h-[44px] px-6 font-heading font-bold text-[14.5px] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white rounded-[8px] transition disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
         >
           {submitting ? "Mengunggah…" : "Ajukan Dokumen"}
         </button>
@@ -270,7 +270,7 @@ export default function UploadPage() {
                       setIsCircularManuallySet(false);
                       setShowTypeModal(false);
                     }}
-                    className="p-3.5 rounded-[2px] cursor-pointer transition active:scale-[0.97] hover:shadow-[0_2px_8px_rgba(0,0,0,.06)]"
+                    className="p-3.5 rounded-[8px] cursor-pointer transition active:scale-[0.97] hover:shadow-[0_2px_8px_rgba(0,0,0,.06)]"
                     style={{ border: `1px solid ${selected ? "#0369A1" : "#D6DEE8"}`, background: selected ? "#E0F2FE" : "#fff" }}
                   >
                     <div className="text-[13px] font-bold text-[#0F172A]">{t}</div>

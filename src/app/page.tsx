@@ -16,7 +16,7 @@ export default function DashboardPage() {
   return (
     <div>
       {isPending && (
-        <div className="mb-3.5 flex items-start gap-2.5 px-4 py-3 rounded-[2px] border border-[#B45309] bg-[#FEF3C7] animate-fadeInUp">
+        <div className="mb-3.5 flex items-start gap-2.5 px-4 py-3 rounded-[8px] border border-[#B45309] bg-[#FEF3C7] animate-fadeInUp">
           <Hourglass className="w-4 h-4 text-[#B45309] flex-shrink-0 mt-0.5" strokeWidth={1.8} />
           <p className="text-[12.5px] text-[#78350F] leading-relaxed">
             <strong>Akun Anda menunggu aktivasi.</strong> Anda hanya bisa melihat ringkasan dashboard untuk sementara. Hubungi Admin Regional untuk ditetapkan lokasi &amp; peran agar bisa mengakses dokumen, sirkuler, dan fitur lainnya.

@@ -20,7 +20,7 @@ function fmtDate(iso: string) {
 
 export default function DocumentMetadataFallback({ document: doc }: { document: DocumentItem }) {
   return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-[#fafafb] border border-[#eceded] rounded-[2px] p-6">
+    <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-[#fafafb] border border-[#eceded] rounded-[8px] p-6">
       <InfoField label="No. Dokumen" value={doc.documentNumber} />
       <InfoField label="Jenis PSI" value={doc.psiType} />
       <InfoField label="Judul" value={doc.title} span />

@@ -28,9 +28,17 @@ const config: Config = {
         // Tabular figures and short data tokens only — see layout.tsx.
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
+      // Softened 2026-09-04 (2px/4px -> 8px/14px) — client feedback that the fully
+      // sharp system read as "kaku" (stiff). Still a deliberate identity choice, just
+      // a gentler one: enough curve to feel professional-modern rather than a wireframe
+      // of rectangles, not soft enough to read as a consumer app. The literal
+      // `rounded-[2px]`/`rounded-[4px]` arbitrary values used throughout most
+      // components (not `rounded-lg`/`rounded-xl` classes) were bulk-updated to
+      // `rounded-[8px]`/`rounded-[14px]` to match — this token pair mostly documents
+      // the value, since arbitrary values don't read from theme.borderRadius.
       borderRadius: {
-        lg: "2px",
-        xl: "4px",
+        lg: "8px",
+        xl: "14px",
       },
       transitionTimingFunction: {
         "out-expo": "cubic-bezier(0.16,1,0.3,1)",

@@ -50,7 +50,7 @@ export default function RegistryPreviewModal({ file, categoryLabel, onClose }: R
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#eceded] sticky top-0 bg-white z-10">
           <span className="font-heading text-xs text-[#9a9da0]" title={file.originalRelativePath}>{categoryLabel}</span>
-          <button onClick={onClose} aria-label="Tutup" className="p-1.5 rounded-[2px] hover:bg-[#F5F7F9] transition-colors duration-200">
+          <button onClick={onClose} aria-label="Tutup" className="p-1.5 rounded-[8px] hover:bg-[#F5F7F9] transition-colors duration-200">
             <X className="w-4 h-4 text-[#6b6e72]" strokeWidth={2} />
           </button>
         </div>
@@ -62,7 +62,7 @@ export default function RegistryPreviewModal({ file, categoryLabel, onClose }: R
             fileName={file.originalFilename}
             title={file.originalFilename}
             fallback={
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-[#fafafb] border border-[#eceded] rounded-[2px] p-6">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4 bg-[#fafafb] border border-[#eceded] rounded-[8px] p-6">
                 <InfoField label="Kategori" value={categoryLabel} />
                 <InfoField label="Lokasi" value={file.locationCanonical ?? file.locationRaw ?? "Perlu ditinjau"} />
                 <InfoField label="Path Asli" value={file.originalRelativePath} span />
@@ -79,13 +79,13 @@ export default function RegistryPreviewModal({ file, categoryLabel, onClose }: R
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-[#eceded] sticky bottom-0 bg-white">
-          <button onClick={onClose} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[2px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
+          <button onClick={onClose} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
             Tutup
           </button>
           <a
             href={fileUrl}
             download
-            className="text-[12.5px] font-bold px-3.5 py-2 rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
+            className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
           >
             <Download className="w-[13px] h-[13px]" strokeWidth={1.9} />
             Unduh Berkas

@@ -15,7 +15,7 @@ export default function PasswordChecklist({ password }: { password: string }) {
   const allMet = metCount === PASSWORD_REQUIREMENTS.length;
   return (
     <div
-      className="rounded-[2px] border border-[#eceded] bg-[#F5F7F9] px-3 py-2.5 transition-colors duration-300"
+      className="rounded-[8px] border border-[#eceded] bg-[#F5F7F9] px-3 py-2.5 transition-colors duration-300"
       style={allMet ? { borderColor: "#BBF7D0", background: "#F0FDF4" } : undefined}
     >
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">

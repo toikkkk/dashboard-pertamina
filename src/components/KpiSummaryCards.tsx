@@ -48,7 +48,7 @@ function KpiColumn({ card }: { card: KpiCardDef }) {
         <span className="font-heading text-[30px] font-bold leading-none" style={{ color: card.color }}>{animatedCount}</span>
         <span className="text-[12px] font-semibold text-[#9a9da0]">{card.rate}%</span>
       </div>
-      <div className="h-[3px] bg-[#eceded] rounded-[1px] overflow-hidden">
+      <div className="h-[3px] bg-[#eceded] rounded-full overflow-hidden">
         <div className="h-full transition-all duration-700 ease-out-expo" style={{ background: card.color, width: `${card.rate}%` }} />
       </div>
     </div>
@@ -96,7 +96,7 @@ export default function KpiSummaryCards() {
   );
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
+    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
       {/* Same header pattern every sibling widget on this dashboard already uses
           (title left, "N dokumen total" right) — this strip was the one widget
           without a title, which read as inconsistent next to Distribusi Status/
@@ -113,7 +113,7 @@ export default function KpiSummaryCards() {
         // as a 1px line) instead of per-item border-l classes, which only made sense
         // for a single row and would've needed different logic entirely for a 2-column
         // grid's row dividers too.
-        className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border-t border-[#D6DEE8] overflow-hidden rounded-b-[2px]"
+        className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border-t border-[#D6DEE8] overflow-hidden rounded-b-[8px]"
       >
         {cards.map((c) => (
           <KpiColumn key={c.label} card={c} />

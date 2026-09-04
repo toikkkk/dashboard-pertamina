@@ -30,8 +30,8 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
   // ditampilkan eksplisit di sini kalau ada data lama/rusak, alih-alih diam-diam kosong.
   if (doc.routes.length === 0) {
     return (
-      <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
-        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[2px] bg-[#FEE2E2]">
+      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
+        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-[#FEE2E2]">
           <AlertOctagon className="w-4 h-4 text-[#DC2626] flex-shrink-0 mt-0.5" strokeWidth={1.9} />
           <div>
             <div className="text-[12.5px] font-bold text-[#DC2626]">Sirkuler tanpa approver terdaftar</div>
@@ -58,7 +58,7 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
   const rejectedRoute = doc.routes.find((r) => r.status === "Rejected");
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
+    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-4">Status Sirkuler Persetujuan</h3>
 
       {/* Sampai mana dokumen ini — pola tracker seperti status pesanan (bukan cuma daftar
@@ -91,7 +91,7 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
           return (
             <div
               key={step}
-              className="border rounded-[2px] p-3 animate-fadeInUp transition-colors duration-300"
+              className="border rounded-[8px] p-3 animate-fadeInUp transition-colors duration-300"
               style={{ borderColor: isActiveStep ? "#0369A1" : "#eceded", background: isActiveStep ? "#E0F2FE" : "#fafafb", animationDelay: `${stepIndex * 80}ms` }}
             >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -109,7 +109,7 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
                   const Icon = ROUTE_STATUS_ICON[r.status];
                   const date = fmtDate(r.actionDate);
                   return (
-                    <div key={i} className="bg-white border border-[#eceded] rounded-[2px] px-3 py-2">
+                    <div key={i} className="bg-white border border-[#eceded] rounded-[8px] px-3 py-2">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-[12px] font-semibold text-[#0F172A] truncate">{r.approverName}</div>

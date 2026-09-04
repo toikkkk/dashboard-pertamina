@@ -57,7 +57,7 @@ export default function DocsByLocationChart() {
   );
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
+    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-3.5">Dokumen per Terminal</h3>
 
       <div ref={listRef} className="flex flex-col divide-y divide-[#f0f0f1]">
@@ -65,7 +65,7 @@ export default function DocsByLocationChart() {
           <div key={d.name} className="terminal-row flex items-center gap-3 py-2.5">
             <span className="w-[3px] h-[3px] rounded-full bg-[#0369A1] flex-shrink-0" aria-hidden />
             <span className="text-[12px] font-semibold text-[#3a3d40] w-[86px] flex-shrink-0 truncate">{d.name}</span>
-            <div className="flex-1 h-[8px] rounded-[1px] overflow-hidden flex gap-px bg-[#eceded] min-w-0">
+            <div className="flex-1 h-[8px] rounded-full overflow-hidden flex gap-px bg-[#eceded] min-w-0">
               {d.segments.map((seg) => (
                 <div
                   key={seg.status}

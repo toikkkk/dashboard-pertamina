@@ -12,7 +12,7 @@ function validateEmail(email: string) {
 }
 
 const inputClass =
-  "w-full pl-10 pr-3 py-2.5 rounded-[2px] border border-[#D6DEE8] focus:outline-none focus:border-[#0369A1] focus:ring-[3px] focus:ring-[#0369A1]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
+  "w-full pl-10 pr-3 py-2.5 rounded-[8px] border border-[#D6DEE8] focus:outline-none focus:border-[#0369A1] focus:ring-[3px] focus:ring-[#0369A1]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
 
 // Icon wrapper reacts to the sibling input's focus via `group-focus-within` — a
 // small, deliberate detail (icon picks up brand blue while its field is active)
@@ -150,9 +150,9 @@ function SignIn2Content() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#E9EEF3] p-6">
-      <div className="w-full max-w-sm bg-white rounded-[4px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#D6DEE8] animate-fadeInUp">
+      <div className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#D6DEE8] animate-fadeInUp">
         <div
-          className="flex items-center justify-center w-14 h-14 rounded-[4px] bg-[#0369A1] mb-6 animate-popIn"
+          className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0369A1] mb-6 animate-popIn"
           style={{ animationDelay: "80ms" }}
         >
           {mode === "signin" ? (
@@ -186,15 +186,15 @@ function SignIn2Content() {
           </button>
         ) : (
           /* Mode switch — sliding pill indicator instead of a hard cut between tabs */
-          <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[2px] p-1 mb-5">
+          <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[8px] p-1 mb-5">
             <div
-              className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
+              className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
               style={{ transform: mode === "register" ? "translateX(calc(100% + 4px))" : "translateX(0)" }}
             />
             <button
               type="button"
               onClick={() => setMode("signin")}
-              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
+              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
                 mode === "signin" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
               }`}
             >
@@ -203,7 +203,7 @@ function SignIn2Content() {
             <button
               type="button"
               onClick={() => setMode("register")}
-              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[2px] transition-colors duration-200 ${
+              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
                 mode === "register" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
               }`}
             >
@@ -266,7 +266,7 @@ function SignIn2Content() {
             <button
               onClick={handleSignIn}
               disabled={signingIn}
-              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[2px] active:scale-[0.98] transition-all duration-200 ease-out-expo mb-5 mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mb-5 mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {signingIn ? "Memproses…" : "Masuk"}
             </button>
@@ -279,7 +279,7 @@ function SignIn2Content() {
 
             <a
               href="/api/auth/google"
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[2px] border border-[#D6DEE8] active:scale-[0.98] transition-all duration-200 ease-out-expo"
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#D6DEE8] active:scale-[0.98] transition-all duration-200 ease-out-expo"
             >
               <GoogleLogo />
               Masuk dengan Google
@@ -317,7 +317,7 @@ function SignIn2Content() {
               <button
                 onClick={handleForgotPassword}
                 disabled={sendingForgot}
-                className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[2px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 {sendingForgot ? "Mengirim…" : "Kirim Tautan Atur Ulang"}
               </button>
@@ -394,7 +394,7 @@ function SignIn2Content() {
             <button
               onClick={handleRegister}
               disabled={registering}
-              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[2px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {registering ? "Memproses…" : "Daftar"}
             </button>

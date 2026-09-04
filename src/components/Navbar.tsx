@@ -181,7 +181,7 @@ export default function Navbar() {
                   }`}
                 />
                 {searchError && (
-                  <div className="absolute left-0 top-[42px] text-[11px] font-semibold text-white bg-[#DC2626] px-2 py-1 rounded-[2px] whitespace-nowrap shadow-[0_4px_12px_rgba(0,0,0,.2)] animate-fadeInUp">
+                  <div className="absolute left-0 top-[42px] text-[11px] font-semibold text-white bg-[#DC2626] px-2 py-1 rounded-[8px] whitespace-nowrap shadow-[0_4px_12px_rgba(0,0,0,.2)] animate-fadeInUp">
                     Nomor dokumen tidak ditemukan
                   </div>
                 )}
@@ -286,7 +286,7 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-[2px] text-left hover:bg-[#E0F2FE] transition"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-[8px] text-left hover:bg-[#E0F2FE] transition"
                 >
                   <LogOut className="w-[15px] h-[15px] text-[#0369A1]" strokeWidth={1.7} />
                   <span className="text-[13px] font-semibold text-[#3a3d40]">Keluar Sesi</span>
@@ -314,7 +314,7 @@ export default function Navbar() {
                     setSearchError(false);
                   }}
                   placeholder="Cari nomor dokumen..."
-                  className="w-full min-h-[42px] pl-9 pr-3 text-[13px] rounded-[2px] bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0369A1] outline-none transition-all duration-200"
+                  className="w-full min-h-[42px] pl-9 pr-3 text-[13px] rounded-[8px] bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0369A1] outline-none transition-all duration-200"
                 />
               </div>
               {searchError && <p className="mt-1.5 text-[11.5px] font-semibold text-[#DC2626]">Nomor dokumen tidak ditemukan</p>}
@@ -328,7 +328,7 @@ export default function Navbar() {
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center gap-3 px-3.5 py-3 rounded-[2px] text-[13.5px] font-semibold transition-colors duration-200 ${
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-[8px] text-[13.5px] font-semibold transition-colors duration-200 ${
                     isActive ? "bg-[#E0F2FE] text-[#0369A1]" : "text-[#3a3d40] hover:bg-[#F5F7F9]"
                   }`}
                 >
@@ -362,7 +362,7 @@ export default function Navbar() {
           <div className="p-2 pt-0 border-t border-[#f0f0f1] mt-1">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-[2px] text-left text-[13.5px] font-semibold text-[#3a3d40] hover:bg-[#F5F7F9] transition-colors duration-200 mt-1"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-[8px] text-left text-[13.5px] font-semibold text-[#3a3d40] hover:bg-[#F5F7F9] transition-colors duration-200 mt-1"
             >
               <LogOut className="w-[17px] h-[17px] text-[#0369A1] flex-shrink-0" strokeWidth={1.7} />
               Keluar Sesi

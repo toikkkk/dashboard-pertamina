@@ -39,14 +39,14 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
   const stepNums = Array.from(new Set(routes.map((r) => r.stepOrder))).sort((a, b) => a - b);
 
   return (
-    <div className="border border-[#eceded] rounded-[2px] p-4">
+    <div className="border border-[#eceded] rounded-[8px] p-4">
       <p className="mb-3 text-xs font-bold text-[#3a3d40]">Circular Routing Builder</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_90px_90px] gap-2 mb-3.5">
         <select
           value={roleDraft}
           onChange={(e) => setRoleDraft(e.target.value)}
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
         >
           {APPROVER_ROLE_PRESETS.map((r) => (
             <option key={r} value={r}>{r}</option>
@@ -57,12 +57,12 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
           value={nameDraft}
           onChange={(e) => setNameDraft(e.target.value)}
           placeholder="Nama approver"
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
         />
         <select
           value={stepDraft}
           onChange={(e) => setStepDraft(Number(e.target.value))}
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[2px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
         >
           <option value={1}>Tahap 1</option>
           <option value={2}>Tahap 2</option>
@@ -71,7 +71,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
         <button
           type="button"
           onClick={handleAdd}
-          className="min-h-[34px] text-xs font-bold rounded-[2px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200"
+          className="min-h-[34px] text-xs font-bold rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200"
         >
           + Tambah
         </button>
@@ -79,7 +79,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
 
       {stepNums.length === 0 && (
         <div
-          className="flex items-start gap-2 px-3 py-2.5 rounded-[2px] text-[11.5px]"
+          className="flex items-start gap-2 px-3 py-2.5 rounded-[8px] text-[11.5px]"
           style={error ? { background: "#FEE2E2", color: "#DC2626" } : { background: "#FEF3C7", color: "#B45309" }}
         >
           <AlertTriangle className="w-[13px] h-[13px] flex-shrink-0 mt-0.5" strokeWidth={2} />
@@ -95,11 +95,11 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
               .filter((r) => r.stepOrder === step);
             const isParallel = approvers.length > 1;
             return (
-              <div key={step} className="border border-[#eceded] rounded-[2px] p-2.5 bg-[#fafafb]">
+              <div key={step} className="border border-[#eceded] rounded-[8px] p-2.5 bg-[#fafafb]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[11.5px] font-bold">Tahap {step}</span>
                   <span
-                    className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[2px]"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[8px]"
                     style={{ background: isParallel ? "#FEF3C7" : "#E0F2FE", color: isParallel ? "#B45309" : "#075985" }}
                   >
                     {isParallel ? <Zap className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
@@ -110,11 +110,11 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
                   {approvers.map((a, idx) => (
                     <div
                       key={a.idx}
-                      className="flex items-center justify-between text-xs bg-white border border-[#eceded] rounded-[2px] px-2.5 py-1.5 animate-fadeInUp"
+                      className="flex items-center justify-between text-xs bg-white border border-[#eceded] rounded-[8px] px-2.5 py-1.5 animate-fadeInUp"
                       style={{ animationDelay: `${idx * 40}ms` }}
                     >
                       <span><strong>{a.approverName}</strong> <span className="text-[#9a9da0]">— {a.approverRole}</span></span>
-                      <button type="button" onClick={() => handleRemove(a.idx)} className="p-0.5 rounded-[2px] transition-all duration-200 hover:bg-[#FEE2E2] active:scale-90">
+                      <button type="button" onClick={() => handleRemove(a.idx)} className="p-0.5 rounded-[8px] transition-all duration-200 hover:bg-[#FEE2E2] active:scale-90">
                         <Trash2 className="w-[13px] h-[13px] text-[#DC2626]" strokeWidth={1.8} />
                       </button>
                     </div>

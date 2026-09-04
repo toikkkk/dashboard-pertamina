@@ -91,7 +91,7 @@ export default function ComplianceChart() {
   );
 
   return (
-    <div className="relative bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
+    <div className="relative bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
       <div className="flex items-start justify-between gap-3 pb-3 mb-3.5 border-b border-[#eceded] flex-wrap">
         <div>
           <h2 className="text-[13px] font-bold text-[#0F172A] flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function ComplianceChart() {
           <select
             value={selectedLocationFilter}
             onChange={(e) => setSelectedLocationFilter(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Lokasi / Terminal</option>
             {locations.map((l) => (
@@ -118,7 +118,7 @@ export default function ComplianceChart() {
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[2px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Jenis PSI</option>
             {PSI_TYPES.map((t) => (
@@ -130,7 +130,7 @@ export default function ComplianceChart() {
 
       {/* Summary strip — gauge + the three headline numbers in one horizontal row,
           instead of a narrow sidebar next to a much wider table stack. */}
-      <div className="flex items-center gap-5 bg-[#f7f8f8] border border-[#eceded] rounded-[2px] px-5 py-3.5 mb-4 flex-wrap">
+      <div className="flex items-center gap-5 bg-[#f7f8f8] border border-[#eceded] rounded-[8px] px-5 py-3.5 mb-4 flex-wrap">
         <div className="relative w-[72px] h-[72px] flex-shrink-0">
           <svg viewBox="0 0 128 128" width="72" height="72" className="-rotate-90">
             <circle cx="64" cy="64" r={radius} fill="none" stroke="#eceded" strokeWidth="14" />
@@ -205,8 +205,8 @@ export default function ComplianceChart() {
                     <td className="py-2 text-[#6b6e72] font-mono tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{data.approved}</strong> / {data.target}</td>
                     <td className="py-2 font-mono tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
                     <td className="py-2">
-                      <div className="h-[5px] rounded-[1px] overflow-hidden" style={{ background: trackTint(data.pct) }}>
-                        <div className="h-full rounded-[1px] transition-all duration-700 ease-out-expo" style={{ background: barColor(data.pct), width: `${data.pct}%` }} />
+                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(data.pct) }}>
+                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(data.pct), width: `${data.pct}%` }} />
                       </div>
                     </td>
                     <td className="py-2 text-right">
@@ -243,8 +243,8 @@ export default function ComplianceChart() {
                     <td className="py-2 text-[#6b6e72] font-mono tabular-nums whitespace-nowrap"><strong className="text-[#0F172A]">{loc.approved}</strong> / {loc.totalTarget}</td>
                     <td className="py-2 font-mono tabular-nums font-semibold" style={{ color: gap > 0 ? "#DC2626" : "#15803D" }}>{gap > 0 ? gap : "—"}</td>
                     <td className="py-2">
-                      <div className="h-[5px] rounded-[1px] overflow-hidden" style={{ background: trackTint(loc.pct) }}>
-                        <div className="h-full rounded-[1px] transition-all duration-700 ease-out-expo" style={{ background: barColor(loc.pct), width: `${loc.pct}%` }} />
+                      <div className="h-[5px] rounded-full overflow-hidden" style={{ background: trackTint(loc.pct) }}>
+                        <div className="h-full rounded-full transition-all duration-700 ease-out-expo" style={{ background: barColor(loc.pct), width: `${loc.pct}%` }} />
                       </div>
                     </td>
                     <td className="py-2 text-right">

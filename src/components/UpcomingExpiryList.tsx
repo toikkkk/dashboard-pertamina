@@ -24,7 +24,7 @@ export default function UpcomingExpiryList() {
     .slice(0, 4);
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[2px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
+    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-3.5">Segera Kedaluwarsa</h3>
 
       {upcoming.length > 0 ? (
@@ -33,10 +33,10 @@ export default function UpcomingExpiryList() {
             <Link
               key={d.id}
               href={`/document/${d.id}`}
-              className="flex items-start gap-2.5 group rounded-[2px] -mx-1.5 px-1.5 py-0.5 transition-colors duration-200 hover:bg-[#f7f7f8] animate-fadeInUp"
+              className="flex items-start gap-2.5 group rounded-[8px] -mx-1.5 px-1.5 py-0.5 transition-colors duration-200 hover:bg-[#f7f7f8] animate-fadeInUp"
               style={{ animationDelay: `${i * 60}ms` }}
             >
-              <div className="w-6 h-6 rounded-[2px] bg-[#FEF3C7] flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-200 ease-out-expo group-hover:scale-110">
+              <div className="w-6 h-6 rounded-[8px] bg-[#FEF3C7] flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-200 ease-out-expo group-hover:scale-110">
                 <CalendarClock className="w-3.5 h-3.5 text-[#B45309]" strokeWidth={1.8} />
               </div>
               <div className="min-w-0">
