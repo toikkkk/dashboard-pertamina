@@ -30,6 +30,30 @@ export const SIMULATED_USERS: SimulatedUser[] = [
     location: 'IT Surabaya',
     isRegionalAdmin: false
   },
+  // Added 2026-09-04 — one login per remaining terminal (IT Bima, AFT Eltari, FT
+  // Madiun had no demo account yet) so the per-location dashboard can actually be
+  // tested against every REGIONAL_LOCATIONS entry, not just FT Malang/IT Surabaya.
+  {
+    id: 'user-5',
+    name: 'Made Wirawan',
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'IT Bima',
+    isRegionalAdmin: false
+  },
+  {
+    id: 'user-6',
+    name: 'Yohanes Bureni',
+    role: 'PSI / MOC Controller',
+    location: 'AFT Eltari',
+    isRegionalAdmin: false
+  },
+  {
+    id: 'user-7',
+    name: 'Siti Rahayu',
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'FT Madiun',
+    isRegionalAdmin: false
+  },
   {
     id: 'user-4',
     name: 'Ir. Irwan Kurniawan',
