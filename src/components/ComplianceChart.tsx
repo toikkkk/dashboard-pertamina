@@ -38,14 +38,24 @@ function trackTint(pct: number) {
 
 export default function ComplianceChart() {
   const {
+    activeUser,
     locations,
     selectedLocationFilter,
+    effectiveLocationFilter,
     setSelectedLocationFilter,
     selectedTypeFilter,
     setSelectedTypeFilter,
     getComplianceMetrics,
     documents,
   } = usePsi();
+
+  // Admin Regional compares across all 5 terminals — that's the whole point of the
+  // role. Everyone else only ever has one location, so the "Semua Lokasi/Terminal"
+  // filter and the per-location breakdown table it drives have nothing to compare
+  // against and are just dead UI for them (see effectiveLocationFilter in
+  // psiStore.tsx, which is what actually clamps the numbers below to their location
+  // regardless of this flag).
+  const isAdmin = activeUser.isRegionalAdmin;
 
   const metrics = getComplianceMetrics();
   const overallGap = Math.max(0, metrics.totalTarget - metrics.totalApproved);
@@ -71,7 +81,7 @@ export default function ComplianceChart() {
       const pct = totalTarget > 0 ? Math.min(100, Math.round((approved / totalTarget) * 100)) : 0;
       return { name: loc.locationName, approved, totalTarget, pct };
     })
-    .filter((loc) => selectedLocationFilter === "ALL" || loc.name === selectedLocationFilter)
+    .filter((loc) => effectiveLocationFilter === "ALL" || loc.name === effectiveLocationFilter)
     .sort((a, b) => a.pct - b.pct);
 
   const gaugeRef = useRef<SVGCircleElement>(null);
@@ -105,16 +115,18 @@ export default function ComplianceChart() {
             what pushed this row past a narrow viewport — flex-wrap alone doesn't
             help an item that refuses to shrink in the first place) */}
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <select
-            value={selectedLocationFilter}
-            onChange={(e) => setSelectedLocationFilter(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
-          >
-            <option value="ALL">Semua Lokasi / Terminal</option>
-            {locations.map((l) => (
-              <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
-            ))}
-          </select>
+          {isAdmin && (
+            <select
+              value={selectedLocationFilter}
+              onChange={(e) => setSelectedLocationFilter(e.target.value)}
+              className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            >
+              <option value="ALL">Semua Lokasi / Terminal</option>
+              {locations.map((l) => (
+                <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
+              ))}
+            </select>
+          )}
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
@@ -171,9 +183,12 @@ export default function ComplianceChart() {
         </div>
       </div>
 
-      {/* Two breakdown tables — stacked on mobile (each is a real 5-column table,
-          illegible squeezed into half of a narrow screen), side by side from lg up */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Two breakdown tables for Admin Regional — stacked on mobile (each is a real
+          5-column table, illegible squeezed into half of a narrow screen), side by
+          side from lg up. A location-scoped user only ever has one row in the
+          per-location table (nothing to compare against), so it's dropped entirely
+          for them and the Jenis PSI table takes the full width instead. */}
+      <div className={`grid grid-cols-1 ${isAdmin ? "lg:grid-cols-2" : ""} gap-4`}>
         <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-[7px]">
@@ -219,6 +234,7 @@ export default function ComplianceChart() {
           </table>
         </div>
 
+        {isAdmin && (
         <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center gap-[7px] mb-2">
             <MapPin className="w-[13px] h-[13px] text-[#15803D]" strokeWidth={1.8} />
@@ -256,6 +272,7 @@ export default function ComplianceChart() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

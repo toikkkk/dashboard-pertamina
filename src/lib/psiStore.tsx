@@ -31,6 +31,12 @@ interface PsiContextType {
   locations: typeof REGIONAL_LOCATIONS;
   selectedLocationFilter: string;
   setSelectedLocationFilter: (loc: string) => void;
+  /** selectedLocationFilter, but clamped to the user's own location for anyone who
+   * isn't an Admin Regional — see the definition site in PsiProvider for why. Read
+   * this (not selectedLocationFilter) wherever a component derives location-scoped
+   * data, so a non-admin can't end up seeing the cross-location "ALL" view just
+   * because the dropdown that would normally set this is hidden for them. */
+  effectiveLocationFilter: string;
   selectedTypeFilter: string;
   setSelectedTypeFilter: (type: string) => void;
   approveStep: (docId: string, stepOrder: number, comment?: string) => Promise<void>;
@@ -199,11 +205,21 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await mutate();
   };
 
+  // A non-admin's own location, standing in for "ALL" wherever a location filter
+  // is applied — getComplianceMetrics() and DocsByLocationChart's data both read
+  // allDocuments (a deliberate cross-location "benchmarking" exception, see
+  // CLAUDE.md), which is otherwise the same for every role regardless of the
+  // location dropdown's default. Without this clamp, a location-scoped user would
+  // see the exact same 5-terminal comparison an Admin Regional sees — the whole
+  // point of the per-location dashboard is that they don't.
+  const effectiveLocationFilter =
+    !activeUser.isRegionalAdmin && activeUser.location ? activeUser.location : selectedLocationFilter;
+
   // Location/type dropdown filters (ComplianceChart's selectors) applied on top of
   // the server's already-RBAC-scoped list — same two-layer filtering the client-only
   // prototype did, just with the RBAC layer now enforced server-side instead.
   const documents = payload.documents.filter((doc) => {
-    if (selectedLocationFilter !== "ALL" && doc.location !== selectedLocationFilter) return false;
+    if (effectiveLocationFilter !== "ALL" && doc.location !== effectiveLocationFilter) return false;
     if (selectedTypeFilter !== "ALL" && doc.psiType !== selectedTypeFilter) return false;
     return true;
   });
@@ -215,7 +231,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // round trip when it already has everything locally.
   const getComplianceMetrics = () => {
     const targetLocations = locations.filter(
-      (loc) => selectedLocationFilter === "ALL" || loc.locationName === selectedLocationFilter
+      (loc) => effectiveLocationFilter === "ALL" || loc.locationName === effectiveLocationFilter
     );
 
     const psiTypes: PSIType[] = [
@@ -240,7 +256,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       const approvedDocs = payload.allDocuments.filter((d) => {
-        const matchesLoc = selectedLocationFilter === "ALL" || d.location === selectedLocationFilter;
+        const matchesLoc = effectiveLocationFilter === "ALL" || d.location === effectiveLocationFilter;
         return matchesLoc && d.psiType === type && d.status === "Approved";
       }).length;
 
@@ -270,6 +286,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         allDocuments: payload.allDocuments,
         locations,
         selectedLocationFilter,
+        effectiveLocationFilter,
         setSelectedLocationFilter,
         selectedTypeFilter,
         setSelectedTypeFilter,
