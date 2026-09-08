@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import {
   LayoutDashboard, AlertTriangle, FolderOpen, Search,
-  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive, Menu, X, ShieldCheck,
+  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive, Menu, X,
 } from "lucide-react";
 import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
 
@@ -112,14 +112,19 @@ export default function Navbar() {
             {mobileMenuOpen ? <X className="w-5 h-5" strokeWidth={1.9} /> : <Menu className="w-5 h-5" strokeWidth={1.9} />}
           </button>
 
-          <Link href="/" className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-[8px] bg-[#0F3B59] flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-[17px] h-[17px] text-white" strokeWidth={2} />
-            </div>
-            <div className="leading-[1.15] min-w-0">
-              <div className="font-heading text-[12.5px] lg:text-[13.5px] font-bold tracking-[.04em] text-[#0F172A] uppercase truncate">Portal PSI &amp; MOC</div>
-              <div className="hidden sm:block text-[10px] text-[#748094] font-medium tracking-[.03em] truncate">Regional Jatimbalinus</div>
-            </div>
+          {/* Text-only wordmark, one line — the icon-in-colored-square badge tried
+              here earlier got called out immediately (same generic-template tell
+              KpiSummaryCards' own comments already flag for stat tiles), and the
+              stacked two-line title+caption block above it is its own common
+              "logo lockup" default. A single line, weight/color doing the work
+              instead of a decorative mark, reads more like an intentional
+              wordmark than a template slot waiting for a logo. */}
+          <Link href="/" className="flex items-baseline gap-2 min-w-0">
+            <span className="font-heading text-[13px] lg:text-[14px] font-bold tracking-[.02em] text-[#0F172A] uppercase whitespace-nowrap">
+              Portal PSI &amp; MOC
+            </span>
+            <span className="hidden sm:inline text-[#C5CED3]">/</span>
+            <span className="hidden sm:inline text-[11px] text-[#748094] font-medium truncate">Regional Jatimbalinus</span>
           </Link>
 
           {/* Text-only on desktop — icons dropped here (kept in the mobile panel,
