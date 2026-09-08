@@ -24,7 +24,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
 
   if (!doc) {
     return (
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
         <FileLock2 className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
         <p className="text-sm font-bold text-[#3a3d40] mb-1">Dokumen tidak ditemukan atau akses ditolak</p>
         <p className="text-[12.5px] text-[#9a9da0] mb-4">Dokumen mungkin tidak ada, atau berada di luar lokasi akses Anda.</p>

@@ -38,7 +38,7 @@ export default function ApprovalsPage() {
             <Link
               key={doc.id}
               href={`/document/${doc.id}`}
-              className="group block bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-all duration-200 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.08)] hover:-translate-y-[1px] hover:border-[#0F3B59] animate-fadeInUp"
+              className="group block bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-all duration-200 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.08)] hover:-translate-y-[1px] hover:border-[#0F3B59] animate-fadeInUp"
               style={{ animationDelay: `${Math.min(i * 40, 300)}ms` }}
             >
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -72,7 +72,7 @@ export default function ApprovalsPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-14 px-5 text-center">
+        <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-14 px-5 text-center">
           <ClipboardCheck className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />
           <p className="text-[13px] text-[#9a9da0]">Tidak ada dokumen yang menunggu persetujuan Anda saat ini.</p>
         </div>

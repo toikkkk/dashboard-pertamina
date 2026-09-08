@@ -103,7 +103,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
       )}
 
       {/* Header card */}
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[22px_24px] mb-4">
+      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[22px_24px] mb-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2.5 mb-2">
@@ -150,7 +150,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         {/* Tab rail — a horizontal scrollable row on mobile instead of the 200px
             vertical sidebar (which had nowhere to go on a narrow screen but to force
             the whole page wider), full vertical list from lg up */}
-        <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
+        <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
@@ -178,7 +178,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
             instead of scrolling inside DocumentContentPreview's own overflow-auto box. */}
         <div className="min-w-0">
           {tab === "detail" && (
-            <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-8 animate-fadeIn">
+            <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-8 animate-fadeIn">
               <DocumentContentPreview
                 fileUrl={doc.fileUrl}
                 fileName={doc.fileName}
@@ -193,7 +193,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
               <RoutingStatusPanel doc={doc} pendingStepOrder={pendingStepOrder} />
 
               {canApprove && (
-                <div className="bg-white border border-[#0F3B59] rounded-[8px] p-4 mb-3.5">
+                <div className="bg-[#DBD4CC] border border-[#0F3B59] rounded-[8px] p-4 mb-3.5">
                   <p className="mb-2.5 text-[12.5px] font-bold text-[#3a3d40]">Aksi Persetujuan — Tahap {pendingStepOrder}</p>
                   <textarea
                     value={approveComment}
@@ -285,7 +285,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
           )}
 
           {(tab === "attachments" || tab === "signature") && (
-            <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-7 flex gap-3 items-start animate-fadeIn">
+            <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-7 flex gap-3 items-start animate-fadeIn">
               <Info className="w-4 h-4 text-[#0F3B59] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
               <p className="text-[13px] text-[#3a3d40]">
                 {tab === "attachments"

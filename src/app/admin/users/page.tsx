@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
 
   if (!activeUser.isRegionalAdmin) {
     return (
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
         <ShieldAlert className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
         <p className="text-sm font-bold text-[#3a3d40] mb-1">Halaman khusus Admin Regional</p>
         <p className="text-[12.5px] text-[#9a9da0]">Anda tidak memiliki wewenang untuk mengelola akses user.</p>
@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
       </div>
 
       {pending.length > 0 && (
-        <div className="bg-white border border-[#B45309] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-4 overflow-hidden">
+        <div className="bg-[#DBD4CC] border border-[#B45309] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-4 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FEF3C7]">
             <Hourglass className="w-[15px] h-[15px] text-[#B45309]" strokeWidth={1.8} />
             <span className="text-[12.5px] font-bold text-[#B45309]">Menunggu Aktivasi ({pending.length})</span>
@@ -144,7 +144,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 bg-[#fafafb] border-b border-[#f0f0f1]">
           <UserCog className="w-[15px] h-[15px] text-[#0F3B59]" strokeWidth={1.8} />
           <span className="text-[12.5px] font-bold text-[#3a3d40]">Semua User Aktif ({activeUsers.length})</span>

@@ -93,7 +93,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="flex-shrink-0 bg-white sticky top-0 z-[60] border-b border-[#DDE3EA] shadow-[0_1px_3px_rgba(15,23,42,.06)]">
+    <header className="flex-shrink-0 bg-[#DBD4CC] sticky top-0 z-[60] border-b border-[#DDE3EA] shadow-[0_1px_3px_rgba(15,23,42,.06)]">
       <div className="h-[60px] lg:h-[68px] flex items-center justify-between px-3.5 lg:px-6">
         <div className="flex items-center gap-3 lg:gap-8 min-w-0">
           {/* Hamburger — mobile/tablet only; the full inline nav below takes over at lg */}
@@ -301,7 +301,7 @@ export default function Navbar() {
           desktop nav + toolbar normally carries, stacked as full-width rows so
           every touch target stays comfortably above 44px. */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#eceded] bg-white shadow-[0_12px_24px_rgba(15,23,42,.08)] animate-dropIn max-h-[calc(100vh-60px)] overflow-y-auto">
+        <div className="lg:hidden border-t border-[#eceded] bg-[#DBD4CC] shadow-[0_12px_24px_rgba(15,23,42,.08)] animate-dropIn max-h-[calc(100vh-60px)] overflow-y-auto">
           {!isPending && (
             <form onSubmit={handleSearchSubmit} className="p-3.5 border-b border-[#f0f0f1]">
               <div className="relative">
