@@ -1,11 +1,15 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { usePsi } from "@/lib/psiStore";
 import { passwordPolicyIssues } from "@/lib/mockData";
 import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, KeyRound, ArrowLeft } from "lucide-react";
 import PasswordChecklist from "@/components/PasswordChecklist";
+
+gsap.registerPlugin(useGSAP);
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -53,6 +57,8 @@ function SignIn2Content() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+  const [signInSuccess, setSignInSuccess] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Surfaces a failure from the Google OAuth round trip (see
   // /api/auth/google/callback, which redirects here with ?googleError=... instead of
@@ -85,13 +91,37 @@ function SignIn2Content() {
     setSigningIn(true);
     try {
       await login(email, password);
-      router.push("/");
+      // Hand off to the exit-transition effect below instead of navigating right
+      // away — an instant router.push here is what made login->dashboard feel
+      // like an abrupt cut rather than a transition in the first place.
+      setSignInSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal masuk.");
-    } finally {
       setSigningIn(false);
     }
   };
+
+  // Brief success state (checkmark, same language as the register flow below),
+  // then the card fades/scales out before the actual navigation — so the two
+  // screens hand off to each other instead of one instantly replacing the other.
+  // Reduced-motion still gets the pause (long enough to read "Berhasil masuk"),
+  // just without the tween itself.
+  useGSAP(
+    () => {
+      if (!signInSuccess) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        const tl = gsap.timeline({ onComplete: () => router.push("/") });
+        tl.to({}, { duration: 0.55 }); // hold on the success state so it's actually readable
+        tl.to(cardRef.current, { opacity: 0, scale: 0.96, y: -8, duration: 0.32, ease: "power2.in" });
+      });
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        gsap.delayedCall(0.7, () => router.push("/"));
+      });
+      return () => mm.revert();
+    },
+    { dependencies: [signInSuccess] }
+  );
 
   const handleRegister = async () => {
     if (!regName.trim() || !regEmail || !regPassword) {
@@ -150,7 +180,7 @@ function SignIn2Content() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#CAD4DA] p-6">
-      <div className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
+      <div ref={cardRef} className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
         <div
           className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0F3B59] mb-6 animate-popIn"
           style={{ animationDelay: "80ms" }}
@@ -213,6 +243,13 @@ function SignIn2Content() {
         )}
 
         {mode === "signin" ? (
+          signInSuccess ? (
+            <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
+              <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
+              <p className="text-[13px] font-bold text-[#0F172A]">Berhasil masuk</p>
+              <p className="text-[12px] text-[#6b6e72] leading-relaxed">Mengalihkan ke dashboard…</p>
+            </div>
+          ) : (
           <>
             <div className="w-full flex flex-col gap-3 mb-2">
               <div className="relative group">
@@ -285,6 +322,7 @@ function SignIn2Content() {
               Masuk dengan Google
             </a>
           </>
+          )
         ) : mode === "forgot" ? (
           forgotSent ? (
             <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">

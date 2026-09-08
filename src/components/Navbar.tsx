@@ -63,7 +63,12 @@ export default function Navbar() {
     setSearchError(true);
   };
 
-  if (!isAuthLoaded || !isLoggedIn) return null;
+  // pathname check matters, not just auth state: the sign-in transition (see
+  // clean-minimal-sign-in.tsx) deliberately holds on /login for a beat after
+  // login() already resolves — isLoggedIn flips true immediately (SWR cache
+  // update), but without this the header would pop in behind the still-visible
+  // login card mid-animation instead of waiting for the actual navigation.
+  if (!isAuthLoaded || !isLoggedIn || pathname === "/login") return null;
 
   const overdueCount = documents.filter(isDocOverdue).length;
   const pendingApprovalCount = documents.filter((d) => canUserApproveDoc(d, activeUser)).length;
