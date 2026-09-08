@@ -12,13 +12,13 @@ function validateEmail(email: string) {
 }
 
 const inputClass =
-  "w-full pl-10 pr-3 py-2.5 rounded-[8px] border border-[#D6DEE8] focus:outline-none focus:border-[#0369A1] focus:ring-[3px] focus:ring-[#0369A1]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
+  "w-full pl-10 pr-3 py-2.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59] focus:ring-[3px] focus:ring-[#0F3B59]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
 
 // Icon wrapper reacts to the sibling input's focus via `group-focus-within` — a
 // small, deliberate detail (icon picks up brand blue while its field is active)
 // rather than a static gray icon regardless of state.
 function FieldIcon({ children }: { children: React.ReactNode }) {
-  return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9da0] transition-colors duration-200 group-focus-within:text-[#0369A1]">{children}</span>;
+  return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9da0] transition-colors duration-200 group-focus-within:text-[#0F3B59]">{children}</span>;
 }
 
 // Official 4-color "G" mark — Google's brand guidelines require the real logo, not a
@@ -149,10 +149,10 @@ function SignIn2Content() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#E9EEF3] p-6">
-      <div className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#D6DEE8] animate-fadeInUp">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#DBD4CC] p-6">
+      <div className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
         <div
-          className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0369A1] mb-6 animate-popIn"
+          className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0F3B59] mb-6 animate-popIn"
           style={{ animationDelay: "80ms" }}
         >
           {mode === "signin" ? (
@@ -179,7 +179,7 @@ function SignIn2Content() {
           <button
             type="button"
             onClick={backToSignIn}
-            className="w-full flex items-center gap-1.5 text-[12.5px] font-bold text-[#0369A1] hover:text-[#075985] mb-5 transition-colors duration-200"
+            className="w-full flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] mb-5 transition-colors duration-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />
             Kembali ke Masuk
@@ -195,7 +195,7 @@ function SignIn2Content() {
               type="button"
               onClick={() => setMode("signin")}
               className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
-                mode === "signin" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
+                mode === "signin" ? "text-[#0F3B59]" : "text-[#6b6e72] hover:text-[#0F172A]"
               }`}
             >
               Masuk
@@ -204,7 +204,7 @@ function SignIn2Content() {
               type="button"
               onClick={() => setMode("register")}
               className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
-                mode === "register" ? "text-[#0369A1]" : "text-[#6b6e72] hover:text-[#0F172A]"
+                mode === "register" ? "text-[#0F3B59]" : "text-[#6b6e72] hover:text-[#0F172A]"
               }`}
             >
               Daftar
@@ -256,7 +256,7 @@ function SignIn2Content() {
               <button
                 type="button"
                 onClick={() => setMode("forgot")}
-                className="self-end text-[11.5px] font-bold text-[#0369A1] hover:text-[#075985] transition-colors duration-200 -mt-1.5"
+                className="self-end text-[11.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200 -mt-1.5"
               >
                 Lupa kata sandi?
               </button>
@@ -266,7 +266,7 @@ function SignIn2Content() {
             <button
               onClick={handleSignIn}
               disabled={signingIn}
-              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mb-5 mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mb-5 mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {signingIn ? "Memproses…" : "Masuk"}
             </button>
@@ -279,7 +279,7 @@ function SignIn2Content() {
 
             <a
               href="/api/auth/google"
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#D6DEE8] active:scale-[0.98] transition-all duration-200 ease-out-expo"
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#C5CED3] active:scale-[0.98] transition-all duration-200 ease-out-expo"
             >
               <GoogleLogo />
               Masuk dengan Google
@@ -317,7 +317,7 @@ function SignIn2Content() {
               <button
                 onClick={handleForgotPassword}
                 disabled={sendingForgot}
-                className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 {sendingForgot ? "Mengirim…" : "Kirim Tautan Atur Ulang"}
               </button>
@@ -394,7 +394,7 @@ function SignIn2Content() {
             <button
               onClick={handleRegister}
               disabled={registering}
-              className="w-full bg-[#0369A1] hover:bg-[#075985] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {registering ? "Memproses…" : "Daftar"}
             </button>
@@ -407,7 +407,7 @@ function SignIn2Content() {
 
 function SignIn2() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#E9EEF3]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#DBD4CC]" />}>
       <SignIn2Content />
     </Suspense>
   );

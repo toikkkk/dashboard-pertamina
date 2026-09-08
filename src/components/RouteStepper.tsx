@@ -16,9 +16,9 @@ function stepStatusOf(routes: ApprovalRouteItem[], step: number, pendingStepOrde
 
 const NODE_STYLE: Record<StepStatus, { bg: string; border: string; text: string }> = {
   done: { bg: "#15803D", border: "#15803D", text: "#fff" },
-  active: { bg: "#0369A1", border: "#0369A1", text: "#fff" },
+  active: { bg: "#0F3B59", border: "#0F3B59", text: "#fff" },
   rejected: { bg: "#DC2626", border: "#DC2626", text: "#fff" },
-  upcoming: { bg: "#fff", border: "#D6DEE8", text: "#9a9da0" },
+  upcoming: { bg: "#fff", border: "#C5CED3", text: "#9a9da0" },
 };
 
 interface RouteStepperProps {
@@ -54,7 +54,7 @@ export default function RouteStepper({ routes, pendingStepOrder, variant = "full
               <div
                 className={`rounded-full flex items-center justify-center font-bold flex-shrink-0 transition-all duration-300 ${
                   isMini ? "w-5 h-5 text-[9px]" : "w-8 h-8 text-[12px]"
-                } ${status === "active" ? "ring-4 ring-[#0369A1]/[.18]" : ""}`}
+                } ${status === "active" ? "ring-4 ring-[#0F3B59]/[.18]" : ""}`}
                 style={{ background: style.bg, border: `1.5px solid ${style.border}`, color: style.text }}
               >
                 {status === "done" ? (

@@ -122,7 +122,7 @@ export default function Navbar() {
                   href={item.path}
                   className={`flex items-center gap-[7px] px-4 py-2 rounded-full text-[12.5px] font-semibold transition-all duration-200 ease-out-expo ${
                     isActive
-                      ? "bg-[#E0F2FE] text-[#0369A1]"
+                      ? "bg-[#E2E8EB] text-[#0F3B59]"
                       : "text-[#5B6472] hover:text-[#0F172A] hover:bg-[#F5F7F9] active:scale-[0.97]"
                   }`}
                 >
@@ -163,7 +163,7 @@ export default function Navbar() {
                   type="button"
                   onClick={() => (searchOpen ? handleSearchSubmit() : openSearch())}
                   aria-label="Cari nomor dokumen"
-                  className={`relative z-10 p-2 flex rounded-full transition-colors duration-200 ${searchOpen ? "text-[#0369A1]" : "text-[#5B6472] hover:bg-[#F5F7F9] hover:text-[#0F172A]"}`}
+                  className={`relative z-10 p-2 flex rounded-full transition-colors duration-200 ${searchOpen ? "text-[#0F3B59]" : "text-[#5B6472] hover:bg-[#F5F7F9] hover:text-[#0F172A]"}`}
                 >
                   <Search className="w-[16px] h-[16px]" strokeWidth={1.8} />
                 </button>
@@ -176,7 +176,7 @@ export default function Navbar() {
                     setSearchError(false);
                   }}
                   placeholder="Cari nomor dokumen..."
-                  className={`min-h-[36px] text-[12.5px] rounded-full bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0369A1] outline-none transition-all duration-200 ease-out-expo overflow-hidden ${
+                  className={`min-h-[36px] text-[12.5px] rounded-full bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0F3B59] outline-none transition-all duration-200 ease-out-expo overflow-hidden ${
                     searchOpen ? "w-[200px] pl-9 pr-3 ml-[-32px]" : "w-0 pl-0 pr-0 ml-0 border-none"
                   }`}
                 />
@@ -190,7 +190,7 @@ export default function Navbar() {
               <Link
                 href="/upload"
                 aria-label="Dokumen Baru"
-                className="flex items-center gap-[7px] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] rounded-full px-2.5 lg:pl-3.5 lg:pr-4 py-2 transition-all duration-200 lg:ml-1"
+                className="flex items-center gap-[7px] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] rounded-full px-2.5 lg:pl-3.5 lg:pr-4 py-2 transition-all duration-200 lg:ml-1"
               >
                 <Plus className="w-[16px] h-[16px] lg:w-[15px] lg:h-[15px] text-white flex-shrink-0" strokeWidth={2.2} />
                 <span className="hidden lg:inline text-[12.5px] font-bold text-white whitespace-nowrap">Dokumen Baru</span>
@@ -212,7 +212,7 @@ export default function Navbar() {
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-[-8px] sm:right-0 top-[46px] w-[calc(100vw-24px)] max-w-[308px] bg-white border border-[#D6DEE8] shadow-[0_12px_32px_rgba(0,0,0,.18)] z-[70] origin-top-right animate-dropIn">
+                  <div className="absolute right-[-8px] sm:right-0 top-[46px] w-[calc(100vw-24px)] max-w-[308px] bg-white border border-[#C5CED3] shadow-[0_12px_32px_rgba(0,0,0,.18)] z-[70] origin-top-right animate-dropIn">
                     <div className="px-3.5 py-2.5 bg-[#f7f7f8] border-b border-[#e5e5e7] text-[11px] font-bold tracking-wider uppercase text-[#0F172A]">
                       Notifikasi
                     </div>
@@ -264,7 +264,7 @@ export default function Navbar() {
               aria-label="Menu pengguna"
               className={`flex items-center gap-2 py-1 pl-1 pr-1 lg:pr-2.5 rounded-full transition-colors duration-200 ${userMenuOpen ? "bg-[#F5F7F9]" : "hover:bg-[#F5F7F9]"}`}
             >
-              <div className="w-8 h-8 lg:w-7 lg:h-7 rounded-full bg-[#E0F2FE] text-[#0369A1] flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+              <div className="w-8 h-8 lg:w-7 lg:h-7 rounded-full bg-[#E2E8EB] text-[#0F3B59] flex items-center justify-center text-[11px] font-bold flex-shrink-0">
                 {activeUser.name.charAt(0)}
               </div>
               <div className="hidden lg:block text-left leading-[1.25]">
@@ -277,7 +277,7 @@ export default function Navbar() {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-12 w-[220px] bg-white border border-[#D6DEE8] shadow-[0_12px_32px_rgba(0,0,0,.18)] z-[70] p-1.5 origin-top-right animate-dropIn">
+              <div className="absolute right-0 top-12 w-[220px] bg-white border border-[#C5CED3] shadow-[0_12px_32px_rgba(0,0,0,.18)] z-[70] p-1.5 origin-top-right animate-dropIn">
                 <div className="lg:hidden px-2.5 py-2 mb-1 border-b border-[#f0f0f1]">
                   <div className="text-xs font-bold text-[#0F172A]">{activeUser.name}</div>
                   <div className="text-[10px]" style={{ color: isPending ? "#B45309" : "#748094" }}>
@@ -286,9 +286,9 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-[8px] text-left hover:bg-[#E0F2FE] transition"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-[8px] text-left hover:bg-[#E2E8EB] transition"
                 >
-                  <LogOut className="w-[15px] h-[15px] text-[#0369A1]" strokeWidth={1.7} />
+                  <LogOut className="w-[15px] h-[15px] text-[#0F3B59]" strokeWidth={1.7} />
                   <span className="text-[13px] font-semibold text-[#3a3d40]">Keluar Sesi</span>
                 </button>
               </div>
@@ -314,7 +314,7 @@ export default function Navbar() {
                     setSearchError(false);
                   }}
                   placeholder="Cari nomor dokumen..."
-                  className="w-full min-h-[42px] pl-9 pr-3 text-[13px] rounded-[8px] bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0369A1] outline-none transition-all duration-200"
+                  className="w-full min-h-[42px] pl-9 pr-3 text-[13px] rounded-[8px] bg-[#F5F7F9] focus:bg-white text-[#0F172A] placeholder:text-[#9aa3af] border border-transparent focus:border-[#0F3B59] outline-none transition-all duration-200"
                 />
               </div>
               {searchError && <p className="mt-1.5 text-[11.5px] font-semibold text-[#DC2626]">Nomor dokumen tidak ditemukan</p>}
@@ -329,7 +329,7 @@ export default function Navbar() {
                   key={item.path}
                   href={item.path}
                   className={`flex items-center gap-3 px-3.5 py-3 rounded-[8px] text-[13.5px] font-semibold transition-colors duration-200 ${
-                    isActive ? "bg-[#E0F2FE] text-[#0369A1]" : "text-[#3a3d40] hover:bg-[#F5F7F9]"
+                    isActive ? "bg-[#E2E8EB] text-[#0F3B59]" : "text-[#3a3d40] hover:bg-[#F5F7F9]"
                   }`}
                 >
                   <item.icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
@@ -351,7 +351,7 @@ export default function Navbar() {
             <div className="p-2 pt-0">
               <Link
                 href="/upload"
-                className="flex items-center justify-center gap-2 bg-[#0369A1] hover:bg-[#075985] active:scale-[0.98] rounded-full py-3 transition-all duration-200"
+                className="flex items-center justify-center gap-2 bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.98] rounded-full py-3 transition-all duration-200"
               >
                 <Plus className="w-4 h-4 text-white" strokeWidth={2.2} />
                 <span className="text-[13.5px] font-bold text-white">Dokumen Baru</span>
@@ -364,7 +364,7 @@ export default function Navbar() {
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3.5 py-3 rounded-[8px] text-left text-[13.5px] font-semibold text-[#3a3d40] hover:bg-[#F5F7F9] transition-colors duration-200 mt-1"
             >
-              <LogOut className="w-[17px] h-[17px] text-[#0369A1] flex-shrink-0" strokeWidth={1.7} />
+              <LogOut className="w-[17px] h-[17px] text-[#0F3B59] flex-shrink-0" strokeWidth={1.7} />
               Keluar Sesi
             </button>
           </div>

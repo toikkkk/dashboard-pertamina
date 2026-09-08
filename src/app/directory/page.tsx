@@ -94,7 +94,7 @@ function DirectoryContent() {
 
   const SortIcon = ({ sortKey }: { sortKey: SortKey }) => {
     if (sortBy !== sortKey) return <ChevronsUpDown className="w-3 h-3 text-[#c3c6c9]" strokeWidth={2} />;
-    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 text-[#0369A1]" strokeWidth={2.2} /> : <ArrowDown className="w-3 h-3 text-[#0369A1]" strokeWidth={2.2} />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 text-[#0F3B59]" strokeWidth={2.2} /> : <ArrowDown className="w-3 h-3 text-[#0F3B59]" strokeWidth={2.2} />;
   };
 
   const sortableHeaderClass = "flex items-center gap-1 hover:text-[#0F172A] transition-colors duration-150";
@@ -124,7 +124,7 @@ function DirectoryContent() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari judul atau nomor dokumen..."
-            className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#D6DEE8] rounded-[8px]"
+            className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#C5CED3] rounded-[8px]"
           />
         </div>
         <select
@@ -136,7 +136,7 @@ function DirectoryContent() {
             else newParams.set("status", e.target.value);
             router.replace(`/directory?${newParams.toString()}`);
           }}
-          className="text-[13px] px-2.5 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold min-w-[170px]"
+          className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[170px]"
         >
           <option value="ALL">Semua Status</option>
           <option value="Approved">Approved</option>
@@ -146,7 +146,7 @@ function DirectoryContent() {
         </select>
       </div>
 
-      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {sortedDocs.length > 0 ? (
           <>
             {/* Card list below lg — a table with 8 columns has nowhere to go on a
@@ -162,7 +162,7 @@ function DirectoryContent() {
                       <span className="font-mono text-[11px] text-[#9a9da0]">{doc.documentNumber}</span>
                       <span className="flex-shrink-0"><StatusTag color={meta.color} label={doc.status} size="sm" /></span>
                     </div>
-                    <Link href={`/document/${doc.id}`} className="block font-semibold text-[13.5px] text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200 mb-1.5">
+                    <Link href={`/document/${doc.id}`} className="block font-semibold text-[13.5px] text-[#0F172A] hover:text-[#0F3B59] transition-colors duration-200 mb-1.5">
                       {doc.title}
                     </Link>
                     <div className="text-[12px] text-[#6b6e72] mb-1">{doc.location} · {doc.psiType}</div>
@@ -174,12 +174,12 @@ function DirectoryContent() {
                     <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-[#f5f5f6]">
                       <button
                         onClick={() => setPreviewDoc(doc)}
-                        className="cursor-pointer flex items-center gap-1 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200"
+                        className="cursor-pointer flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200"
                       >
                         <Eye className="w-3.5 h-3.5" strokeWidth={1.9} />
                         Lihat
                       </button>
-                      <Link href={`/document/${doc.id}`} className="cursor-pointer text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200">Riwayat &amp; Audit →</Link>
+                      <Link href={`/document/${doc.id}`} className="cursor-pointer text-[12.5px] font-semibold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200">Riwayat &amp; Audit →</Link>
                     </div>
                   </div>
                 );
@@ -224,12 +224,12 @@ function DirectoryContent() {
                   return (
                     <tr
                       key={doc.id}
-                      className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0369A1] transition-all duration-200 ease-out-expo animate-fadeInUp"
+                      className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0F3B59] transition-all duration-200 ease-out-expo animate-fadeInUp"
                       style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                     >
                       <td className="px-3.5 py-3 text-[#6b6e72] font-mono text-xs">{doc.documentNumber}</td>
                       <td className="px-3.5 py-3 max-w-[220px]">
-                        <Link href={`/document/${doc.id}`} className="cursor-pointer font-semibold text-[#0F172A] hover:text-[#0369A1] transition-colors duration-200">{doc.title}</Link>
+                        <Link href={`/document/${doc.id}`} className="cursor-pointer font-semibold text-[#0F172A] hover:text-[#0F3B59] transition-colors duration-200">{doc.title}</Link>
                       </td>
                       <td className="px-3.5 py-3">{doc.location}</td>
                       <td className="px-3.5 py-3 text-[#6b6e72]">{doc.psiType}</td>
@@ -245,12 +245,12 @@ function DirectoryContent() {
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => setPreviewDoc(doc)}
-                            className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200"
+                            className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200"
                           >
                             <Eye className="w-3.5 h-3.5" strokeWidth={1.9} />
                             Lihat
                           </button>
-                          <Link href={`/document/${doc.id}`} className="cursor-pointer text-xs font-semibold text-[#0369A1] hover:text-[#075985] transition-colors duration-200">Riwayat &amp; Audit →</Link>
+                          <Link href={`/document/${doc.id}`} className="cursor-pointer text-xs font-semibold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200">Riwayat &amp; Audit →</Link>
                         </div>
                       </td>
                     </tr>

@@ -24,7 +24,7 @@ export default function UpcomingExpiryList() {
     .slice(0, 4);
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-3.5">Segera Kedaluwarsa</h3>
 
       {upcoming.length > 0 ? (
@@ -40,7 +40,7 @@ export default function UpcomingExpiryList() {
                 <CalendarClock className="w-3.5 h-3.5 text-[#B45309]" strokeWidth={1.8} />
               </div>
               <div className="min-w-0">
-                <div className="text-[12px] font-semibold text-[#0F172A] group-hover:text-[#0369A1] truncate transition-colors">{d.title}</div>
+                <div className="text-[12px] font-semibold text-[#0F172A] group-hover:text-[#0F3B59] truncate transition-colors">{d.title}</div>
                 <div className="flex items-center gap-1 mt-0.5 text-[10.5px]">
                   <span className="font-mono text-[#9a9da0] tabular-nums">{fmtDate(d.expiryDate)}</span>
                   <span className="text-[#c3c6c9]">·</span>

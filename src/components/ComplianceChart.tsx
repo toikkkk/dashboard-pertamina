@@ -101,11 +101,11 @@ export default function ComplianceChart() {
   );
 
   return (
-    <div className="relative bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
+    <div className="relative bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
       <div className="flex items-start justify-between gap-3 pb-3 mb-3.5 border-b border-[#eceded] flex-wrap">
         <div>
           <h2 className="text-[13px] font-bold text-[#0F172A] flex items-center gap-2">
-            <BarChart3 className="w-[15px] h-[15px] text-[#0369A1]" strokeWidth={1.7} />
+            <BarChart3 className="w-[15px] h-[15px] text-[#0F3B59]" strokeWidth={1.7} />
             <span>Kalkulasi Kepatuhan Dokumen PSI</span>
           </h2>
         </div>
@@ -119,7 +119,7 @@ export default function ComplianceChart() {
             <select
               value={selectedLocationFilter}
               onChange={(e) => setSelectedLocationFilter(e.target.value)}
-              className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+              className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
             >
               <option value="ALL">Semua Lokasi / Terminal</option>
               {locations.map((l) => (
@@ -130,7 +130,7 @@ export default function ComplianceChart() {
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#D6DEE8] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
+            className="flex-1 min-w-0 sm:flex-initial text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold transition-colors duration-200 hover:border-[#9a9da0] cursor-pointer"
           >
             <option value="ALL">Semua Jenis PSI</option>
             {PSI_TYPES.map((t) => (
@@ -197,7 +197,7 @@ export default function ComplianceChart() {
         <div className="min-w-0 overflow-x-auto">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-[7px]">
-              <BarChart3 className="w-[13px] h-[13px] text-[#0369A1]" strokeWidth={1.8} />
+              <BarChart3 className="w-[13px] h-[13px] text-[#0F3B59]" strokeWidth={1.8} />
               <span className="text-[11px] font-bold tracking-[.06em] text-[#3a3d40] uppercase">Kelengkapan per Jenis PSI</span>
             </div>
             <span className="text-[10px] text-[#9a9da0] whitespace-nowrap">

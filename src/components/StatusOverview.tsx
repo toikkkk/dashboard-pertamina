@@ -62,7 +62,7 @@ export default function StatusOverview() {
   );
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5 transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5 transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
       <div className="flex items-baseline justify-between mb-3 flex-wrap gap-x-3 gap-y-1">
         <div>
           <h3 className="text-[13px] font-bold text-[#0F172A]">Distribusi Status</h3>
@@ -92,7 +92,7 @@ export default function StatusOverview() {
 
         {hovered && (
           <div
-            className="absolute bottom-full mb-2 z-20 bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_8px_20px_rgba(0,0,0,.15)] px-2.5 py-1.5 whitespace-nowrap animate-popIn pointer-events-none -translate-x-1/2"
+            className="absolute bottom-full mb-2 z-20 bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_8px_20px_rgba(0,0,0,.15)] px-2.5 py-1.5 whitespace-nowrap animate-popIn pointer-events-none -translate-x-1/2"
             // Clamped away from the 0/100% edges — centered on a segment near either
             // end otherwise pushes half the (whitespace-nowrap) tooltip content past
             // the bar's own bounds, wide enough on a narrow viewport to force the

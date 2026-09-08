@@ -9,13 +9,13 @@ interface SendPasswordResetEmailArgs {
 
 // Plain inline-styled HTML (no external stylesheet — email clients strip <style>
 // blocks unpredictably) matching the app's established palette from CLAUDE.md:
-// brand blue #0369A1, navy ink #0F172A, sharp 2-4px radii, Public Sans-adjacent
+// brand blue #0F3B59, navy ink #0F172A, sharp 2-4px radii, Public Sans-adjacent
 // system font stack since custom fonts aren't reliably supported in email clients.
 function buildHtml({ name, resetUrl, expiresInMinutes }: SendPasswordResetEmailArgs): string {
   return `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#E9EEF3;padding:32px 16px;">
-  <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #D6DEE8;border-radius:4px;overflow:hidden;">
-    <div style="background:#0369A1;padding:20px 28px;">
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#DBD4CC;padding:32px 16px;">
+  <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #C5CED3;border-radius:4px;overflow:hidden;">
+    <div style="background:#0F3B59;padding:20px 28px;">
       <p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Portal PSI &amp; MOC</p>
       <p style="margin:2px 0 0;color:#BAE0F5;font-size:11px;">Regional Jatimbalinus</p>
     </div>
@@ -25,7 +25,7 @@ function buildHtml({ name, resetUrl, expiresInMinutes }: SendPasswordResetEmailA
         Halo ${name}, kami menerima permintaan untuk mengatur ulang kata sandi akun Anda. Klik tombol di bawah untuk membuat kata sandi baru.
       </p>
       <div style="text-align:center;margin:24px 0;">
-        <a href="${resetUrl}" style="display:inline-block;background:#0369A1;color:#ffffff;font-size:13.5px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:2px;">
+        <a href="${resetUrl}" style="display:inline-block;background:#0F3B59;color:#ffffff;font-size:13.5px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:2px;">
           Atur Ulang Kata Sandi
         </a>
       </div>

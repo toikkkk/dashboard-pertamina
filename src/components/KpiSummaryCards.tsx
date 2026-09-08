@@ -96,7 +96,7 @@ export default function KpiSummaryCards() {
   );
 
   return (
-    <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
       {/* Same header pattern every sibling widget on this dashboard already uses
           (title left, "N dokumen total" right) — this strip was the one widget
           without a title, which read as inconsistent next to Distribusi Status/
@@ -113,7 +113,7 @@ export default function KpiSummaryCards() {
         // as a 1px line) instead of per-item border-l classes, which only made sense
         // for a single row and would've needed different logic entirely for a 2-column
         // grid's row dividers too.
-        className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border-t border-[#D6DEE8] overflow-hidden rounded-b-[8px]"
+        className="grid grid-cols-2 lg:flex gap-px bg-[#eceded] border-t border-[#C5CED3] overflow-hidden rounded-b-[8px]"
       >
         {cards.map((c) => (
           <KpiColumn key={c.label} card={c} />

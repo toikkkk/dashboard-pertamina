@@ -67,7 +67,7 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
     return (
       <div>
         <RealFileBadge />
-        <div className="flex items-center justify-center border border-[#D6DEE8] rounded-[8px] bg-[#fafafb] p-3 max-h-[70vh] overflow-auto">
+        <div className="flex items-center justify-center border border-[#C5CED3] rounded-[8px] bg-[#fafafb] p-3 max-h-[70vh] overflow-auto">
           {/* eslint-disable-next-line @next/next/no-img-element -- remote, private (RBAC-gated) source; next/image's optimizer needs a whitelisted domain, not applicable to a same-origin proxy route like this */}
           <img src={fileUrl} alt={title} className="max-w-full max-h-[66vh] object-contain" />
         </div>
@@ -85,7 +85,7 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
             inline set. <embed type="application/pdf"> hands the URL to the
             browser's PDF plugin directly rather than trying to navigate a
             sub-document into it, which renders reliably instead. */}
-        <embed src={fileUrl} type="application/pdf" title={title} className="w-full h-[70vh] border border-[#D6DEE8] rounded-[8px] bg-[#fafafb]" />
+        <embed src={fileUrl} type="application/pdf" title={title} className="w-full h-[70vh] border border-[#C5CED3] rounded-[8px] bg-[#fafafb]" />
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
       return (
         <div>
           <RealFileBadge />
-          <div className="flex items-center gap-2.5 p-5 border border-[#D6DEE8] rounded-[8px] text-[#6b6e72]">
+          <div className="flex items-center gap-2.5 p-5 border border-[#C5CED3] rounded-[8px] text-[#6b6e72]">
             <FileWarning className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
             <span className="text-[12.5px]">Berkas tidak bisa dimuat sebagai pratinjau tabel.</span>
           </div>
@@ -114,7 +114,7 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
     return (
       <div>
         <RealFileBadge />
-        <div className="border border-[#D6DEE8] rounded-[8px] overflow-auto max-h-[70vh]">
+        <div className="border border-[#C5CED3] rounded-[8px] overflow-auto max-h-[70vh]">
           <table className="border-collapse text-[11px] w-full">
             <tbody>
               {sheetRows.map((row, ri) => (

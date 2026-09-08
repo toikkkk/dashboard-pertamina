@@ -25,13 +25,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${archivo.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}>
-      <body className="min-h-screen flex flex-col antialiased" style={{ background: "#E9EEF3" }}>
+      <body className="min-h-screen flex flex-col antialiased" style={{ background: "#DBD4CC" }}>
         <ClientProvider>
           <AuthGuard>
             <Navbar />
             <div className="flex flex-col min-w-0">
               <main className="w-full px-3.5 lg:px-6 pt-4 lg:pt-5 pb-10 lg:pb-12 relative">{children}</main>
-              <footer className="text-slate-400 text-[10px] py-4 border-t border-[#D6DEE8] text-center font-medium">
+              <footer className="text-slate-400 text-[10px] py-4 border-t border-[#C5CED3] text-center font-medium">
                 &copy; 2026 PT Pertamina (Persero) — Direktorat Logistik & Infrastruktur.
               </footer>
             </div>

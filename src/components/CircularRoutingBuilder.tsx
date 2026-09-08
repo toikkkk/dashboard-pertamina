@@ -46,7 +46,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
         <select
           value={roleDraft}
           onChange={(e) => setRoleDraft(e.target.value)}
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#C5CED3] rounded-[8px]"
         >
           {APPROVER_ROLE_PRESETS.map((r) => (
             <option key={r} value={r}>{r}</option>
@@ -57,12 +57,12 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
           value={nameDraft}
           onChange={(e) => setNameDraft(e.target.value)}
           placeholder="Nama approver"
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#C5CED3] rounded-[8px]"
         />
         <select
           value={stepDraft}
           onChange={(e) => setStepDraft(Number(e.target.value))}
-          className="min-h-[34px] px-2 py-1 text-xs border border-[#D6DEE8] rounded-[8px]"
+          className="min-h-[34px] px-2 py-1 text-xs border border-[#C5CED3] rounded-[8px]"
         >
           <option value={1}>Tahap 1</option>
           <option value={2}>Tahap 2</option>
@@ -71,7 +71,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
         <button
           type="button"
           onClick={handleAdd}
-          className="min-h-[34px] text-xs font-bold rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white transition-all duration-200"
+          className="min-h-[34px] text-xs font-bold rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white transition-all duration-200"
         >
           + Tambah
         </button>
@@ -100,7 +100,7 @@ export default function CircularRoutingBuilder({ routes, onChange, error }: Circ
                   <span className="text-[11.5px] font-bold">Tahap {step}</span>
                   <span
                     className="inline-flex items-center gap-1 text-[10px] font-bold px-[7px] py-[2px] rounded-[8px]"
-                    style={{ background: isParallel ? "#FEF3C7" : "#E0F2FE", color: isParallel ? "#B45309" : "#075985" }}
+                    style={{ background: isParallel ? "#FEF3C7" : "#E2E8EB", color: isParallel ? "#B45309" : "#0B2C43" }}
                   >
                     {isParallel ? <Zap className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
                     {isParallel ? "Paralel" : "Sekuensial"}

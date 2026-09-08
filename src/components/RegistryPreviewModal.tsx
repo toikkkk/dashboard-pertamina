@@ -79,13 +79,13 @@ export default function RegistryPreviewModal({ file, categoryLabel, onClose }: R
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-[#eceded] sticky bottom-0 bg-white">
-          <button onClick={onClose} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
+          <button onClick={onClose} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
             Tutup
           </button>
           <a
             href={fileUrl}
             download
-            className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
+            className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
           >
             <Download className="w-[13px] h-[13px]" strokeWidth={1.9} />
             Unduh Berkas

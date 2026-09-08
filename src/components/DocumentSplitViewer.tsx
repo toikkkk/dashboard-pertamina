@@ -28,7 +28,7 @@ const ACTION_LABELS: Record<HistoryItem["action"], string> = {
 // glance instead of having to read every entry's text (same colored-left-border pattern
 // as the dashboard KPI cards).
 const ACTION_COLOR: Record<HistoryItem["action"], string> = {
-  Created: "#0369A1",
+  Created: "#0F3B59",
   Forwarded: "#B45309",
   Approved: "#15803D",
   Rejected: "#DC2626",
@@ -103,7 +103,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
       )}
 
       {/* Header card */}
-      <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[22px_24px] mb-4">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[22px_24px] mb-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2.5 mb-2">
@@ -119,7 +119,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                 <span className="text-[11.5px] font-semibold px-2.5 py-[3px] rounded-[8px] bg-[#EDE9FE] text-[#6D28D9]">{doc.auditType}</span>
               )}
             </div>
-            <button onClick={() => setTab("history")} className="cursor-pointer text-xs font-semibold text-[#0369A1] hover:text-[#075985]">
+            <button onClick={() => setTab("history")} className="cursor-pointer text-xs font-semibold text-[#0F3B59] hover:text-[#0B2C43]">
               Lihat riwayat proses →
             </button>
           </div>
@@ -128,7 +128,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
               <a
                 href={doc.fileUrl}
                 download
-                className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center justify-center gap-1.5 transition"
+                className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center justify-center gap-1.5 transition"
               >
                 <Download className="w-[13px] h-[13px]" strokeWidth={1.9} />
                 Unduh Berkas Valid
@@ -136,7 +136,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
             ) : (
               <button
                 onClick={() => handleDownload()}
-                className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0369A1] bg-[#0369A1] hover:bg-[#075985] active:scale-[0.97] text-white flex items-center justify-center gap-1.5 transition"
+                className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center justify-center gap-1.5 transition"
               >
                 <Download className="w-[13px] h-[13px]" strokeWidth={1.9} />
                 Unduh Berkas Valid
@@ -150,7 +150,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         {/* Tab rail — a horizontal scrollable row on mobile instead of the 200px
             vertical sidebar (which had nowhere to go on a narrow screen but to force
             the whole page wider), full vertical list from lg up */}
-        <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
+        <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
@@ -158,7 +158,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={`flex items-center justify-between gap-1.5 px-2.5 py-2.5 rounded-[8px] text-[12.5px] font-semibold text-left transition-all duration-200 ease-out-expo whitespace-nowrap flex-shrink-0 ${
-                  active ? "bg-[#E0F2FE] text-[#075985]" : "text-[#3a3d40] hover:bg-[#f7f7f8]"
+                  active ? "bg-[#E2E8EB] text-[#0B2C43]" : "text-[#3a3d40] hover:bg-[#f7f7f8]"
                 }`}
               >
                 <span>{t.label}</span>
@@ -178,7 +178,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
             instead of scrolling inside DocumentContentPreview's own overflow-auto box. */}
         <div className="min-w-0">
           {tab === "detail" && (
-            <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-8 animate-fadeIn">
+            <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-8 animate-fadeIn">
               <DocumentContentPreview
                 fileUrl={doc.fileUrl}
                 fileName={doc.fileName}
@@ -193,13 +193,13 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
               <RoutingStatusPanel doc={doc} pendingStepOrder={pendingStepOrder} />
 
               {canApprove && (
-                <div className="bg-white border border-[#0369A1] rounded-[8px] p-4 mb-3.5">
+                <div className="bg-white border border-[#0F3B59] rounded-[8px] p-4 mb-3.5">
                   <p className="mb-2.5 text-[12.5px] font-bold text-[#3a3d40]">Aksi Persetujuan — Tahap {pendingStepOrder}</p>
                   <textarea
                     value={approveComment}
                     onChange={(e) => setApproveComment(e.target.value)}
                     placeholder="Komentar (opsional)..."
-                    className="w-full min-h-[60px] px-2.5 py-2 text-[12.5px] border border-[#D6DEE8] rounded-[8px] mb-2.5 resize-y"
+                    className="w-full min-h-[60px] px-2.5 py-2 text-[12.5px] border border-[#C5CED3] rounded-[8px] mb-2.5 resize-y"
                   />
                   <div className="flex gap-2">
                     <button onClick={handleApprove} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#15803D] bg-[#15803D] hover:bg-[#166534] active:scale-[0.97] text-white transition">
@@ -218,7 +218,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                   return (
                     <div
                       key={h.id}
-                      className="bg-white border border-[#D6DEE8] border-l-[3px] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[14px_16px] transition-shadow duration-300 ease-out-expo hover:shadow-[0_2px_10px_rgba(0,0,0,.05)] animate-fadeInUp"
+                      className="bg-white border border-[#C5CED3] border-l-[3px] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[14px_16px] transition-shadow duration-300 ease-out-expo hover:shadow-[0_2px_10px_rgba(0,0,0,.05)] animate-fadeInUp"
                       style={{ borderLeftColor: ACTION_COLOR[h.action], animationDelay: `${Math.min(i * 50, 300)}ms` }}
                     >
                       <div className="flex items-start justify-between gap-2.5 flex-wrap">
@@ -229,15 +229,15 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           {getFileKind(h.fileName) !== "none" ? (
-                            <a href={h.fileUrl} download className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                            <a href={h.fileUrl} download className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
                               Unduh Berkas v{h.version}
                             </a>
                           ) : (
-                            <button onClick={() => handleDownload(h)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                            <button onClick={() => handleDownload(h)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
                               Unduh Berkas v{h.version}
                             </button>
                           )}
-                          <button onClick={() => toggleExpand(h.id)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                          <button onClick={() => toggleExpand(h.id)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
                             {isExpanded ? "Tutup detail perubahan" : "Lihat detail perubahan"}
                           </button>
                         </div>
@@ -285,8 +285,8 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
           )}
 
           {(tab === "attachments" || tab === "signature") && (
-            <div className="bg-white border border-[#D6DEE8] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-7 flex gap-3 items-start animate-fadeIn">
-              <Info className="w-4 h-4 text-[#0369A1] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
+            <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-7 flex gap-3 items-start animate-fadeIn">
+              <Info className="w-4 h-4 text-[#0F3B59] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
               <p className="text-[13px] text-[#3a3d40]">
                 {tab === "attachments"
                   ? "Lampiran tambahan akan tersedia pada iterasi berikutnya."
@@ -308,10 +308,10 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
               value={rejectComment}
               onChange={(e) => setRejectComment(e.target.value)}
               placeholder="Alasan penolakan (wajib diisi)..."
-              className="w-full min-h-[90px] px-2.5 py-2 text-[12.5px] border border-[#D6DEE8] rounded-[8px] resize-y mb-3.5"
+              className="w-full min-h-[90px] px-2.5 py-2 text-[12.5px] border border-[#C5CED3] rounded-[8px] resize-y mb-3.5"
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setRejectModalOpen(false)} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#D6DEE8] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
+              <button onClick={() => setRejectModalOpen(false)} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
                 Batal
               </button>
               <button

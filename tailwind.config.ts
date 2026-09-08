@@ -10,12 +10,12 @@ const config: Config = {
     extend: {
       colors: {
         pertamina: {
-          primary: "#0369A1",
-          primaryDark: "#075985",
+          primary: "#0F3B59",
+          primaryDark: "#0B2C43",
           navy: "#0F172A",
           navyMuted: "#94A3B8",
           ink: "#0F172A",
-          border: "#D6DEE8",
+          border: "#C5CED3",
           success: "#15803D",
           warning: "#B45309",
           revision: "#6D28D9",

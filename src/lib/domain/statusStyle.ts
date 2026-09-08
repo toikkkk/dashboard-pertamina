@@ -31,7 +31,7 @@ export const ROUTE_STATUS_META: Record<"Pending" | "Approved" | "Rejected", { la
 // this gives Baru/Direvisi/Diperpanjang genuine per-type color coding for the
 // first time.
 export const LAST_UPDATE_META: Record<LastUpdateType, { color: string }> = {
-  Baru: { color: "#0369A1" },
+  Baru: { color: "#0F3B59" },
   Direvisi: { color: "#6D28D9" },
   Diperpanjang: { color: "#B45309" },
 };

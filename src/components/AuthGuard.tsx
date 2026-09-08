@@ -37,8 +37,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!isAuthLoaded) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-4 border-[#0369A1] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xs font-bold text-[#0369A1]">Memeriksa Sesi Pengguna...</p>
+        <div className="w-8 h-8 border-4 border-[#0F3B59] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs font-bold text-[#0F3B59]">Memeriksa Sesi Pengguna...</p>
       </div>
     );
   }
