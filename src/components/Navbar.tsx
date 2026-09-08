@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import {
   LayoutDashboard, AlertTriangle, FolderOpen, Search,
-  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive, Menu, X,
+  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive, Menu, X, ShieldCheck,
 } from "lucide-react";
 import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
 
@@ -72,20 +72,26 @@ export default function Navbar() {
   const pendingUserCount = users.filter((u) => !u.isRegionalAdmin && !u.location).length;
   const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
 
-  const navItems = isPending
+  // Split into primary workflow nav vs. admin-only tools — rendered as two visually
+  // distinct groups (divider between them) on desktop instead of one flat row of 6,
+  // and kept as a single flattened list for the mobile panel, where icons still carry
+  // their weight (a vertical list benefits from them more than a horizontal one does).
+  const primaryNavItems = isPending
     ? [{ name: "Dashboard", path: "/", icon: LayoutDashboard }]
     : [
         { name: "Dashboard", path: "/", icon: LayoutDashboard },
         { name: "Sirkuler", path: "/approvals", icon: ClipboardCheck, badge: pendingApprovalCount, badgeTone: "warning" as const },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" as const },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
-        ...(activeUser.isRegionalAdmin
-          ? [
-              { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" as const },
-              { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
-            ]
-          : []),
       ];
+  const adminNavItems: { name: string; path: string; icon: typeof UserCog; badge?: number; badgeTone?: "warning" | "danger" }[] =
+    !isPending && activeUser.isRegionalAdmin
+      ? [
+          { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" },
+          { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
+        ]
+      : [];
+  const navItems = [...primaryNavItems, ...adminNavItems];
 
   const handleLogout = () => {
     logout();
@@ -106,15 +112,24 @@ export default function Navbar() {
             {mobileMenuOpen ? <X className="w-5 h-5" strokeWidth={1.9} /> : <Menu className="w-5 h-5" strokeWidth={1.9} />}
           </button>
 
-          <Link href="/" className="flex items-center min-w-0">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-[8px] bg-[#0F3B59] flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-[17px] h-[17px] text-white" strokeWidth={2} />
+            </div>
             <div className="leading-[1.15] min-w-0">
               <div className="font-heading text-[12.5px] lg:text-[13.5px] font-bold tracking-[.04em] text-[#0F172A] uppercase truncate">Portal PSI &amp; MOC</div>
               <div className="hidden sm:block text-[10px] text-[#748094] font-medium tracking-[.03em] truncate">Regional Jatimbalinus</div>
             </div>
           </Link>
 
+          {/* Text-only on desktop — icons dropped here (kept in the mobile panel,
+              where a vertical list benefits from them more): six mismatched icon
+              glyphs in a row read as visual noise more than they aided scanning,
+              and the active pill + colored badge already carry the state that
+              matters. Admin-only tools get their own group past a hairline divider
+              instead of sitting flush with the 4 everyday workflow items. */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => {
+            {primaryNavItems.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <Link
@@ -126,7 +141,6 @@ export default function Navbar() {
                       : "text-[#5B6472] hover:text-[#0F172A] hover:bg-[#F5F7F9] active:scale-[0.97]"
                   }`}
                 >
-                  <item.icon className="w-[14px] h-[14px]" strokeWidth={1.8} />
                   <span>{item.name}</span>
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
@@ -140,6 +154,37 @@ export default function Navbar() {
                 </Link>
               );
             })}
+
+            {adminNavItems.length > 0 && (
+              <>
+                <div className="w-px h-5 bg-[#EBEEF2] mx-1.5" aria-hidden />
+                {adminNavItems.map((item) => {
+                  const isActive = pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      className={`flex items-center gap-[7px] px-4 py-2 rounded-full text-[12.5px] font-semibold transition-all duration-200 ease-out-expo ${
+                        isActive
+                          ? "bg-[#E2E8EB] text-[#0F3B59]"
+                          : "text-[#5B6472] hover:text-[#0F172A] hover:bg-[#F5F7F9] active:scale-[0.97]"
+                      }`}
+                    >
+                      <span>{item.name}</span>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span
+                          key={item.badge}
+                          className="text-[10px] font-bold px-[5px] py-px rounded-full animate-popIn"
+                          style={{ background: item.badgeTone === "danger" ? "#DC2626" : "#B45309", color: "#fff" }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </nav>
         </div>
 
