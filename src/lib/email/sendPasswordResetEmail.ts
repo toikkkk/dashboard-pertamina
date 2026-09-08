@@ -13,7 +13,7 @@ interface SendPasswordResetEmailArgs {
 // system font stack since custom fonts aren't reliably supported in email clients.
 function buildHtml({ name, resetUrl, expiresInMinutes }: SendPasswordResetEmailArgs): string {
   return `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#DBD4CC;padding:32px 16px;">
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#CAD4DA;padding:32px 16px;">
   <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #C5CED3;border-radius:4px;overflow:hidden;">
     <div style="background:#0F3B59;padding:20px 28px;">
       <p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Portal PSI &amp; MOC</p>

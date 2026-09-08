@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${archivo.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}>
-      <body className="min-h-screen flex flex-col antialiased" style={{ background: "#DBD4CC" }}>
+      <body className="min-h-screen flex flex-col antialiased" style={{ background: "#CAD4DA" }}>
         <ClientProvider>
           <AuthGuard>
             <Navbar />

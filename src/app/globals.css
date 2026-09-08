@@ -8,13 +8,13 @@
        ::-webkit-scrollbar-* rules below and falls back to the OS/browser accent
        color for the scrollbar — on Windows that's often blue, which then shows
        up as a stray blue sliver at the very right edge, overlapping the header. */
-    scrollbar-color: #c3c6c9 #DBD4CC;
+    scrollbar-color: #c3c6c9 #CAD4DA;
     scrollbar-width: thin;
   }
 
   body {
     @apply font-sans antialiased;
-    background: #DBD4CC;
+    background: #CAD4DA;
     color: #0F172A;
     font-size: 14px;
     line-height: 1.5;
@@ -39,7 +39,7 @@
   ::-webkit-scrollbar-thumb {
     background: #c3c6c9;
     border-radius: 999px;
-    border: 2px solid #DBD4CC;
+    border: 2px solid #CAD4DA;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #9a9da0;
