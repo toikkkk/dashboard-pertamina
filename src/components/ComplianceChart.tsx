@@ -101,7 +101,7 @@ export default function ComplianceChart() {
   );
 
   return (
-    <div className="relative bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
+    <div className="relative bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-shadow duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)]">
       <div className="flex items-start justify-between gap-3 pb-3 mb-3.5 border-b border-[#eceded] flex-wrap">
         <div>
           <h2 className="text-[13px] font-bold text-[#0F172A] flex items-center gap-2">

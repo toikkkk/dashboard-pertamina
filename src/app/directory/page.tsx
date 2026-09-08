@@ -146,7 +146,7 @@ function DirectoryContent() {
         </select>
       </div>
 
-      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {sortedDocs.length > 0 ? (
           <>
             {/* Card list below lg — a table with 8 columns has nowhere to go on a

@@ -36,7 +36,7 @@ function KpiColumn({ card }: { card: KpiCardDef }) {
   return (
     <div
       onClick={() => router.push(card.path)}
-      className="kpi-card flex-1 lg:min-w-[160px] bg-[#DBD4CC] p-4 lg:p-5 cursor-pointer transition-colors duration-200 hover:bg-[#d3ccc2]"
+      className="kpi-card flex-1 lg:min-w-[160px] bg-white p-4 lg:p-5 cursor-pointer transition-colors duration-200 hover:bg-[#fafafb]"
     >
       <div className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#6b6e72] mb-2.5">{card.label}</div>
       {/* Archivo (heading), not mono, on the hero value — a single standalone headline
@@ -96,7 +96,7 @@ export default function KpiSummaryCards() {
   );
 
   return (
-    <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-3.5">
       {/* Same header pattern every sibling widget on this dashboard already uses
           (title left, "N dokumen total" right) — this strip was the one widget
           without a title, which read as inconsistent next to Distribusi Status/

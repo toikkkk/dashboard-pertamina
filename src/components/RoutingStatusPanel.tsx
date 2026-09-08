@@ -30,7 +30,7 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
   // ditampilkan eksplisit di sini kalau ada data lama/rusak, alih-alih diam-diam kosong.
   if (doc.routes.length === 0) {
     return (
-      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
         <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-[#FEE2E2]">
           <AlertOctagon className="w-4 h-4 text-[#DC2626] flex-shrink-0 mt-0.5" strokeWidth={1.9} />
           <div>
@@ -58,7 +58,7 @@ export default function RoutingStatusPanel({ doc, pendingStepOrder }: RoutingSta
   const rejectedRoute = doc.routes.find((r) => r.status === "Rejected");
 
   return (
-    <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 mb-3.5">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-4">Status Sirkuler Persetujuan</h3>
 
       {/* Sampai mana dokumen ini — pola tracker seperti status pesanan (bukan cuma daftar

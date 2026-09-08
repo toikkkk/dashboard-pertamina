@@ -295,7 +295,7 @@ export default function AdminRegistryPage() {
 
   if (!activeUser.isRegionalAdmin) {
     return (
-      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
         <ShieldAlert className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
         <p className="text-sm font-bold text-[#3a3d40] mb-1">Halaman khusus Admin Regional</p>
         <p className="text-[12.5px] text-[#9a9da0]">Anda tidak memiliki wewenang untuk mengakses arsip registry.</p>
@@ -424,7 +424,7 @@ export default function AdminRegistryPage() {
         )}
       </div>
 
-      <div className="bg-[#DBD4CC] border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
         {isLoading ? (
           <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat arsip…</div>
         ) : items.length === 0 ? (
