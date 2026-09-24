@@ -21,12 +21,11 @@ const BTN =
 
 // Kartu "Giliran Anda": satu fokus, satu tombol utama. Isian opsional disembunyikan
 // (Optional) supaya layar tidak penuh.
-function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white rounded-[14px] border border-[#C5CED3] border-l-[5px] border-l-[#B45309] shadow-[0_1px_2px_rgba(15,23,42,.05),0_4px_14px_rgba(15,23,42,.05)] p-5">
       <div className="text-[11px] font-bold uppercase tracking-wide text-[#B45309]">Giliran Anda</div>
       <h2 className="font-heading text-[17px] font-bold text-[#0F172A] mt-0.5">{title}</h2>
-      {hint && <p className="text-[12.5px] text-[#6b6e72] mt-1">{hint}</p>}
       <div className="flex flex-col gap-4 mt-4">{children}</div>
     </section>
   );
@@ -43,7 +42,7 @@ function Step({ n, label, children }: { n: number; label: string; children: Reac
   );
 }
 
-function Choice({ selected, onSelect, title, hint, tone }: { selected: boolean; onSelect: () => void; title: string; hint: string; tone: "good" | "warn" | "bad" }) {
+function Choice({ selected, onSelect, title, tone }: { selected: boolean; onSelect: () => void; title: string; tone: "good" | "warn" | "bad" }) {
   const color = tone === "good" ? "#15803D" : tone === "warn" ? "#6D28D9" : "#DC2626";
   return (
     <button
@@ -51,12 +50,21 @@ function Choice({ selected, onSelect, title, hint, tone }: { selected: boolean; 
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className="flex-1 min-w-[210px] text-left px-4 py-3 rounded-[10px] border-2 transition-colors"
+      className="flex-1 min-w-[210px] text-left px-4 py-3.5 rounded-[10px] border-2 transition-colors"
       style={{ borderColor: selected ? color : "#C5CED3", background: selected ? `${color}12` : "#fff" }}
     >
       <div className="text-[13.5px] font-bold" style={{ color: selected ? color : "#0F172A" }}>{title}</div>
-      <div className="text-[12px] text-[#6b6e72] mt-0.5">{hint}</div>
     </button>
+  );
+}
+
+// Kolom catatan WAJIB: selalu tampil (tidak disembunyikan), harus diisi sebelum tombol kirim aktif.
+function NoteField({ label, value, onChange, placeholder, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  return (
+    <div>
+      <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">{label} <span className="text-[#DC2626]">*</span></div>
+      <textarea className={INPUT} rows={rows} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-required="true" />
+    </div>
   );
 }
 
@@ -106,7 +114,6 @@ function EvidenceInput({ onFileId, disabled }: { onFileId: (id: string | undefin
         />
       </label>
       {err && <p className="text-[11.5px] text-[#DC2626] mt-1">{err}</p>}
-      <p className="text-[11.5px] text-[#6b6e72] mt-1.5">Cetak formulir, tanda tangani di luar web, lalu unggah hasilnya di sini.</p>
     </div>
   );
 }
@@ -218,7 +225,6 @@ export default function MocActionsPanel({
       {actions.includes("submit") && (
         <Panel
           title={moc.validationState === "draft" ? "Ajukan MOC untuk direview" : "Ajukan ulang setelah perbaikan"}
-          hint={moc.validationState === "draft" ? "Pilih siapa yang mereview dan siapa yang menyetujui." : undefined}
         >
           {(reviseNotes.length > 0 || (moc.validationState === "rejected" && moc.approverNote)) && (
             <div className="rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3">
@@ -297,27 +303,23 @@ export default function MocActionsPanel({
       )}
 
       {actions.includes("review") && (
-        <Panel title={`Review MOC ini${myReview ? ` sebagai ${myReview.functionLabel}` : ""}`} hint="Pilih satu, lalu kirim.">
+        <Panel title={`Review MOC ini${myReview ? ` sebagai ${myReview.functionLabel}` : ""}`}>
           <div role="radiogroup" aria-label="Hasil review" className="flex gap-2.5 flex-wrap">
-            <Choice selected={outcome === "Sesuai"} onSelect={() => setOutcome("Sesuai")} tone="good" title="Sesuai" hint="Tidak perlu perubahan." />
-            <Choice selected={outcome === "Perlu Perubahan"} onSelect={() => setOutcome("Perlu Perubahan")} tone="warn" title="Perlu perubahan" hint="Kembalikan ke Initiator." />
+            <Choice selected={outcome === "Sesuai"} onSelect={() => setOutcome("Sesuai")} tone="good" title="Sesuai" />
+            <Choice selected={outcome === "Perlu Perubahan"} onSelect={() => setOutcome("Perlu Perubahan")} tone="warn" title="Perlu perubahan" />
           </div>
-          {outcome === "Perlu Perubahan" ? (
-            <div>
-              <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">Apa yang perlu diperbaiki? <span className="text-[#DC2626]">*</span></div>
-              <textarea className={INPUT} rows={3} value={recommendation} onChange={(e) => setRecommendation(e.target.value)} placeholder="Tuliskan catatan untuk Initiator…" />
-            </div>
-          ) : (
-            <Optional label="Tambah catatan (opsional)">
-              <textarea className={INPUT} rows={3} value={recommendation} onChange={(e) => setRecommendation(e.target.value)} />
-            </Optional>
-          )}
+          <NoteField
+            label={outcome === "Perlu Perubahan" ? "Apa yang perlu diperbaiki?" : "Catatan review"}
+            value={recommendation}
+            onChange={setRecommendation}
+            placeholder={outcome === "Perlu Perubahan" ? "Tuliskan catatan untuk Initiator…" : "Tuliskan hasil evaluasi Anda…"}
+          />
           <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
             <button
               type="button"
               className={BTN}
-              disabled={busy || (outcome === "Perlu Perubahan" && !recommendation.trim())}
+              disabled={busy || !recommendation.trim()}
               onClick={() =>
                 run(
                   () => mocApi.review(moc.id, { outcome, recommendation: recommendation.trim(), evidenceFileId: evidence }),
@@ -339,39 +341,35 @@ export default function MocActionsPanel({
       )}
 
       {actions.includes("decide") && (
-        <Panel title="Setujui atau tolak MOC ini" hint="Pilih satu, lalu kirim.">
+        <Panel title="Setujui atau tolak MOC ini">
           <div role="radiogroup" aria-label="Keputusan" className="flex gap-2.5 flex-wrap">
-            <Choice selected={decision === "approve"} onSelect={() => setDecision("approve")} tone="good" title="Setujui" hint="Lanjut ke registrasi." />
-            <Choice selected={decision === "reject"} onSelect={() => setDecision("reject")} tone="bad" title="Tolak" hint="Kembali ke Initiator." />
+            <Choice selected={decision === "approve"} onSelect={() => setDecision("approve")} tone="good" title="Setujui" />
+            <Choice selected={decision === "reject"} onSelect={() => setDecision("reject")} tone="bad" title="Tolak" />
           </div>
-          {decision === "approve" ? (
-            <>
-              <Step n={1} label="Siapa MoC Performer-nya?">
-                {performerPool.length === 0 ? (
-                  <EmptyPool role="Performer" />
-                ) : (
-                  <select className={INPUT} value={performerId} onChange={(e) => setPerformerId(e.target.value)} aria-label="Performer">
-                    <option value="">Pilih performer…</option>
-                    {performerPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
-                  </select>
-                )}
-              </Step>
-              <Optional label="Tambah catatan (opsional)">
-                <textarea className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-              </Optional>
-            </>
-          ) : (
-            <div>
-              <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">Alasan penolakan / yang perlu diperbaiki <span className="text-[#DC2626]">*</span></div>
-              <textarea className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tuliskan catatan untuk Initiator…" />
-            </div>
+          {decision === "approve" && (
+            <Step n={1} label="Siapa MoC Performer-nya?">
+              {performerPool.length === 0 ? (
+                <EmptyPool role="Performer" />
+              ) : (
+                <select className={INPUT} value={performerId} onChange={(e) => setPerformerId(e.target.value)} aria-label="Performer">
+                  <option value="">Pilih performer…</option>
+                  {performerPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
+                </select>
+              )}
+            </Step>
           )}
+          <NoteField
+            label={decision === "approve" ? "Catatan persetujuan" : "Alasan penolakan / yang perlu diperbaiki"}
+            value={note}
+            onChange={setNote}
+            placeholder={decision === "approve" ? "Tuliskan catatan persetujuan…" : "Tuliskan catatan untuk Initiator…"}
+          />
           <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
             <button
               type="button"
               className={BTN}
-              disabled={busy || (decision === "approve" ? !performerId : !note.trim())}
+              disabled={busy || !note.trim() || (decision === "approve" && !performerId)}
               onClick={() =>
                 run(
                   () =>
@@ -392,7 +390,7 @@ export default function MocActionsPanel({
       )}
 
       {actions.includes("register") && (
-        <Panel title="Daftarkan MOC ke Register" hint="Nomor MoC akan dibuat otomatis.">
+        <Panel title="Daftarkan MOC ke Register">
           <Optional label="Ubah Nomor MoC (opsional)">
             <input className={INPUT} value={mocNumber} onChange={(e) => setMocNumber(e.target.value)} placeholder="Kosongkan untuk nomor otomatis (MOC-LOKASI-TAHUN-urut)" />
           </Optional>
@@ -408,18 +406,11 @@ export default function MocActionsPanel({
       {actions.includes("advance") && next && (
         <Panel
           title={startsImplementation ? "Mulai tahap Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjutkan ke tahap ${next}`}
-          hint={
-            startsImplementation
-              ? MOC_LATER_STAGE_INFO.Implementasi
-              : `Saat ini: ${moc.registerStatus}. ${MOC_LATER_STAGE_INFO[moc.registerStatus as keyof typeof MOC_LATER_STAGE_INFO] ?? ""}`
-          }
         >
-          <Optional label="Tambah catatan (opsional)">
-            <textarea className={INPUT} rows={2} value={advanceNotes} onChange={(e) => setAdvanceNotes(e.target.value)} />
-          </Optional>
+          <NoteField label="Catatan" value={advanceNotes} onChange={setAdvanceNotes} placeholder="Tuliskan catatan untuk tahap ini…" rows={2} />
           {!confirmAdvance ? (
             <div>
-              <button type="button" className={BTN} disabled={busy} onClick={() => setConfirmAdvance(true)}>
+              <button type="button" className={BTN} disabled={busy || !advanceNotes.trim()} onClick={() => setConfirmAdvance(true)}>
                 {startsImplementation ? "Mulai Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjut ke ${next}`}
               </button>
             </div>

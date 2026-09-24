@@ -14,16 +14,14 @@ import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
+import { extOf, kindOfFilename } from "@/lib/security/fileScan";
 
-// "inline" (not "attachment") — DocumentContentPreview.tsx's PDF <iframe> and the
-// client-side spreadsheet parser both hit this same URL expecting it to render/be
-// fetchable, not force a save dialog. `inline` still gets the real filename applied
-// if the browser DOES end up saving it (right-click Save As, or a non-renderable
-// type like .xlsx that the browser can't display inline anyway) — only the R2
-// object key's hash-prefixed name was ever the problem, not the disposition type.
-function contentDispositionHeader(filename: string): string {
-  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
-  return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+// Hanya PDF dan gambar (jenis yang sudah diperiksa dan aman ditampilkan) yang disajikan
+// "inline" untuk pratinjau; SEMUA jenis lain dipaksa diunduh sebagai attachment agar
+// tidak pernah dijalankan/dirender browser. Nama berkas asli tetap dipakai.
+function contentDispositionHeader(filename: string, inline: boolean): string {
+  const asciiFallback = filename.replace(/[^ -~]/g, "_").replace(/"/g, "'");
+  return `${inline ? "inline" : "attachment"}; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 export async function GET(_req: Request, { params }: { params: { fileId: string } }) {
@@ -60,12 +58,18 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
       assertRegionalAdmin(user);
     }
 
+    // Tipe konten ditetapkan SERVER dari ekstensi berkas — bukan klaim klien saat unggah.
+    // Ekstensi di luar daftar putih (arsip lama hasil migrasi) => octet-stream + attachment.
+    const kind = kindOfFilename(file.originalFilename);
+    const known = !!kind || extOf(file.originalFilename) === ".xlsm" || extOf(file.originalFilename) === ".xls" || extOf(file.originalFilename) === ".doc";
+    const inline = !!kind?.inline;
     const url = await getSignedUrl(
       r2,
       new GetObjectCommand({
         Bucket: R2_BUCKET,
         Key: file.r2ObjectKey,
-        ResponseContentDisposition: contentDispositionHeader(file.originalFilename),
+        ResponseContentDisposition: contentDispositionHeader(file.originalFilename, inline),
+        ResponseContentType: kind?.mime ?? (known ? file.mimeType : "application/octet-stream"),
       }),
       { expiresIn: 300 }
     );

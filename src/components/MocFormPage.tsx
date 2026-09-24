@@ -65,12 +65,9 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
   if (!form) return null;
 
   return (
-    <div className="max-w-[900px]">
+    <div className="max-w-[900px] mx-auto">
       <div className="mb-4">
         <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">{mocId ? "Ubah MOC" : "MOC Baru"}</h1>
-        <p className="text-[12px] text-[#6b6e72] mt-0.5">
-          Formulir Pengusulan &amp; Validasi (Lampiran 5). Simpan sebagai draf dulu; pengajuan ke reviewer dilakukan dari halaman detail.
-        </p>
       </div>
 
       <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} />

@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, Download, Pencil, Paperclip } from "lucide-react";
 import { useMocActions, useMocActor, useMocItem } from "@/lib/useMoc";
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
-import { MOC_REVIEW_SLA_DAYS, MOC_RISK_LEVEL_LABEL, mocWaitingOn, mocRolesOf } from "@/lib/domain/moc";
+import { MOC_REVIEW_SLA_DAYS, MOC_RISK_LEVEL_LABEL, mocCanAttach, mocWaitingOn, mocRolesOf } from "@/lib/domain/moc";
 import StatusTag from "@/components/StatusTag";
 import MocStageStepper from "@/components/MocStageStepper";
 import MocFormViewer from "@/components/MocFormViewer";
 import MocActionsPanel from "@/components/MocActionsPanel";
 import SuccessPopup from "@/components/SuccessPopup";
+import MocAttachments from "@/components/MocAttachments";
 
 const CARD =
   "bg-white border border-[#C5CED3] rounded-[14px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)]";
@@ -42,10 +43,11 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
   const waiting = mocWaitingOn(moc);
   const roles = mocRolesOf(moc, actor);
   const rounds = Array.from(new Set(moc.reviews.map((r) => r.round))).sort((a, b) => a - b);
+  const signatureEvidence = moc.evidence.filter((e) => e.slot !== "lampiran");
   const hasAction = actions.filter((a) => a !== "edit").length > 0;
 
   return (
-    <div className="max-w-[980px]">
+    <div className="max-w-[980px] mx-auto">
       {notice && <SuccessPopup message={notice} onClose={() => setNotice(null)} />}
 
       <Link href="/moc" className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#0F3B59] hover:underline mb-3">
@@ -171,11 +173,11 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
 
           <div className={`${CARD} p-5`}>
             <h2 className="text-[13.5px] font-bold text-[#0F172A] mb-3">Bukti tanda tangan</h2>
-            {moc.evidence.length === 0 ? (
+            {signatureEvidence.length === 0 ? (
               <p className="text-[12.5px] text-[#9a9da0]">Belum ada berkas bukti yang diunggah.</p>
             ) : (
               <ul className="flex flex-col gap-1.5">
-                {moc.evidence.map((e) => (
+                {signatureEvidence.map((e) => (
                   <li key={e.id} className="text-[12.5px] flex items-center gap-2 flex-wrap">
                     <Paperclip className="w-3.5 h-3.5 text-[#6b6e72]" strokeWidth={2} />
                     <a href={e.fileUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#0F3B59] hover:underline">{e.fileName ?? "Berkas"}</a>
@@ -185,6 +187,8 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
               </ul>
             )}
           </div>
+
+          <MocAttachments moc={moc} canAttach={mocCanAttach(moc, actor)} />
         </div>
       )}
 

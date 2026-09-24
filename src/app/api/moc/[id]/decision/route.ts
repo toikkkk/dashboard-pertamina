@@ -23,8 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const moc = await requireMocAction(params.id, user, "decide");
     const { decision, note, performer, evidenceFileId } = bodySchema.parse(await req.json());
 
+    if (!note) throw new HttpError(400, decision === "reject" ? "Catatan wajib diisi saat menolak." : "Catatan persetujuan wajib diisi.");
     if (decision === "reject") {
-      if (!note) throw new HttpError(400, "Catatan wajib diisi saat menolak.");
       await db
         .update(mocRequests)
         .set({ validationState: "rejected", approverNote: note, updatedAt: new Date() })

@@ -15,24 +15,7 @@ import { sanitizeFilename } from "@/lib/r2/keys";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
-
-// Restricts what a caller can ask R2 to serve back with — without this, someone
-// could upload an .html/.svg with a scripty payload and later have it served
-// inline (this app's PDF/spreadsheet preview relies on inline rendering, so
-// downloads can't blanket-force Content-Disposition: attachment as the mitigation
-// instead). Cross-checked against the filename's own extension below so a caller
-// can't declare a safe mimeType while attaching a dangerous extension (or vice
-// versa) — both must agree.
-const ALLOWED_UPLOAD_TYPES: Record<string, string[]> = {
-  "application/pdf": [".pdf"],
-  "application/msword": [".doc"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-  "application/vnd.ms-excel": [".xls"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
-  "image/png": [".png"],
-  "image/jpeg": [".jpg", ".jpeg"],
-};
+import { validateUploadMeta } from "@/lib/security/fileScan";
 
 const bodySchema = z.object({
   filename: z.string().trim().min(1).max(255),
@@ -46,14 +29,9 @@ export async function POST(req: NextRequest) {
     assertOnboarded(user);
     const { filename, mimeType, sizeBytes } = bodySchema.parse(await req.json());
 
-    const allowedExts = ALLOWED_UPLOAD_TYPES[mimeType];
-    const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
-    if (!allowedExts || !allowedExts.includes(ext)) {
-      return NextResponse.json(
-        { error: "Jenis berkas tidak diizinkan. Gunakan PDF, Word, Excel, atau gambar (JPG/PNG)." },
-        { status: 400 }
-      );
-    }
+    // Daftar putih jenis berkas + nama aman; isi berkas diperiksa lagi saat konfirmasi.
+    const meta = validateUploadMeta(filename, mimeType);
+    if (!meta.ok) return NextResponse.json({ error: meta.error }, { status: 400 });
 
     const id = randomUUID();
     const key = `documents/app-uploads/${id}/${sanitizeFilename(filename)}`;
@@ -68,14 +46,14 @@ export async function POST(req: NextRequest) {
       category: "app-upload",
       pathSegments: [],
       sizeBytes,
-      mimeType,
+      mimeType: meta.kind.mime,
       uploadStatus: "pending",
       uploadedByUserId: user.id,
     });
 
     const uploadUrl = await getSignedUrl(
       r2,
-      new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: mimeType }),
+      new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: meta.kind.mime }),
       { expiresIn: 300 }
     );
 

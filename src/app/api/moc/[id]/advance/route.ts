@@ -19,6 +19,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const moc = await requireMocAction(params.id, user, "advance");
     const { notes } = bodySchema.parse(await req.json().catch(() => ({})));
 
+    if (!notes) throw new HttpError(400, "Catatan wajib diisi.");
+
     const next = nextRegisterStatus(moc.registerStatus);
     if (!next) throw new HttpError(409, "MOC sudah berstatus akhir.");
 

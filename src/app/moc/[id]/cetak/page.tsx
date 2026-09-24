@@ -32,9 +32,6 @@ function PrintContent({ id }: { id: string }) {
       `}</style>
       <div className="no-print mb-3">
         <Link href={`/moc/${moc.id}`} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">← Kembali ke detail</Link>
-        <p className="text-[11.5px] text-[#6b6e72] mt-1">
-          “Unduh PDF” membuka dialog cetak — pilih <strong>Simpan sebagai PDF</strong>. Tandatangani di luar web, lalu unggah hasilnya di halaman detail.
-        </p>
       </div>
       <div className="bg-white p-3 border border-[#C5CED3] rounded-[8px] print:border-0 print:p-0">
         <MocFormViewer moc={moc} initialForm={form} standalone autoPrint={params.get("print") === "1"} />

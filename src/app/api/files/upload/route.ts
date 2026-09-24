@@ -31,20 +31,7 @@ import { sanitizeFilename } from "@/lib/r2/keys";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
-
-// Same allowlist as presign-upload — a second entry point into the bucket must not
-// become a weaker one. Kept in sync deliberately; both reject anything that could be
-// served back inline as script (.html/.svg).
-const ALLOWED_UPLOAD_TYPES: Record<string, string[]> = {
-  "application/pdf": [".pdf"],
-  "application/msword": [".doc"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-  "application/vnd.ms-excel": [".xls"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
-  "image/png": [".png"],
-  "image/jpeg": [".jpg", ".jpeg"],
-};
+import { scanWholeBuffer, validateUploadMeta } from "@/lib/security/fileScan";
 
 const MAX_PROXY_BYTES = 500 * 1024 * 1024;
 
@@ -67,18 +54,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ukuran berkas tidak valid." }, { status: 400 });
     }
 
-    const allowedExts = ALLOWED_UPLOAD_TYPES[mimeType];
-    const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
-    if (!allowedExts || !allowedExts.includes(ext)) {
-      return NextResponse.json(
-        { error: "Jenis berkas tidak diizinkan. Gunakan PDF, Word, Excel, atau gambar (JPG/PNG)." },
-        { status: 400 }
-      );
-    }
+    const meta = validateUploadMeta(filename, mimeType);
+    if (!meta.ok) return NextResponse.json({ error: meta.error }, { status: 400 });
 
     const id = randomUUID();
     const key = `documents/app-uploads/${id}/${sanitizeFilename(filename)}`;
     const bytes = Buffer.from(await file.arrayBuffer());
+
+    // Periksa ISI berkas sebelum menyentuh bucket: tanda-byte harus cocok dengan
+    // ekstensi dan tidak boleh membawa skrip/makro/berkas tertanam.
+    const problem = scanWholeBuffer(meta.kind, bytes);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
     // Upload to R2 BEFORE inserting the row: a failed PutObject must not leave an
     // orphan 'pending' registry row behind (the direct-PUT flow can strand those,
@@ -88,7 +74,7 @@ export async function POST(req: NextRequest) {
         Bucket: R2_BUCKET,
         Key: key,
         Body: bytes,
-        ContentType: mimeType,
+        ContentType: meta.kind.mime,
       })
     );
 
@@ -100,7 +86,7 @@ export async function POST(req: NextRequest) {
       category: "app-upload",
       pathSegments: [],
       sizeBytes,
-      mimeType,
+      mimeType: meta.kind.mime,
       // Already in the bucket by this point — no separate confirm step needed, so
       // this row is never left dangling in 'pending'.
       uploadStatus: "uploaded",

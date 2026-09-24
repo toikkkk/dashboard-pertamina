@@ -43,6 +43,13 @@
       "when": 1790278107130,
       "tag": "0005_moc_roles_and_planned",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790283270121,
+      "tag": "0006_moc_lampiran",
+      "breakpoints": true
     }
   ]
 }

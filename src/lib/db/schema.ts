@@ -330,10 +330,12 @@ export const mocEvidence = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     mocId: uuid("moc_id").notNull().references(() => mocRequests.id, { onDelete: "cascade" }),
     slot: text("slot").notNull(),
+    // Tahap Register saat lampiran diunggah (hanya untuk slot 'lampiran').
+    stage: text("stage"),
     reviewId: uuid("review_id").references(() => mocReviews.id, { onDelete: "set null" }),
     fileId: uuid("file_id").notNull().references(() => fileRegistry.id),
     uploadedBy: uuid("uploaded_by").references(() => users.id),
     uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check("moc_evidence_slot_check", sql`${t.slot} IN ('initiator','reviewer','approver','controller')`)]
+  (t) => [check("moc_evidence_slot_check", sql`${t.slot} IN ('initiator','reviewer','approver','controller','lampiran')`)]
 );

@@ -22,8 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const user = await requireSessionUser();
     const moc = await requireMocAction(params.id, user, "review");
     const { outcome, recommendation, evidenceFileId } = bodySchema.parse(await req.json());
-    if (outcome === "Perlu Perubahan" && !recommendation) {
-      throw new HttpError(400, "Catatan wajib diisi bila meminta perubahan.");
+    if (!recommendation) {
+      throw new HttpError(400, "Catatan review wajib diisi.");
     }
 
     const mine = reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === user.id && r.outcome === "Pending");

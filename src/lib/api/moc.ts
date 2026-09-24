@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { mocRequests, mocReviews, mocHistory, mocEvidence, fileRegistry, users } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { ForbiddenError } from "@/lib/auth/rbac";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPE_ERROR, isAttachmentKind } from "@/lib/security/fileScan";
 import { HttpError } from "@/lib/api/respond";
 import {
   MOC_CHANGE_CATEGORIES,
@@ -98,13 +99,15 @@ function toRequest(
   reviews: MocReview[],
   history: MocHistoryEntry[],
   evidence: MocEvidence[],
-  approverName: string | null
+  approverName: string | null,
+  createdByName: string | null
 ): MocRequest {
   return {
     id: row.id,
     mocNumber: row.mocNumber,
     location: row.location,
     createdBy: row.createdBy,
+    createdByName,
     registerStatus: row.registerStatus as MocRequest["registerStatus"],
     validationState: row.validationState as MocRequest["validationState"],
     round: row.round,
@@ -178,10 +181,11 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
       .where(eq(mocEvidence.mocId, id))
       .orderBy(asc(mocEvidence.uploadedAt)),
   ]);
-  const names = await userNames([row.approverUserId]);
+  const names = await userNames([row.approverUserId, row.createdBy]);
   const evidence: MocEvidence[] = evidenceRows.map(({ e, fileName, uploaderName }) => ({
     id: e.id,
     slot: e.slot as MocEvidenceSlot,
+    stage: e.stage ?? undefined,
     reviewId: e.reviewId ?? undefined,
     fileId: e.fileId,
     fileName,
@@ -189,7 +193,7 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
     uploadedByName: uploaderName ?? "—",
     uploadedAt: fmtTs(e.uploadedAt),
   }));
-  return toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null);
+  return toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null, names.get(row.createdBy ?? "") ?? null);
 }
 
 // Daftar Register MOC. Sengaja ringan: review terisi (dibutuhkan mocActionsFor untuk
@@ -198,14 +202,15 @@ export async function loadMocList(): Promise<MocRequest[]> {
   const rows = await db.select().from(mocRequests).orderBy(desc(mocRequests.createdAt));
   if (rows.length === 0) return [];
   const reviewRows = await db.select().from(mocReviews).where(inArray(mocReviews.mocId, rows.map((r) => r.id)));
-  const names = await userNames(rows.map((r) => r.approverUserId));
+  const names = await userNames(rows.flatMap((r) => [r.approverUserId, r.createdBy]));
   return rows.map((row) =>
     toRequest(
       row,
       reviewRows.filter((rv) => rv.mocId === row.id).map(toReview),
       [],
       [],
-      names.get(row.approverUserId ?? "") ?? null
+      names.get(row.approverUserId ?? "") ?? null,
+      names.get(row.createdBy ?? "") ?? null
     )
   );
 }
@@ -235,15 +240,21 @@ export async function attachMocEvidence(
   slot: MocEvidenceSlot,
   fileId: string,
   user: SessionUser,
-  reviewId?: string
+  reviewId?: string,
+  stage?: string
 ): Promise<boolean> {
   const [file] = await db
-    .select({ id: fileRegistry.id })
+    .select({ id: fileRegistry.id, name: fileRegistry.originalFilename, size: fileRegistry.sizeBytes })
     .from(fileRegistry)
     .where(and(eq(fileRegistry.id, fileId), eq(fileRegistry.uploadStatus, "uploaded"), eq(fileRegistry.uploadedByUserId, user.id)))
     .limit(1);
   if (!file) return false;
-  await db.insert(mocEvidence).values({ mocId, slot, fileId, uploadedBy: user.id, reviewId });
+  // Lampiran tahap: hanya gambar/PDF (sudah dipindai saat unggah) dan maksimum 20MB.
+  if (slot === "lampiran") {
+    if (!isAttachmentKind(file.name)) throw new HttpError(400, ATTACHMENT_TYPE_ERROR);
+    if (Number(file.size) > ATTACHMENT_MAX_BYTES) throw new HttpError(400, "Ukuran lampiran maksimum 20MB.");
+  }
+  await db.insert(mocEvidence).values({ mocId, slot, fileId, uploadedBy: user.id, reviewId, stage });
   return true;
 }
 

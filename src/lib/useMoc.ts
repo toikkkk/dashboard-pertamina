@@ -97,6 +97,6 @@ export const mocApi = {
   ) => post(`/api/moc/${id}/decision`, body),
   register: (id: string, body: { mocNumber?: string; evidenceFileId?: string }) => post(`/api/moc/${id}/register`, body),
   advance: (id: string, body: { notes: string }) => post(`/api/moc/${id}/advance`, body),
-  attachEvidence: (id: string, body: { slot: "initiator" | "reviewer" | "approver" | "controller"; fileId: string; reviewId?: string }) =>
+  attachEvidence: (id: string, body: { slot: "initiator" | "reviewer" | "approver" | "controller" | "lampiran"; fileId: string; reviewId?: string }) =>
     post(`/api/moc/${id}/evidence`, body),
 };

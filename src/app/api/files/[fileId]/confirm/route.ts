@@ -9,6 +9,7 @@ import { fileRegistry } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
+import { verifyUploadedObject } from "@/lib/api/fileVerify";
 
 const bodySchema = z.object({ checksumSha256: z.string().optional() });
 
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest, { params }: { params: { fileId: str
     if (!file) return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
     if (file.uploadedByUserId !== user.id) {
       throw new ForbiddenError("Anda tidak dapat mengonfirmasi unggahan milik user lain.");
+    }
+
+    if (file.uploadStatus === "failed") {
+      return NextResponse.json({ error: "Berkas ini sebelumnya ditolak pemeriksaan keamanan. Unggah ulang berkas yang berbeda." }, { status: 400 });
+    }
+    if (file.uploadStatus === "pending") {
+      // Periksa isi nyata di bucket (ukuran + tanda-byte + pola berbahaya) sebelum dianggap sah.
+      const problem = await verifyUploadedObject(file);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 
     const [updated] = await db

@@ -68,15 +68,15 @@ export default function MocRegisterPage() {
       canAdvance: mocActionsFor(m, actor).includes("advance"),
     }));
 
-  const groups: { key: string; title: string; hint: string; rows: Row[] }[] = [
-    { key: "need", title: "Perlu tindakan Anda", hint: "MOC yang menunggu Anda melakukan sesuatu.", rows: rows.filter((r) => r.needs.length > 0) },
+  const groups: { key: string; title: string; rows: Row[] }[] = [
+    { key: "need", title: "Perlu tindakan Anda", rows: rows.filter((r) => r.needs.length > 0) },
     {
       key: "run",
       title: "Sedang berjalan",
-      hint: "MOC yang masih diproses pihak lain atau tahap lanjutan.",
+     
       rows: rows.filter((r) => r.needs.length === 0 && r.moc.registerStatus !== "Closed"),
     },
-    { key: "done", title: "Selesai (Closed)", hint: "MOC yang sudah ditutup.", rows: rows.filter((r) => r.needs.length === 0 && r.moc.registerStatus === "Closed") },
+    { key: "done", title: "Selesai (Closed)", rows: rows.filter((r) => r.needs.length === 0 && r.moc.registerStatus === "Closed") },
   ].filter((g) => (mineOnly ? g.key === "need" : true) && g.rows.length > 0);
 
   const go = (id: string) => router.push(`/moc/${id}`);
@@ -103,7 +103,6 @@ export default function MocRegisterPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
           <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">Register MOC</h1>
-          <p className="text-[12px] text-[#6b6e72] mt-0.5">Daftar Management of Change dan tahapnya (Lampiran 8 TKO). Klik baris mana pun untuk membuka MOC.</p>
         </div>
         {canCreate && (
           <Link
@@ -166,7 +165,6 @@ export default function MocRegisterPage() {
                 >
                   {g.rows.length}
                 </span>
-                <span className="text-[11.5px] text-[#6b6e72]">{g.hint}</span>
               </div>
 
               <div className={`${CARD} overflow-hidden`} style={g.key === "need" ? { borderColor: "#B45309" } : undefined}>

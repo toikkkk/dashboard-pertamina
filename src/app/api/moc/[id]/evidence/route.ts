@@ -7,7 +7,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { ForbiddenError } from "@/lib/auth/rbac";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { attachMocEvidence, loadMocItem } from "@/lib/api/moc";
-import { MOC_EVIDENCE_SLOTS, MOC_INITIATOR_ROLE } from "@/lib/domain/moc";
+import { MOC_EVIDENCE_SLOTS, MOC_INITIATOR_ROLE, mocCanAttach } from "@/lib/domain/moc";
 
 const bodySchema = z.object({
   slot: z.enum(MOC_EVIDENCE_SLOTS),
@@ -25,7 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const inLocation = !!user.location && user.location === moc.location;
     const allowed =
       inLocation &&
-      (slot === "initiator"
+      (slot === "lampiran"
+        ? mocCanAttach(moc, user)
+        : slot === "initiator"
         ? user.role === MOC_INITIATOR_ROLE
         : slot === "reviewer"
           ? moc.reviews.some((r) => r.reviewerUserId === user.id && (!reviewId || r.id === reviewId))
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             : user.role.includes("Controller"));
     if (!allowed) throw new ForbiddenError("Anda tidak berwenang melampirkan bukti pada bagian ini.");
 
-    const ok = await attachMocEvidence(moc.id, slot, fileId, user, slot === "reviewer" ? reviewId : undefined);
+    const ok = await attachMocEvidence(moc.id, slot, fileId, user, slot === "reviewer" ? reviewId : undefined, slot === "lampiran" ? (moc.registerStatus === "Inisiasi & Validasi" ? "Terdaftar" : moc.registerStatus) : undefined);
     if (!ok) throw new HttpError(400, "Berkas bukti tidak valid atau bukan unggahan Anda.");
     return NextResponse.json(await loadMocItem(moc.id));
   });

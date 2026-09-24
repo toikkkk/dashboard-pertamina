@@ -97,7 +97,8 @@ export function hasMocRole(user: { mocRoles?: string[] | null }, flag: MocRoleFl
   return !!user.mocRoles && user.mocRoles.includes(flag);
 }
 
-export const MOC_EVIDENCE_SLOTS = ["initiator", "reviewer", "approver", "controller"] as const;
+// "lampiran" = gambar/PDF pendukung tahap Implementasi dst. (bukan bukti tanda tangan).
+export const MOC_EVIDENCE_SLOTS = ["initiator", "reviewer", "approver", "controller", "lampiran"] as const;
 export type MocEvidenceSlot = (typeof MOC_EVIDENCE_SLOTS)[number];
 
 // SLA (TKO Tabel 5): review 5/10/15 hari kerja menurut tingkat risiko; persetujuan 5 hari.
@@ -140,6 +141,7 @@ export interface MocHistoryEntry {
 export interface MocEvidence {
   id: string;
   slot: MocEvidenceSlot;
+  stage?: string;
   reviewId?: string;
   fileId: string;
   fileName?: string;
@@ -186,6 +188,7 @@ export interface MocRequest extends MocFormContent {
   mocNumber: string | null; // diisi Controller saat registrasi
   location: string;
   createdBy: string | null;
+  createdByName: string | null;
   registerStatus: MocRegisterStatus;
   validationState: MocValidationState;
   round: number;
@@ -267,6 +270,14 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
   return actions;
 }
 
+// Boleh menambah lampiran gambar/PDF (opsional) pada tahap Implementasi dst.: MOC sudah
+// terdaftar & belum Closed, dan user adalah Controller lokasi, Performer, atau pembuat MOC.
+export function mocCanAttach(moc: MocRequest, user: MocActor): boolean {
+  if (!isLocationMember(moc, user)) return false;
+  if (moc.validationState !== "registered" || moc.registerStatus === "Closed") return false;
+  return user.role.includes("Controller") || moc.performerUserId === user.id || moc.createdBy === user.id;
+}
+
 export function nextRegisterStatus(current: MocRegisterStatus): MocRegisterStatus | null {
   const i = MOC_REGISTER_STATUSES.indexOf(current);
   return i >= 0 && i < MOC_REGISTER_STATUSES.length - 1 ? MOC_REGISTER_STATUSES[i + 1] : null;
@@ -313,13 +324,14 @@ export const MOC_LATER_STAGE_INFO: Record<"Implementasi" | "Pemantauan" | "Tinja
 // Ringkasan jelas: MOC ini SEKARANG menunggu siapa dan apa — supaya user tidak
 // bingung apakah input mereka sudah masuk.
 export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; done: boolean } {
+  const owner = moc.createdByName ? `${moc.createdByName} (pembuat MOC)` : "Pembuat MOC";
   switch (moc.validationState) {
     case "draft":
-      return { title: "Draf — belum diajukan", detail: "Initiator melengkapi formulir lalu memilih Reviewer dan Approver untuk diajukan.", done: false };
+      return { title: "Draf — belum diajukan", detail: `${owner} melengkapi formulir lalu memilih Reviewer dan Approver untuk diajukan.`, done: false };
     case "returned":
-      return { title: "Dikembalikan ke Initiator", detail: "Ada reviewer yang meminta perubahan. Initiator memperbaiki lalu mengajukan ulang.", done: false };
+      return { title: "Dikembalikan ke Initiator", detail: `Ada reviewer yang meminta perubahan. ${owner} memperbaiki lalu mengajukan ulang.`, done: false };
     case "rejected":
-      return { title: "Ditolak Approver", detail: `Initiator memperbaiki sesuai catatan Approver${moc.approverNote ? ` (“${moc.approverNote}”)` : ""} lalu mengajukan ulang.`, done: false };
+      return { title: "Ditolak Approver", detail: `${owner} memperbaiki sesuai catatan Approver${moc.approverNote ? ` (“${moc.approverNote}”)` : ""} lalu mengajukan ulang.`, done: false };
     case "in_review": {
       const pending = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Pending");
       const total = moc.reviews.filter((r) => r.round === moc.round).length;
