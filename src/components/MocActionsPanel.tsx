@@ -15,21 +15,71 @@ import {
   type MocRequest,
 } from "@/lib/domain/moc";
 
-const INPUT = "w-full min-h-[36px] px-2.5 py-1.5 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white";
-const LABEL = "block text-[11.5px] font-bold text-[#0F172A] mb-1";
+const INPUT = "w-full min-h-[38px] px-3 py-2 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white focus:outline-none focus:border-[#0F3B59]";
 const BTN =
-  "px-5 py-2 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white text-[13px] font-bold disabled:opacity-60 transition-colors";
+  "px-6 py-2.5 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white text-[13.5px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
 
-// Unggah bukti tanda tangan (berkas yang sudah ditandatangani di luar web). Opsional
-// sementara — lihat MOC_REQUIRE_SIGNED_EVIDENCE di domain/moc.ts.
+// Kartu "Giliran Anda": satu fokus, satu tombol utama. Isian opsional disembunyikan
+// (Optional) supaya layar tidak penuh.
+function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-[14px] border border-[#C5CED3] border-l-[5px] border-l-[#B45309] shadow-[0_1px_2px_rgba(15,23,42,.05),0_4px_14px_rgba(15,23,42,.05)] p-5">
+      <div className="text-[11px] font-bold uppercase tracking-wide text-[#B45309]">Giliran Anda</div>
+      <h2 className="font-heading text-[17px] font-bold text-[#0F172A] mt-0.5">{title}</h2>
+      {hint && <p className="text-[12.5px] text-[#6b6e72] mt-1">{hint}</p>}
+      <div className="flex flex-col gap-4 mt-4">{children}</div>
+    </section>
+  );
+}
+
+function Step({ n, label, children }: { n: number; label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">
+        <span className="text-[#6b6e72] font-semibold">{n}.</span> {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Choice({ selected, onSelect, title, hint, tone }: { selected: boolean; onSelect: () => void; title: string; hint: string; tone: "good" | "warn" | "bad" }) {
+  const color = tone === "good" ? "#15803D" : tone === "warn" ? "#6D28D9" : "#DC2626";
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className="flex-1 min-w-[210px] text-left px-4 py-3 rounded-[10px] border-2 transition-colors"
+      style={{ borderColor: selected ? color : "#C5CED3", background: selected ? `${color}12` : "#fff" }}
+    >
+      <div className="text-[13.5px] font-bold" style={{ color: selected ? color : "#0F172A" }}>{title}</div>
+      <div className="text-[12px] text-[#6b6e72] mt-0.5">{hint}</div>
+    </button>
+  );
+}
+
+function Optional({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group">
+      <summary className="cursor-pointer select-none text-[12.5px] font-semibold text-[#0F3B59] hover:underline list-none [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">＋ {label}</span>
+        <span className="hidden group-open:inline">− {label}</span>
+      </summary>
+      <div className="mt-2.5">{children}</div>
+    </details>
+  );
+}
+
+// Unggah bukti tanda tangan (berkas yang sudah ditandatangani di luar web).
 function EvidenceInput({ onFileId, disabled }: { onFileId: (id: string | undefined) => void; disabled?: boolean }) {
   const [name, setName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   return (
     <div>
-      <label className={LABEL}>Bukti tanda tangan (opsional)</label>
-      <label className="inline-flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-semibold border border-dashed border-[#C5CED3] rounded-[8px] cursor-pointer hover:border-[#0F3B59] transition-colors">
+      <label className="inline-flex items-center gap-2 px-3 py-2 text-[12.5px] font-semibold border border-dashed border-[#C5CED3] rounded-[8px] cursor-pointer hover:border-[#0F3B59] transition-colors">
         <Paperclip className="w-3.5 h-3.5" strokeWidth={2} />
         {busy ? "Mengunggah…" : name ?? "Pilih berkas (PDF / gambar)"}
         <input
@@ -56,24 +106,15 @@ function EvidenceInput({ onFileId, disabled }: { onFileId: (id: string | undefin
         />
       </label>
       {err && <p className="text-[11.5px] text-[#DC2626] mt-1">{err}</p>}
-      <p className="text-[11px] text-[#6b6e72] mt-1">Cetak lembar formulir, tanda tangani di luar web, lalu unggah hasilnya di sini.</p>
+      <p className="text-[11.5px] text-[#6b6e72] mt-1.5">Cetak formulir, tanda tangani di luar web, lalu unggah hasilnya di sini.</p>
     </div>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="bg-white border border-[#0F3B59] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
-      <h2 className="px-4 py-2.5 text-[12.5px] font-bold text-white bg-[#0F3B59]">{title}</h2>
-      <div className="p-4 flex flex-col gap-3.5">{children}</div>
-    </section>
   );
 }
 
 function EmptyPool({ role }: { role: string }) {
   return (
-    <p className="text-[12px] text-[#B45309] font-semibold">
-      Belum ada pengguna dengan peran {role} di lokasi ini. Minta Admin Regional menetapkannya di Kelola User → Peran MOC.
+    <p className="text-[12.5px] text-[#B45309] font-semibold">
+      Belum ada pengguna ber-peran {role} di lokasi ini. Minta Admin Regional menetapkannya di Kelola User → Peran MOC.
     </p>
   );
 }
@@ -98,8 +139,8 @@ export default function MocActionsPanel({
   const [error, setError] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<string | undefined>();
 
-  // Ajukan / ajukan ulang. Urutan sumber isian: rencana yang tersimpan di server ->
-  // reviewer putaran terakhir -> dua baris kosong. Jadi tidak hilang saat pindah halaman.
+  // Ajukan / ajukan ulang. Sumber isian: rencana tersimpan di server -> reviewer putaran
+  // terakhir -> dua baris kosong. Jadi pilihan tidak hilang saat pindah halaman.
   const lastRoundNo = Math.max(0, ...moc.reviews.map((x) => x.round));
   const lastRound = moc.reviews.filter((r) => r.round === lastRoundNo);
   const [reviewers, setReviewers] = useState<MocPlannedReviewer[]>(() =>
@@ -133,19 +174,17 @@ export default function MocActionsPanel({
     touch();
     setReviewers((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   };
+  // Fungsi otomatis dari peran akun (diatur Admin); tidak perlu diketik lagi.
   const pickReviewer = (i: number, userId: string) => {
     const u = reviewerPool.find((x) => x.id === userId);
-    setRow(i, { userId, functionLabel: u?.mocFunction ?? reviewers[i].functionLabel });
+    setRow(i, { userId, functionLabel: u?.mocFunction ?? "Reviewer" });
   };
 
-  // Review
   const [outcome, setOutcome] = useState<"Sesuai" | "Perlu Perubahan">("Sesuai");
   const [recommendation, setRecommendation] = useState("");
-  // Keputusan
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [note, setNote] = useState("");
   const [performerId, setPerformerId] = useState("");
-  // Registrasi & majukan
   const [mocNumber, setMocNumber] = useState("");
   const [advanceNotes, setAdvanceNotes] = useState("");
   const [confirmAdvance, setConfirmAdvance] = useState(false);
@@ -171,64 +210,66 @@ export default function MocActionsPanel({
   const myReview = reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === activeUser.id && r.outcome === "Pending");
   const next = nextRegisterStatus(moc.registerStatus);
   const startsImplementation = moc.registerStatus === "Inisiasi & Validasi";
-  const currentLabel = startsImplementation ? "Registrasi" : moc.registerStatus;
   const canSubmit = !busy && !!approverId && reviewers.length > 0 && reviewers.every((r) => r.userId && r.functionLabel.trim());
+  const reviseNotes = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Perlu Perubahan");
 
   return (
     <div className="flex flex-col gap-4">
       {actions.includes("submit") && (
-        <Card title={moc.validationState === "draft" ? "Ajukan ke Reviewer" : "Ajukan Ulang ke Reviewer"}>
-          {moc.validationState === "returned" && (
-            <ul className="text-[12px] text-[#3a3d40] list-disc pl-5">
-              {moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Perlu Perubahan").map((r) => (
-                <li key={r.id}><strong>{r.functionLabel}</strong>: {r.recommendation}</li>
-              ))}
-            </ul>
+        <Panel
+          title={moc.validationState === "draft" ? "Ajukan MOC untuk direview" : "Ajukan ulang setelah perbaikan"}
+          hint={moc.validationState === "draft" ? "Pilih siapa yang mereview dan siapa yang menyetujui." : undefined}
+        >
+          {(reviseNotes.length > 0 || (moc.validationState === "rejected" && moc.approverNote)) && (
+            <div className="rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3">
+              <div className="text-[12px] font-bold text-[#92400E] mb-1">Yang perlu diperbaiki</div>
+              <ul className="text-[12.5px] text-[#3a3d40] list-disc pl-4 flex flex-col gap-0.5">
+                {reviseNotes.map((r) => <li key={r.id}><strong>{r.functionLabel}:</strong> {r.recommendation}</li>)}
+                {moc.validationState === "rejected" && moc.approverNote && <li><strong>Approver:</strong> {moc.approverNote}</li>}
+              </ul>
+            </div>
           )}
-          {moc.validationState === "rejected" && moc.approverNote && (
-            <p className="text-[12px] text-[#3a3d40]"><strong>Catatan Approver:</strong> {moc.approverNote}</p>
-          )}
-          <div>
-            <div className={LABEL}>MoC Reviewer (dinilai paralel)</div>
+
+          <Step n={1} label="Siapa yang mereview? (dinilai bersamaan)">
             {reviewerPool.length === 0 ? (
               <EmptyPool role="Reviewer" />
             ) : (
               <div className="flex flex-col gap-2">
                 {reviewers.map((r, i) => (
-                  <div key={i} className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_auto] gap-2">
+                  <div key={i} className="flex items-center gap-2">
                     <select className={INPUT} value={r.userId} onChange={(e) => pickReviewer(i, e.target.value)} aria-label="Reviewer">
-                      <option value="">Pilih Reviewer…</option>
+                      <option value="">Pilih reviewer…</option>
                       {reviewerPool.map((u) => (
                         <option key={u.id} value={u.id} disabled={reviewers.some((x, idx) => idx !== i && x.userId === u.id)}>
                           {u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}
                         </option>
                       ))}
                     </select>
-                    <input className={INPUT} placeholder="Fungsi (mis. HSSE)" value={r.functionLabel} onChange={(e) => setRow(i, { functionLabel: e.target.value })} />
-                    <input className={INPUT} placeholder="Jabatan" value={r.jabatan} onChange={(e) => setRow(i, { jabatan: e.target.value })} />
-                    <button type="button" aria-label="Hapus reviewer" disabled={reviewers.length === 1} onClick={() => { touch(); setReviewers(reviewers.filter((_, idx) => idx !== i)); }} className="px-2 text-[#6b6e72] hover:text-[#DC2626] disabled:opacity-30">
+                    <button type="button" aria-label="Hapus reviewer" disabled={reviewers.length === 1} onClick={() => { touch(); setReviewers(reviewers.filter((_, idx) => idx !== i)); }} className="p-2 text-[#6b6e72] hover:text-[#DC2626] disabled:opacity-30">
                       <X className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={() => { touch(); setReviewers([...reviewers, { userId: "", functionLabel: "", jabatan: "" }]); }} className="self-start inline-flex items-center gap-1 text-[12px] font-bold text-[#0F3B59] hover:underline">
+                <button type="button" onClick={() => { touch(); setReviewers([...reviewers, { userId: "", functionLabel: "", jabatan: "" }]); }} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
                   <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah reviewer
                 </button>
               </div>
             )}
-          </div>
-          <div>
-            <label className={LABEL}>MoC Approver</label>
+          </Step>
+
+          <Step n={2} label="Siapa yang menyetujui?">
             {approverPool.length === 0 ? (
               <EmptyPool role="Approver" />
             ) : (
               <select className={INPUT} value={approverId} onChange={(e) => { touch(); setApproverId(e.target.value); }} aria-label="Approver">
-                <option value="">Pilih Approver…</option>
+                <option value="">Pilih approver…</option>
                 {approverPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
               </select>
             )}
-          </div>
-          <EvidenceInput onFileId={setEvidence} disabled={busy} />
+          </Step>
+
+          <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
+
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
@@ -242,34 +283,36 @@ export default function MocActionsPanel({
                       approverUserId: approverId,
                       evidenceFileId: evidence,
                     }),
-                  (s) => `MOC diajukan ke ${reviewers.length} reviewer (putaran ${s.round}). Status: Menunggu review.`
+                  (s) => `MOC diajukan ke ${reviewers.length} reviewer (putaran ${s.round}). Sekarang menunggu review.`
                 )
               }
             >
               {busy ? "Mengirim…" : "Ajukan"}
             </button>
             <span className="text-[11.5px] text-[#6b6e72]" aria-live="polite">
-              {planSaved === "saving" ? "Menyimpan pilihan…" : planSaved === "saved" ? "Pilihan reviewer & approver tersimpan" : ""}
+              {planSaved === "saving" ? "Menyimpan pilihan…" : planSaved === "saved" ? "Pilihan tersimpan otomatis" : !canSubmit && !busy ? "Lengkapi pilihan di atas untuk mengajukan." : ""}
             </span>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {actions.includes("review") && (
-        <Card title={`Review Anda${myReview ? ` — ${myReview.functionLabel}` : ""}`}>
-          <div className="flex gap-5 flex-wrap">
-            {(["Sesuai", "Perlu Perubahan"] as const).map((o) => (
-              <label key={o} className="flex items-center gap-1.5 text-[13px] font-semibold cursor-pointer">
-                <input type="radio" name="outcome" checked={outcome === o} onChange={() => setOutcome(o)} />
-                {o === "Sesuai" ? "Sesuai — tidak perlu perubahan" : "Perlu Perubahan"}
-              </label>
-            ))}
+        <Panel title={`Review MOC ini${myReview ? ` sebagai ${myReview.functionLabel}` : ""}`} hint="Pilih satu, lalu kirim.">
+          <div role="radiogroup" aria-label="Hasil review" className="flex gap-2.5 flex-wrap">
+            <Choice selected={outcome === "Sesuai"} onSelect={() => setOutcome("Sesuai")} tone="good" title="Sesuai" hint="Tidak perlu perubahan." />
+            <Choice selected={outcome === "Perlu Perubahan"} onSelect={() => setOutcome("Perlu Perubahan")} tone="warn" title="Perlu perubahan" hint="Kembalikan ke Initiator." />
           </div>
-          <div>
-            <label className={LABEL}>Rekomendasi / catatan evaluasi{outcome === "Perlu Perubahan" ? " (wajib)" : ""}</label>
-            <textarea className={INPUT} rows={4} value={recommendation} onChange={(e) => setRecommendation(e.target.value)} />
-          </div>
-          <EvidenceInput onFileId={setEvidence} disabled={busy} />
+          {outcome === "Perlu Perubahan" ? (
+            <div>
+              <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">Apa yang perlu diperbaiki? <span className="text-[#DC2626]">*</span></div>
+              <textarea className={INPUT} rows={3} value={recommendation} onChange={(e) => setRecommendation(e.target.value)} placeholder="Tuliskan catatan untuk Initiator…" />
+            </div>
+          ) : (
+            <Optional label="Tambah catatan (opsional)">
+              <textarea className={INPUT} rows={3} value={recommendation} onChange={(e) => setRecommendation(e.target.value)} />
+            </Optional>
+          )}
+          <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
             <button
               type="button"
@@ -284,45 +327,46 @@ export default function MocActionsPanel({
                         ? "Menunggu reviewer lain."
                         : s.validationState === "pending_approval"
                           ? "Semua reviewer sesuai — dilanjutkan ke Approver."
-                          : "Ada perubahan yang diminta — MOC dikembalikan ke Initiator."
+                          : "MOC dikembalikan ke Initiator untuk diperbaiki."
                     }`
                 )
               }
             >
-              {busy ? "Mengirim…" : "Kirim Review"}
+              {busy ? "Mengirim…" : "Kirim review"}
             </button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {actions.includes("decide") && (
-        <Card title="Keputusan MoC Approver">
-          <div className="flex gap-5 flex-wrap">
-            {(["approve", "reject"] as const).map((d) => (
-              <label key={d} className="flex items-center gap-1.5 text-[13px] font-semibold cursor-pointer">
-                <input type="radio" name="decision" checked={decision === d} onChange={() => setDecision(d)} />
-                {d === "approve" ? "Setujui" : "Tolak (kembali ke Initiator)"}
-              </label>
-            ))}
+        <Panel title="Setujui atau tolak MOC ini" hint="Pilih satu, lalu kirim.">
+          <div role="radiogroup" aria-label="Keputusan" className="flex gap-2.5 flex-wrap">
+            <Choice selected={decision === "approve"} onSelect={() => setDecision("approve")} tone="good" title="Setujui" hint="Lanjut ke registrasi." />
+            <Choice selected={decision === "reject"} onSelect={() => setDecision("reject")} tone="bad" title="Tolak" hint="Kembali ke Initiator." />
           </div>
-          {decision === "approve" && (
+          {decision === "approve" ? (
+            <>
+              <Step n={1} label="Siapa MoC Performer-nya?">
+                {performerPool.length === 0 ? (
+                  <EmptyPool role="Performer" />
+                ) : (
+                  <select className={INPUT} value={performerId} onChange={(e) => setPerformerId(e.target.value)} aria-label="Performer">
+                    <option value="">Pilih performer…</option>
+                    {performerPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
+                  </select>
+                )}
+              </Step>
+              <Optional label="Tambah catatan (opsional)">
+                <textarea className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+              </Optional>
+            </>
+          ) : (
             <div>
-              <label className={LABEL}>Tunjuk MoC Performer</label>
-              {performerPool.length === 0 ? (
-                <EmptyPool role="Performer" />
-              ) : (
-                <select className={INPUT} value={performerId} onChange={(e) => setPerformerId(e.target.value)} aria-label="Performer">
-                  <option value="">Pilih Performer…</option>
-                  {performerPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
-                </select>
-              )}
+              <div className="text-[13px] font-bold text-[#0F172A] mb-1.5">Alasan penolakan / yang perlu diperbaiki <span className="text-[#DC2626]">*</span></div>
+              <textarea className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tuliskan catatan untuk Initiator…" />
             </div>
           )}
-          <div>
-            <label className={LABEL}>Catatan{decision === "reject" ? " (wajib — perbaikan upaya preventif/mitigasi)" : ""}</label>
-            <textarea className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-          <EvidenceInput onFileId={setEvidence} disabled={busy} />
+          <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
             <button
               type="button"
@@ -341,51 +385,47 @@ export default function MocActionsPanel({
                 )
               }
             >
-              {busy ? "Mengirim…" : decision === "approve" ? "Setujui" : "Tolak"}
+              {busy ? "Mengirim…" : decision === "approve" ? "Setujui MOC" : "Tolak MOC"}
             </button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {actions.includes("register") && (
-        <Card title="Registrasi MoC Controller">
-          <p className="text-[12.5px] text-[#3a3d40]">Catat MOC yang sudah disetujui ke daftar MoC dan beri Nomor MoC.</p>
+        <Panel title="Daftarkan MOC ke Register" hint="Nomor MoC akan dibuat otomatis.">
+          <Optional label="Ubah Nomor MoC (opsional)">
+            <input className={INPUT} value={mocNumber} onChange={(e) => setMocNumber(e.target.value)} placeholder="Kosongkan untuk nomor otomatis (MOC-LOKASI-TAHUN-urut)" />
+          </Optional>
+          <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
-            <label className={LABEL}>Nomor MoC</label>
-            <input className={INPUT} value={mocNumber} onChange={(e) => setMocNumber(e.target.value)} placeholder="Kosongkan untuk usulan otomatis (MOC-LOKASI-TAHUN-urut)" />
-          </div>
-          <EvidenceInput onFileId={setEvidence} disabled={busy} />
-          <div>
-            <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.register(moc.id, { mocNumber: mocNumber.trim() || undefined, evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}. Langkah berikutnya: majukan ke tahap Implementasi.`)}>
+            <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.register(moc.id, { mocNumber: mocNumber.trim() || undefined, evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}.`)}>
               {busy ? "Mendaftarkan…" : "Daftarkan MOC"}
             </button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {actions.includes("advance") && next && (
-        <Card title={`Tahap saat ini: ${currentLabel} → berikutnya: ${next}`}>
-          {!startsImplementation && moc.registerStatus in MOC_LATER_STAGE_INFO && (
-            <p className="text-[12.5px] text-[#3a3d40]">
-              <strong>Yang berlangsung di tahap {moc.registerStatus}:</strong> {MOC_LATER_STAGE_INFO[moc.registerStatus as keyof typeof MOC_LATER_STAGE_INFO]}
-            </p>
-          )}
-          <p className="text-[12px] text-[#6b6e72]">
-            Alur rinci tahap Komunikasi hingga Penutupan belum ditetapkan; tombol ini hanya menandai perpindahan tahap dan mencatat catatanmu di Riwayat. Satu klik = maju <strong>satu</strong> tahap.
-          </p>
-          <div>
-            <label className={LABEL}>Catatan (opsional)</label>
+        <Panel
+          title={startsImplementation ? "Mulai tahap Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjutkan ke tahap ${next}`}
+          hint={
+            startsImplementation
+              ? MOC_LATER_STAGE_INFO.Implementasi
+              : `Saat ini: ${moc.registerStatus}. ${MOC_LATER_STAGE_INFO[moc.registerStatus as keyof typeof MOC_LATER_STAGE_INFO] ?? ""}`
+          }
+        >
+          <Optional label="Tambah catatan (opsional)">
             <textarea className={INPUT} rows={2} value={advanceNotes} onChange={(e) => setAdvanceNotes(e.target.value)} />
-          </div>
+          </Optional>
           {!confirmAdvance ? (
             <div>
               <button type="button" className={BTN} disabled={busy} onClick={() => setConfirmAdvance(true)}>
-                {startsImplementation ? "Mulai tahap Implementasi" : next === "Closed" ? "Tutup MOC (Closed)" : `Selesaikan ${moc.registerStatus}, lanjut ${next}`}
+                {startsImplementation ? "Mulai Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjut ke ${next}`}
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 flex-wrap p-3 rounded-[8px] bg-[#FEF3C7] border border-[#B45309]/30">
-              <span className="text-[12.5px] font-semibold text-[#92400E]">Yakin memajukan MOC ke tahap “{next}”? Ini tercatat di Riwayat.</span>
+            <div className="flex items-center gap-3 flex-wrap p-3.5 rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30">
+              <span className="text-[13px] font-semibold text-[#92400E]">Majukan MOC ke tahap “{next}”? Ini tercatat di Riwayat.</span>
               <button type="button" className={BTN} disabled={busy} onClick={() => run(async () => { const saved = await mocApi.advance(moc.id, { notes: advanceNotes.trim() }); setAdvanceNotes(""); return saved; }, (s) => `Tahap dimajukan ke ${s.registerStatus}.`)}>
                 {busy ? "Memproses…" : "Ya, majukan"}
               </button>
@@ -394,10 +434,10 @@ export default function MocActionsPanel({
               </button>
             </div>
           )}
-        </Card>
+        </Panel>
       )}
 
-      {error && <p role="alert" className="text-[12.5px] font-semibold text-[#DC2626]">{error}</p>}
+      {error && <p role="alert" className="text-[13px] font-semibold text-[#DC2626]">{error}</p>}
     </div>
   );
 }

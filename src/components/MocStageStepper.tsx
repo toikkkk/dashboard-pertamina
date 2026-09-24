@@ -1,18 +1,17 @@
 import React from "react";
 import type { MocRequest } from "@/lib/domain/moc";
 
-// Tahap bernama untuk MOC. Tahap A-C (Inisiasi & Risiko -> Review -> Persetujuan ->
-// Registrasi) diturunkan dari validationState; tahap sesudahnya mengikuti status
-// Register (Lampiran 8). Bahasa visual sama dengan StatusTag: penanda dash kecil
-// berwarna + label — bukan ikon di dalam kotak berwarna.
-const VALIDATION_STEPS = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi"] as const;
-const LATER_STEPS = ["Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+// Batang progres tahap MOC: 8 segmen tipis + satu kalimat "Tahap X dari 8 · Nama".
+// (Sebelumnya 8 label berderet yang sulit dibaca sekilas.) Tahap A-C diturunkan dari
+// validationState; tahap sesudahnya mengikuti status Register (Lampiran 8).
+const STEPS = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi", "Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+const LATER = ["Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
 
 const DONE = "#15803D";
 const ACTIVE = "#0F3B59";
 const WARN = "#B45309";
 const BAD = "#DC2626";
-const IDLE = "#C5CED3";
+const IDLE = "#DCE2E6";
 
 function currentIndex(moc: Pick<MocRequest, "validationState" | "registerStatus">): number {
   switch (moc.validationState) {
@@ -27,36 +26,31 @@ function currentIndex(moc: Pick<MocRequest, "validationState" | "registerStatus"
     case "approved":
       return 3;
     case "registered": {
-      const later = LATER_STEPS.indexOf(moc.registerStatus as (typeof LATER_STEPS)[number]);
-      return VALIDATION_STEPS.length + Math.max(0, later);
+      const later = LATER.indexOf(moc.registerStatus as (typeof LATER)[number]);
+      return 4 + Math.max(0, later);
     }
   }
 }
 
 export default function MocStageStepper({ moc }: { moc: Pick<MocRequest, "validationState" | "registerStatus"> }) {
-  const steps = [...VALIDATION_STEPS, ...LATER_STEPS];
   const cur = currentIndex(moc);
   const closed = moc.registerStatus === "Closed" && moc.validationState === "registered";
   const problem = moc.validationState === "returned" ? WARN : moc.validationState === "rejected" ? BAD : null;
+  const label = closed ? "Selesai" : `Tahap ${cur + 1} dari ${STEPS.length} · ${STEPS[cur]}`;
 
   return (
-    <ol className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Tahap MOC">
-      {steps.map((label, i) => {
-        const done = i < cur || (closed && i === cur);
-        const active = i === cur && !closed;
-        const color = done ? DONE : active ? (problem ?? ACTIVE) : IDLE;
-        return (
-          <li key={label} className="flex items-center gap-1.5" aria-current={active ? "step" : undefined}>
-            <span className="inline-block w-4 h-[3px] rounded-full flex-shrink-0" style={{ background: color }} />
-            <span
-              className="text-[11.5px] whitespace-nowrap"
-              style={{ color: done || active ? "#0F172A" : "#9a9da0", fontWeight: active ? 700 : 600 }}
-            >
-              {label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+    <div aria-label={`Progres MOC: ${label}`}>
+      <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={closed ? STEPS.length : cur + 1}>
+        {STEPS.map((s, i) => {
+          const done = i < cur || (closed && i === cur);
+          const active = i === cur && !closed;
+          return <span key={s} className="h-[5px] flex-1 rounded-full" style={{ background: done ? DONE : active ? (problem ?? ACTIVE) : IDLE }} title={s} />;
+        })}
+      </div>
+      <div className="flex items-center justify-between gap-3 mt-1.5">
+        <span className="text-[12px] font-bold text-[#0F172A]">{label}</span>
+        {!closed && cur < STEPS.length - 1 && <span className="text-[11.5px] text-[#6b6e72]">Berikutnya: {STEPS[cur + 1]}</span>}
+      </div>
+    </div>
   );
 }
