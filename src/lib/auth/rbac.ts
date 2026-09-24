@@ -19,7 +19,16 @@ export class UnauthorizedError extends Error {
   }
 }
 
-export function assertLocationAccess(user: SessionUser, resourceLocation: string): void {
+// Hak BACA vs TULIS dipisah (keputusan meeting 2026-09-18 + konfirmasi user
+// 2026-09-25): siapa pun yang sudah onboarded boleh MELIHAT PSI dan MOC semua lokasi
+// ("mengintip", tanpa akses apa pun), tetapi mengubah/menyetujui/mengunggah tetap
+// terkunci ke lokasi sendiri. Jangan melonggarkan assertLocationWrite untuk
+// keperluan "lihat" — pakai assertLocationRead.
+export function assertLocationRead(user: SessionUser): void {
+  assertOnboarded(user);
+}
+
+export function assertLocationWrite(user: SessionUser, resourceLocation: string): void {
   if (user.isRegionalAdmin) return;
   if (user.location === resourceLocation) return;
   throw new ForbiddenError();

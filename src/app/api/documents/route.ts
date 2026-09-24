@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, historyItems, approvalRoutes, fileRegistry } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationAccess, assertOnboarded } from "@/lib/auth/rbac";
+import { assertLocationWrite, assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { loadDocumentsForUser, loadAllDocuments, loadDocumentItem } from "@/lib/api/documents";
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const user = await requireSessionUser();
     assertOnboarded(user);
     const body = bodySchema.parse(await req.json());
-    assertLocationAccess(user, body.location);
+    assertLocationWrite(user, body.location);
 
     // Without this, an invalid/foreign fileId would surface as a raw Postgres FK
     // violation (500) instead of a clean 404 — and, more importantly, nothing else

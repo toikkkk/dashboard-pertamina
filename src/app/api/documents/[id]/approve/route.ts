@@ -8,7 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { approvalRoutes, historyItems, historyDiffs, documents } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationAccess, ForbiddenError } from "@/lib/auth/rbac";
+import { assertLocationWrite, ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { loadDocumentItem, sessionUserToSimulated } from "@/lib/api/documents";
 import { canUserApproveDoc } from "@/lib/domain/rules";
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
     if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
-    assertLocationAccess(user, docRow.location);
+    assertLocationWrite(user, docRow.location);
 
     const doc = await loadDocumentItem(params.id);
     if (!doc) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });

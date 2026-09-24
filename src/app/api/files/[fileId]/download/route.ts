@@ -12,7 +12,7 @@ import { db } from "@/lib/db/client";
 import { fileRegistry, documents, historyItems } from "@/lib/db/schema";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationAccess, assertRegionalAdmin } from "@/lib/auth/rbac";
+import { assertLocationRead, assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 
 // "inline" (not "attachment") — DocumentContentPreview.tsx's PDF <iframe> and the
@@ -45,7 +45,7 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
 
     const linkedLocation = asPrimary?.location ?? asHistory?.location ?? null;
     if (linkedLocation) {
-      assertLocationAccess(user, linkedLocation);
+      assertLocationRead(user);
     } else {
       // Not part of any curated document — a raw archive file, admin-only until
       // deliberately linked via POST /api/registry/[id]/link.

@@ -21,12 +21,16 @@ function fmtDate(iso: string) {
 }
 
 function DirectoryContent() {
-  const { documents } = usePsi();
+  const { documents, allDocuments, activeUser } = usePsi();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  // Non-admin: default ke lokasi sendiri; "Semua lokasi" = lihat-saja (allDocuments).
+  const [scopeAll, setScopeAll] = useState(false);
+  const canPeekOtherLocations = !activeUser.isRegionalAdmin && !!activeUser.location;
+  const sourceDocs = canPeekOtherLocations && scopeAll ? allDocuments : documents;
   const [sortBy, setSortBy] = useState<SortKey>("issueDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
@@ -44,7 +48,7 @@ function DirectoryContent() {
     if (status) setStatusFilter(status);
   }, [searchParams]);
 
-  const filteredDocs = documents.filter((doc) => {
+  const filteredDocs = sourceDocs.filter((doc) => {
     const matchesSearch =
       doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.documentNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -144,6 +148,17 @@ function DirectoryContent() {
           <option value="Revision Required">Revision Required</option>
           <option value="Expired">Expired</option>
         </select>
+        {canPeekOtherLocations && (
+          <select
+            value={scopeAll ? "ALL" : "OWN"}
+            onChange={(e) => setScopeAll(e.target.value === "ALL")}
+            aria-label="Cakupan lokasi"
+            className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
+          >
+            <option value="OWN">Lokasi saya ({activeUser.location})</option>
+            <option value="ALL">Semua lokasi (lihat saja)</option>
+          </select>
+        )}
       </div>
 
       <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">

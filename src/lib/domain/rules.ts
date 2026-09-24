@@ -46,6 +46,10 @@ export function isDocOverdue(doc: DocumentItem): boolean {
 // mutating, never trust that a request only arrived because the button was visible.
 export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boolean {
   if (doc.status !== 'In Routing') return false;
+  // Lihat-saja lintas lokasi: user lokasi boleh MELIHAT dokumen lokasi lain, tapi
+  // tidak boleh menyetujuinya — tanpa cek ini Controller lokasi A akan melihat tombol
+  // setujui pada dokumen lokasi B (server memang menolak, tapi UI tidak boleh menawarkan).
+  if (!user.isRegionalAdmin && user.location !== doc.location) return false;
   const stepOrder = getPendingApprovalStepOrder(doc);
   if (stepOrder === null) return false;
   return doc.routes.some(
