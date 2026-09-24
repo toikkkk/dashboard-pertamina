@@ -54,6 +54,39 @@ export const SIMULATED_USERS: SimulatedUser[] = [
     location: 'FT Madiun',
     isRegionalAdmin: false
   },
+  // Added 2026-09-25 — a full MOC cast for FT Malang so the reviewer/approver/performer
+  // steps can be simulated with distinct people (Budi = Initiator, Agnes = Controller
+  // already exist). `role` only has 3 values, so reviewers/approver/performer carry the
+  // Initiator role; who acts as Reviewer/Approver/Performer is decided per-MOC, not by
+  // this field. Modelling gap: dedicated MOC roles do not exist yet.
+  {
+    id: 'user-8',
+    name: 'Rina Kusuma', // simulasi: MoC Reviewer — Maintenance Service
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'FT Malang',
+    isRegionalAdmin: false
+  },
+  {
+    id: 'user-9',
+    name: 'Dedi Hartono', // simulasi: MoC Reviewer — HSSE
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'FT Malang',
+    isRegionalAdmin: false
+  },
+  {
+    id: 'user-10',
+    name: 'Bagus Prakoso', // simulasi: MoC Approver — Terminal Manager
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'FT Malang',
+    isRegionalAdmin: false
+  },
+  {
+    id: 'user-11',
+    name: 'Wahyu Nugroho', // simulasi: MoC Performer
+    role: 'Penanggung Jawab PSI (Initiator)',
+    location: 'FT Malang',
+    isRegionalAdmin: false
+  },
   {
     id: 'user-4',
     name: 'Ir. Irwan Kurniawan',
