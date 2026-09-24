@@ -7,7 +7,22 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ForbiddenError, UnauthorizedError } from "@/lib/auth/rbac";
 
+// Error dengan status HTTP eksplisit (400/404/409) untuk kasus yang bukan 401/403/zod.
+export class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+    public extra?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 export function errorResponse(err: unknown): NextResponse {
+  if (err instanceof HttpError) {
+    return NextResponse.json({ error: err.message, ...(err.extra ?? {}) }, { status: err.status });
+  }
   if (err instanceof UnauthorizedError) {
     return NextResponse.json({ error: err.message }, { status: 401 });
   }

@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { db } from "@/lib/db/client";
-import { fileRegistry, documents, historyItems } from "@/lib/db/schema";
+import { fileRegistry, documents, historyItems, mocEvidence, mocRequests } from "@/lib/db/schema";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertRegionalAdmin } from "@/lib/auth/rbac";
@@ -43,7 +43,15 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
       .where(eq(historyItems.fileId, file.id))
       .limit(1);
 
-    const linkedLocation = asPrimary?.location ?? asHistory?.location ?? null;
+    // Berkas bukti tanda tangan MOC juga "milik" lokasi MOC-nya, bukan arsip mentah.
+    const [asMocEvidence] = await db
+      .select({ location: mocRequests.location })
+      .from(mocEvidence)
+      .innerJoin(mocRequests, eq(mocEvidence.mocId, mocRequests.id))
+      .where(eq(mocEvidence.fileId, file.id))
+      .limit(1);
+
+    const linkedLocation = asPrimary?.location ?? asHistory?.location ?? asMocEvidence?.location ?? null;
     if (linkedLocation) {
       assertLocationRead(user);
     } else {

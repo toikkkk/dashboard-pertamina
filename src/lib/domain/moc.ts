@@ -198,7 +198,7 @@ export interface MocActor {
 
 export type MocAction = "edit" | "submit" | "review" | "decide" | "register" | "advance";
 
-const INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
+export const MOC_INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
 
 export function riskValue(severity: number | null, probability: number | null): number | null {
   if (!severity || !probability) return null;
@@ -233,7 +233,7 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
   const isController = user.role.includes("Controller");
 
   const initiatorMayEdit =
-    user.role === INITIATOR_ROLE &&
+    user.role === MOC_INITIATOR_ROLE &&
     (moc.validationState === "draft" || moc.validationState === "returned" || moc.validationState === "rejected");
   if (initiatorMayEdit) actions.push("edit", "submit");
 
