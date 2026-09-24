@@ -40,20 +40,3 @@ export function printAsPdf(filename: string) {
   window.print();
   setTimeout(() => { document.title = previous; }, 1000);
 }
-
-const csvCell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
-
-// Register MOC (Lampiran 8) sebagai CSV yang dapat dibuka di Excel (BOM UTF-8, pemisah koma).
-export function downloadRegisterCsv(rows: MocRequest[], filename = "Register-MOC") {
-  const head = ["No.", "No MOC", "Lokasi", "Region/AP", "Type Anggaran", "Sifat Perubahan", "Judul Perubahan", "Alasan Perubahan", "Deskripsi Perubahan", "Tgl. Perubahan Disetujui", "Status Perubahan"];
-  const lines = [head.map(csvCell).join(",")];
-  rows.forEach((m, i) => {
-    lines.push(
-      [i + 1, m.mocNumber ?? "", m.location, m.region, m.anggaranType, m.sifatPerubahan, m.judul, m.latarBelakang, m.deskripsi, m.approvedAt ? m.approvedAt.slice(0, 10) : "", m.registerStatus]
-        .map(csvCell)
-        .join(",")
-    );
-  });
-  lines.push("", csvCell("Keterangan: Status Perubahan: 1) Inisiasi & Validasi; 2) Implementasi; 3) Pemantauan; 4) Tinjauan Akhir; 5) Closed"));
-  saveBlob(new Blob(["﻿", lines.join("\r\n")], { type: "text/csv;charset=utf-8" }), `${filename}.csv`);
-}

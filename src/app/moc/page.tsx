@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { useMocActor, useMocList } from "@/lib/useMoc";
 import {
@@ -17,7 +17,6 @@ import {
 } from "@/lib/domain/moc";
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import StatusTag from "@/components/StatusTag";
-import { downloadRegisterCsv } from "@/lib/mocDownload";
 
 const CARD =
   "bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)]";
@@ -106,15 +105,6 @@ export default function MocRegisterPage() {
           <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">Register MOC</h1>
           <p className="text-[12px] text-[#6b6e72] mt-0.5">Daftar Management of Change dan tahapnya (Lampiran 8 TKO). Klik baris mana pun untuk membuka MOC.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={() => downloadRegisterCsv(rows.map((r) => r.moc))}
-          disabled={rows.length === 0}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F172A] text-[12.5px] font-bold hover:border-[#0F3B59] disabled:opacity-40 transition-colors"
-        >
-          <Download className="w-3.5 h-3.5" strokeWidth={2} /> Unduh Register (CSV)
-        </button>
         {canCreate && (
           <Link
             href="/moc/new"
@@ -123,7 +113,6 @@ export default function MocRegisterPage() {
             <Plus className="w-4 h-4" strokeWidth={2.2} /> MOC Baru
           </Link>
         )}
-        </div>
       </div>
 
       <div className="flex gap-2.5 mb-4 flex-wrap items-center">
