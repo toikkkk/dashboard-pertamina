@@ -63,7 +63,7 @@ export default function DocsByPsiTypeChart() {
   );
 
   return (
-    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 lg:p-5 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-3.5">Dokumen per Jenis PSI</h3>
 
       <div ref={listRef} className="flex flex-col divide-y divide-[#f0f0f1]">

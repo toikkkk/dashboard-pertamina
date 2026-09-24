@@ -192,7 +192,7 @@ function Skeleton() {
   return (
     <div className="animate-pulse" aria-busy="true" aria-label="Memuat dashboard MOC">
       <div className="h-[128px] bg-white/70 border border-[#C5CED3] rounded-[8px] mb-3.5" />
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5 mb-3.5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5 mb-3.5">
         <div className="lg:col-span-3 h-[260px] bg-white/70 border border-[#C5CED3] rounded-[8px]" />
         <div className="lg:col-span-2 h-[260px] bg-white/70 border border-[#C5CED3] rounded-[8px]" />
       </div>
@@ -226,11 +226,11 @@ export default function MocDashboard({
       <Pipeline data={data} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5 mb-3.5">
-        <div className="lg:col-span-3"><Attention items={data.attention} /></div>
-        <div className="lg:col-span-2"><Recent items={data.recent} /></div>
+        <div className="lg:col-span-3 flex flex-col"><Attention items={data.attention} /></div>
+        <div className="lg:col-span-2 flex flex-col"><Recent items={data.recent} /></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
         <Ledger
           title="Sifat Perubahan"
           rows={data.bySifat.map((r) => ({ key: r.label, label: r.label, count: r.count, color: r.label === "Darurat" ? "#DC2626" : r.label === "Sementara" ? "#B45309" : "#0F3B59" }))}

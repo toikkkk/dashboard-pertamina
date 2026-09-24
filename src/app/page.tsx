@@ -5,8 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { useMocList } from "@/lib/useMoc";
-import { mocInsights, psiInsights, EXPIRING_WITHIN_DAYS } from "@/lib/domain/dashboard";
-import DashboardHeader, { type DashboardView, type SummaryPart } from "@/components/dashboard/DashboardHeader";
+import { mocInsights, psiInsights } from "@/lib/domain/dashboard";
+import DashboardHeader, { type DashboardView } from "@/components/dashboard/DashboardHeader";
 import MocDashboard from "@/components/dashboard/MocDashboard";
 import { PsiRecentUpdates, PsiStaleList } from "@/components/dashboard/PsiFreshness";
 import KpiSummaryCards from "@/components/KpiSummaryCards";
@@ -73,22 +73,6 @@ function Dashboard() {
   );
   const moc = useMemo(() => mocInsights(scopedMocs, actor, now), [scopedMocs, actor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const parts: SummaryPart[] =
-    view === "psi"
-      ? [
-          psi.overdue.length > 0 && { text: `${psi.overdue.length} dokumen kedaluwarsa`, tone: "bad" as const },
-          psi.expiring.length > 0 && { text: `${psi.expiring.length} dokumen berakhir dalam ${EXPIRING_WITHIN_DAYS} hari`, tone: "warn" as const },
-          psi.stale.length > 0 && { text: `${psi.stale.length} dokumen belum diperbarui 12 bulan`, tone: "plain" as const },
-        ].filter(Boolean) as SummaryPart[]
-      : [
-          moc.mineCount > 0 && { text: `${moc.mineCount} MOC menunggu Anda`, tone: "warn" as const },
-          moc.slaCount > 0 && { text: `${moc.slaCount} lewat batas waktu`, tone: "bad" as const },
-        ].filter(Boolean) as SummaryPart[];
-  const fallback: SummaryPart =
-    view === "psi"
-      ? psi.total === 0 ? { text: "Belum ada dokumen PSI", tone: "plain" } : { text: "Semua dokumen PSI masih berlaku", tone: "good" }
-      : moc.active > 0 ? { text: `${moc.active} MOC sedang berjalan`, tone: "plain" } : { text: "Belum ada MOC berjalan", tone: "plain" };
-
   return (
     <div>
       {isPending && (
@@ -101,34 +85,37 @@ function Dashboard() {
       )}
 
       <DashboardHeader
-        name={activeUser.name}
-        scopeLabel={scopeLabel}
+        scopeLabel={scopeLabel.startsWith("Semua") ? "Semua Lokasi" : scopeLabel}
         view={view}
         onView={chooseView}
         hideViewSwitch={isPending}
         canPickScope={canPickScope}
         viewAll={viewAll}
         onViewAll={chooseScope}
-        parts={parts}
-        fallback={fallback}
-        loading={view === "moc" && mocLoading}
       />
 
       <div key={view} className="animate-fadeIn">
         {view === "psi" ? (
           <>
             <KpiSummaryCards insights={psi} />
-            {/* Dua kolom bertumpuk (bukan baris berpasangan) supaya tinggi kartu yang
-                berbeda-beda tidak meninggalkan ruang kosong. */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-3.5 items-start">
-              <div className="flex flex-col gap-3.5">
-                <UpcomingExpiryList items={psi.expiring} />
-                {allScope ? <DocsByLocationChart /> : <DocsByPsiTypeChart />}
-              </div>
-              <div className="flex flex-col gap-3.5">
-                <PsiStaleList items={psi.stale} />
-                <PsiRecentUpdates items={psi.recent} />
-              </div>
+            {/* "Segera Kedaluwarsa" hanya muncul bila ada isinya (kartu KPI sudah memuat
+                angka 0); tanpa itu, dua daftar terisi berdampingan dan grafik sebaran
+                memakai lebar penuh, jadi tidak ada kartu kosong yang memakan ruang. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-3.5">
+              {psi.expiring.length > 0 ? (
+                <>
+                  <UpcomingExpiryList items={psi.expiring} />
+                  <PsiStaleList items={psi.stale} />
+                  {allScope ? <DocsByLocationChart /> : <DocsByPsiTypeChart />}
+                  <PsiRecentUpdates items={psi.recent} />
+                </>
+              ) : (
+                <>
+                  <PsiStaleList items={psi.stale} />
+                  <PsiRecentUpdates items={psi.recent} />
+                  <div className="lg:col-span-2">{allScope ? <DocsByLocationChart /> : <DocsByPsiTypeChart />}</div>
+                </>
+              )}
             </div>
             <ComplianceChart />
           </>
