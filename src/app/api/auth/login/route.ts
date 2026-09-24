@@ -9,7 +9,7 @@ import { eq, and, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { users, loginAttempts } from "@/lib/db/schema";
 import { verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 
 const bodySchema = z.object({
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     if (!ok) return invalid();
 
     await recordAttempt(true);
-    await createSession(user.id);
+    const sessionToken = await createSession(user.id);
 
     return NextResponse.json({
       id: user.id,
@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       role: user.role,
       location: user.location,
       isRegionalAdmin: user.isRegionalAdmin,
+      // SIMULASI SEMENTARA (lihat auth/session.ts): token per-tab, hanya bila sakelar aktif.
+      ...(SIM_MULTI_SESSION ? { simToken: sessionToken } : {}),
     });
   });
 }

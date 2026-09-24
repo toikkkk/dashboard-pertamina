@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { users, locations } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 import { passwordPolicyIssues } from "@/lib/domain/rules";
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    await createSession(created.id);
+    const sessionToken = await createSession(created.id);
 
     return NextResponse.json({
       id: created.id,
@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
       role: created.role,
       location: created.location,
       isRegionalAdmin: created.isRegionalAdmin,
+      // SIMULASI SEMENTARA (lihat auth/session.ts): token per-tab, hanya bila sakelar aktif.
+      ...(SIM_MULTI_SESSION ? { simToken: sessionToken } : {}),
       requestedRole: created.requestedRole,
       requestedLocation: created.requestedLocation,
     });
