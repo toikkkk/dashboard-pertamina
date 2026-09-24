@@ -64,16 +64,12 @@ export default function KpiSummaryCards() {
   // passed belongs in "Kedaluwarsa", not double-counted into both buckets (see isDocOverdue).
   const approvedCount = documents.filter((d) => d.status === "Approved" && !isDocOverdue(d)).length;
   const overdueCount = documents.filter(isDocOverdue).length;
-  const routingCount = documents.filter((d) => d.status === "In Routing" && !isDocOverdue(d)).length;
-  const revisionCount = documents.filter((d) => d.status === "Revision Required" && !isDocOverdue(d)).length;
 
   const pct = (n: number) => (totalDocs > 0 ? Math.round((n / totalDocs) * 100) : 0);
 
   const cards: KpiCardDef[] = [
     { label: "Approved", count: approvedCount, rate: pct(approvedCount), path: "/directory?status=Approved", color: "#15803D" },
     { label: "Kedaluwarsa", count: overdueCount, rate: pct(overdueCount), path: "/dilemma", color: "#DC2626" },
-    { label: "Dalam Sirkuler", count: routingCount, rate: pct(routingCount), path: "/directory?status=In+Routing", color: "#B45309" },
-    { label: "Perlu Revisi", count: revisionCount, rate: pct(revisionCount), path: "/directory?status=Revision+Required", color: "#6D28D9" },
   ];
 
   useGSAP(

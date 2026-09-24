@@ -144,8 +144,6 @@ function DirectoryContent() {
         >
           <option value="ALL">Semua Status</option>
           <option value="Approved">Approved</option>
-          <option value="In Routing">In Routing</option>
-          <option value="Revision Required">Revision Required</option>
           <option value="Expired">Expired</option>
         </select>
         {canPeekOtherLocations && (

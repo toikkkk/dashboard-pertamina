@@ -6,9 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import {
   LayoutDashboard, AlertTriangle, FolderOpen, Search,
-  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, ClipboardList, CheckCircle2, UserCog, Archive, Menu, X,
+  Plus, Bell, LogOut, ChevronDown, ClipboardList, CheckCircle2, UserCog, Archive, Menu, X,
 } from "lucide-react";
-import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
+import { isDocOverdue } from "@/lib/mockData";
 import { useMocList } from "@/lib/useMoc";
 import { mocPendingActions, type MocRequest, type MocAction } from "@/lib/domain/moc";
 
@@ -75,7 +75,6 @@ export default function Navbar() {
   if (!isAuthLoaded || !isLoggedIn || pathname === "/login") return null;
 
   const overdueCount = documents.filter(isDocOverdue).length;
-  const pendingApprovalCount = documents.filter((d) => canUserApproveDoc(d, activeUser)).length;
   // MOC yang menunggu tindakan saya (ajukan/review/putuskan/registrasi). 'edit' dan
   // 'advance' sengaja tidak dihitung: advance selalu tersedia bagi Controller sampai
   // MOC Closed sehingga lencananya tidak akan pernah nol.
@@ -95,7 +94,7 @@ export default function Navbar() {
       : `MOC “${m.judul || "tanpa judul"}” dikembalikan — perbaiki lalu ajukan ulang`;
   };
   const isNavActive = (path: string) => (path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`));
-  const totalNotifications = overdueCount + pendingApprovalCount + pendingMocCount;
+  const totalNotifications = overdueCount + pendingMocCount;
 
   const pendingUserCount = users.filter((u) => !u.isRegionalAdmin && !u.location).length;
   const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
@@ -108,7 +107,6 @@ export default function Navbar() {
     ? [{ name: "Dashboard", path: "/", icon: LayoutDashboard }]
     : [
         { name: "Dashboard", path: "/", icon: LayoutDashboard },
-        { name: "Sirkuler", path: "/approvals", icon: ClipboardCheck, badge: pendingApprovalCount, badgeTone: "warning" as const },
         { name: "MOC", path: "/moc", icon: ClipboardList, badge: pendingMocCount, badgeTone: "warning" as const },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" as const },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
@@ -313,18 +311,6 @@ export default function Navbar() {
                       {mocNotifs.length > 6 && (
                         <Link href="/moc" onClick={() => setNotifOpen(false)} className="block px-3.5 py-2.5 text-[12px] font-bold text-[#0F3B59] border-b border-[#f0f0f1] hover:bg-[#f7f7f8]">
                           Lihat {mocNotifs.length - 6} MOC lainnya →
-                        </Link>
-                      )}
-                      {pendingApprovalCount > 0 && (
-                        <Link
-                          href="/approvals"
-                          onClick={() => setNotifOpen(false)}
-                          className="flex gap-2.5 px-3.5 py-3 border-b border-[#f0f0f1] hover:bg-[#f7f7f8] transition"
-                        >
-                          <ClipboardCheck className="w-[15px] h-[15px] text-[#B45309] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
-                          <span className="text-[12.5px] text-[#3a3d40]">
-                            <strong>{pendingApprovalCount} dokumen</strong> menunggu persetujuan Anda
-                          </span>
                         </Link>
                       )}
                       {overdueCount > 0 && (
