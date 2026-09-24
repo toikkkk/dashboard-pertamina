@@ -58,7 +58,9 @@ export async function handleEvidence(
   if (!ok) throw new HttpError(400, "Berkas bukti tidak valid atau bukan unggahan Anda.");
 }
 
-const fmtTs = (d: Date) => d.toISOString().slice(0, 16).replace("T", " ");
+// Waktu ditampilkan dalam WIB (Asia/Jakarta), bukan UTC — jejak audit MOC yang
+// menunjukkan jam 7 jam lebih awal dari kenyataan menyesatkan. 'sv-SE' = YYYY-MM-DD HH:mm:ss.
+const fmtTs = (d: Date) => d.toLocaleString("sv-SE", { timeZone: "Asia/Jakarta" }).slice(0, 16);
 
 type RequestRow = typeof mocRequests.$inferSelect;
 type ReviewRow = typeof mocReviews.$inferSelect;

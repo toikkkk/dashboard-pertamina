@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       .insert(mocRequests)
       .values({
         unitOperasi: user.location,
-        tanggal: new Date().toISOString().slice(0, 10),
+        tanggal: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
         ...patch,
         location: user.location,
         createdBy: user.id,
