@@ -6,14 +6,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import {
   LayoutDashboard, AlertTriangle, FolderOpen, Search,
-  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, CheckCircle2, UserCog, Archive, Menu, X,
+  Plus, Bell, LogOut, ChevronDown, ClipboardCheck, ClipboardList, CheckCircle2, UserCog, Archive, Menu, X,
 } from "lucide-react";
 import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
+import { useMocList } from "@/lib/useMoc";
+import { mocActionsFor } from "@/lib/domain/moc";
 
 export default function Navbar() {
   const { activeUser, isLoggedIn, isAuthLoaded, logout, documents, allDocuments, users } = usePsi();
   const pathname = usePathname();
   const router = useRouter();
+  // Hook harus dipanggil sebelum early-return di bawah; kunci null = tidak fetch saat logout.
+  const { mocs } = useMocList(isAuthLoaded && isLoggedIn);
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -72,6 +76,12 @@ export default function Navbar() {
 
   const overdueCount = documents.filter(isDocOverdue).length;
   const pendingApprovalCount = documents.filter((d) => canUserApproveDoc(d, activeUser)).length;
+  // MOC yang menunggu tindakan saya (ajukan/review/putuskan/registrasi). 'edit' dan
+  // 'advance' sengaja tidak dihitung: advance selalu tersedia bagi Controller sampai
+  // MOC Closed sehingga lencananya tidak akan pernah nol.
+  const mocActor = { id: activeUser.id, name: activeUser.name, role: activeUser.role, location: activeUser.location, isRegionalAdmin: activeUser.isRegionalAdmin };
+  const pendingMocCount = mocs.filter((m) => mocActionsFor(m, mocActor).some((a) => a === "submit" || a === "review" || a === "decide" || a === "register")).length;
+  const isNavActive = (path: string) => (path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`));
   const totalNotifications = overdueCount + pendingApprovalCount;
 
   const pendingUserCount = users.filter((u) => !u.isRegionalAdmin && !u.location).length;
@@ -86,6 +96,7 @@ export default function Navbar() {
     : [
         { name: "Dashboard", path: "/", icon: LayoutDashboard },
         { name: "Sirkuler", path: "/approvals", icon: ClipboardCheck, badge: pendingApprovalCount, badgeTone: "warning" as const },
+        { name: "MOC", path: "/moc", icon: ClipboardList, badge: pendingMocCount, badgeTone: "warning" as const },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" as const },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
       ];
@@ -140,7 +151,7 @@ export default function Navbar() {
               instead of sitting flush with the 4 everyday workflow items. */}
           <nav className="hidden lg:flex items-center gap-1">
             {primaryNavItems.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive = isNavActive(item.path);
               return (
                 <Link
                   key={item.path}
@@ -169,7 +180,7 @@ export default function Navbar() {
               <>
                 <div className="w-px h-5 bg-[#EBEEF2] mx-1.5" aria-hidden />
                 {adminNavItems.map((item) => {
-                  const isActive = pathname === item.path;
+                  const isActive = isNavActive(item.path);
                   return (
                     <Link
                       key={item.path}
@@ -378,7 +389,7 @@ export default function Navbar() {
 
           <nav className="p-2 flex flex-col gap-0.5">
             {navItems.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive = isNavActive(item.path);
               return (
                 <Link
                   key={item.path}

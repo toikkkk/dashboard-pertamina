@@ -35,3 +35,18 @@ export const LAST_UPDATE_META: Record<LastUpdateType, { color: string }> = {
   Direvisi: { color: "#6D28D9" },
   Diperpanjang: { color: "#B45309" },
 };
+
+// Warna penanda untuk sub-status MOC (Tahap A-C). Palet status yang sama: hijau =
+// selesai/terdaftar, amber = menunggu pihak lain, ungu = perlu direvisi, merah =
+// ditolak, biru merek = menunggu keputusan berikutnya.
+import { MOC_VALIDATION_STATE_LABEL, type MocValidationState } from "./moc";
+
+export const MOC_STATE_META: Record<MocValidationState, { label: string; color: string }> = {
+  draft: { label: MOC_VALIDATION_STATE_LABEL.draft, color: "#6b6e72" },
+  in_review: { label: MOC_VALIDATION_STATE_LABEL.in_review, color: "#B45309" },
+  returned: { label: MOC_VALIDATION_STATE_LABEL.returned, color: "#6D28D9" },
+  pending_approval: { label: MOC_VALIDATION_STATE_LABEL.pending_approval, color: "#B45309" },
+  rejected: { label: MOC_VALIDATION_STATE_LABEL.rejected, color: "#DC2626" },
+  approved: { label: MOC_VALIDATION_STATE_LABEL.approved, color: "#0F3B59" },
+  registered: { label: MOC_VALIDATION_STATE_LABEL.registered, color: "#15803D" },
+};
