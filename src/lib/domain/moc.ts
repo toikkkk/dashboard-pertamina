@@ -83,6 +83,20 @@ export const MOC_HISTORY_ACTIONS = [
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
 
+// Peran MOC yang melekat pada akun (selain Initiator/Controller yang berasal dari `role`).
+export const MOC_ROLE_FLAGS = ["Reviewer", "Approver", "Performer"] as const;
+export type MocRoleFlag = (typeof MOC_ROLE_FLAGS)[number];
+
+export interface MocPlannedReviewer {
+  userId: string; // "" = baris belum dipilih
+  functionLabel: string;
+  jabatan: string;
+}
+
+export function hasMocRole(user: { mocRoles?: string[] | null }, flag: MocRoleFlag): boolean {
+  return !!user.mocRoles && user.mocRoles.includes(flag);
+}
+
 export const MOC_EVIDENCE_SLOTS = ["initiator", "reviewer", "approver", "controller"] as const;
 export type MocEvidenceSlot = (typeof MOC_EVIDENCE_SLOTS)[number];
 
@@ -180,6 +194,8 @@ export interface MocRequest extends MocFormContent {
   performerUserId: string | null;
   performerName: string | null;
   approverNote: string | null;
+  plannedReviewers: MocPlannedReviewer[];
+  plannedApproverId: string | null;
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -232,8 +248,12 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
   const actions: MocAction[] = [];
   const isController = user.role.includes("Controller");
 
+  // Hanya PEMBUAT MOC (akun Initiator yang membuatnya) yang boleh mengubah/mengajukan.
+  // Sebelumnya semua akun ber-role Initiator di lokasi itu bisa — akibatnya reviewer/
+  // approver (yang juga ber-role Initiator) melihat draf orang lain sebagai "perlu diajukan".
   const initiatorMayEdit =
     user.role === MOC_INITIATOR_ROLE &&
+    moc.createdBy === user.id &&
     (moc.validationState === "draft" || moc.validationState === "returned" || moc.validationState === "rejected");
   if (initiatorMayEdit) actions.push("edit", "submit");
 
@@ -275,4 +295,81 @@ export function mocSubmitIssues(form: MocFormContent): string[] {
   if (!form.severity || !form.probability) issues.push("Tingkat keparahan dan probabilitas risiko wajib diisi.");
   if (!form.riskLevel) issues.push("Tingkat risiko (L/M/H) wajib dipilih.");
   return issues;
+}
+
+// Penjelasan tahap sesudah registrasi. Diambil dari uraian TKO B13.3-07 (Bab III.2.e-h
+// dan Prosedur E-H); alur rincinya BELUM ditetapkan sehingga ini hanya keterangan,
+// bukan logika. Dipakai untuk memberi tahu user "ini sedang tahap apa dan ngapain".
+export const MOC_LATER_STAGE_INFO: Record<"Implementasi" | "Pemantauan" | "Tinjauan Akhir" | "Closed", string> = {
+  Implementasi:
+    "MoC Performer melaksanakan perubahan sesuai rencana yang disetujui (Pre-Start-Up, JSA, pembaruan dokumen terkait, PSSR bila perlu). Initiator memastikan pelaksanaan sesuai rencana.",
+  Pemantauan:
+    "Initiator dan Performer memantau kesesuaian pelaksanaan; MoC Controller memantau Register MoC (minimal 1× per 3 bulan) dan memperbarui progres.",
+  "Tinjauan Akhir":
+    "MoC Reviewer bersama Tim Peninjau Akhir menilai efektivitas perubahan (permanen: ≤ 3 bulan setelah terimplementasi; sementara/darurat: ≤ 1 bulan setelah dikembalikan).",
+  Closed: "MOC telah ditutup: Approver menyetujui penutupan dan Controller memastikan dokumen serta Register diperbarui.",
+};
+
+// Ringkasan jelas: MOC ini SEKARANG menunggu siapa dan apa — supaya user tidak
+// bingung apakah input mereka sudah masuk.
+export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; done: boolean } {
+  switch (moc.validationState) {
+    case "draft":
+      return { title: "Draf — belum diajukan", detail: "Initiator melengkapi formulir lalu memilih Reviewer dan Approver untuk diajukan.", done: false };
+    case "returned":
+      return { title: "Dikembalikan ke Initiator", detail: "Ada reviewer yang meminta perubahan. Initiator memperbaiki lalu mengajukan ulang.", done: false };
+    case "rejected":
+      return { title: "Ditolak Approver", detail: `Initiator memperbaiki sesuai catatan Approver${moc.approverNote ? ` (“${moc.approverNote}”)` : ""} lalu mengajukan ulang.`, done: false };
+    case "in_review": {
+      const pending = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Pending");
+      const total = moc.reviews.filter((r) => r.round === moc.round).length;
+      return {
+        title: `Menunggu review (${total - pending.length}/${total} selesai)`,
+        detail: pending.length > 0 ? `Belum menilai: ${pending.map((r) => `${r.reviewerName} (${r.functionLabel})`).join(", ")}.` : "Semua reviewer sudah menilai.",
+        done: false,
+      };
+    }
+    case "pending_approval":
+      return { title: "Menunggu persetujuan Approver", detail: `${moc.approverName ?? "Approver"} memutuskan setuju atau tolak dan menunjuk MoC Performer.`, done: false };
+    case "approved":
+      return { title: "Disetujui — menunggu registrasi", detail: "MoC Controller mencatat MOC ke daftar MoC dan memberi Nomor MoC.", done: false };
+    case "registered":
+      if (moc.registerStatus === "Closed") return { title: "MOC selesai (Closed)", detail: MOC_LATER_STAGE_INFO.Closed, done: true };
+      if (moc.registerStatus === "Inisiasi & Validasi") {
+        return { title: "Terdaftar — siap masuk Implementasi", detail: "MoC Controller memajukan MOC ke tahap Implementasi.", done: false };
+      }
+      return {
+        title: `Tahap ${moc.registerStatus}`,
+        detail: MOC_LATER_STAGE_INFO[moc.registerStatus as keyof typeof MOC_LATER_STAGE_INFO] ?? "",
+        done: false,
+      };
+  }
+}
+
+// Peran akun ini pada MOC ini, dibaca dari data MOC (tidak menebak).
+export function mocRolesOf(moc: MocRequest, actor: MocActor): string[] {
+  const out: string[] = [];
+  const sameLocation = !!actor.location && moc.location === actor.location;
+  if (sameLocation && actor.role === MOC_INITIATOR_ROLE && moc.createdBy === actor.id) out.push("Initiator");
+  const mine = moc.reviews.filter((r) => r.reviewerUserId === actor.id);
+  if (mine.length > 0) out.push(`Reviewer (${mine[mine.length - 1].functionLabel})`);
+  if (moc.approverUserId === actor.id) out.push("Approver");
+  if (moc.performerUserId === actor.id) out.push("Performer");
+  if (sameLocation && actor.role.includes("Controller")) out.push("Controller");
+  return out;
+}
+
+export const MOC_ACTION_LABEL: Record<MocAction, string> = {
+  edit: "Ubah",
+  submit: "Ajukan",
+  review: "Beri review",
+  decide: "Putuskan",
+  register: "Daftarkan",
+  advance: "Majukan tahap",
+};
+
+// Tindakan yang benar-benar "menunggu" user (tanpa 'edit' dan 'advance' yang selalu
+// tersedia) — dasar lencana Navbar, notifikasi, dan kelompok "Perlu tindakan Anda".
+export function mocPendingActions(moc: MocRequest, actor: MocActor): MocAction[] {
+  return mocActionsFor(moc, actor).filter((a) => a === "submit" || a === "review" || a === "decide" || a === "register");
 }

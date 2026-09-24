@@ -1,11 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Pencil, Paperclip } from "lucide-react";
-import { useMocActions, useMocItem } from "@/lib/useMoc";
+import { ArrowLeft, Printer, Pencil, Paperclip, CheckCircle2 } from "lucide-react";
+import { useMocActions, useMocActor, useMocItem } from "@/lib/useMoc";
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
-import { MOC_REVIEW_SLA_DAYS, MOC_RISK_LEVEL_LABEL } from "@/lib/domain/moc";
+import { MOC_REVIEW_SLA_DAYS, MOC_RISK_LEVEL_LABEL, mocWaitingOn, mocRolesOf } from "@/lib/domain/moc";
 import StatusTag from "@/components/StatusTag";
 import MocStageStepper from "@/components/MocStageStepper";
 import MocSheet from "@/components/MocSheet";
@@ -18,6 +18,13 @@ const OUTCOME_COLOR: Record<string, string> = { Pending: "#B45309", Sesuai: "#15
 export default function MocDetailPage({ params }: { params: { id: string } }) {
   const { moc, isLoading, error } = useMocItem(params.id);
   const actions = useMocActions(moc);
+  const actor = useMocActor();
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 12000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   if (isLoading || (!moc && !error)) return <div className="text-[13px] text-[#6b6e72]">Memuat MOC…</div>;
   if (error || !moc) {
@@ -29,6 +36,8 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
   }
 
   const state = MOC_STATE_META[moc.validationState];
+  const waiting = mocWaitingOn(moc);
+  const roles = mocRolesOf(moc, actor);
   const rounds = Array.from(new Set(moc.reviews.map((r) => r.round))).sort((a, b) => a - b);
 
   return (
@@ -68,9 +77,33 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
+      {notice && (
+        <div role="status" className="mb-4 flex items-start gap-2.5 px-4 py-3 rounded-[8px] bg-[#DCFCE7] border border-[#15803D]/40 animate-fadeInUp">
+          <CheckCircle2 className="w-[18px] h-[18px] text-[#15803D] flex-shrink-0 mt-px" strokeWidth={2} />
+          <span className="text-[13px] font-semibold text-[#14532D] flex-1">{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} className="text-[12px] font-bold text-[#15803D] hover:underline">Tutup</button>
+        </div>
+      )}
+
+      <div
+        className="mb-4 px-4 py-3 rounded-[8px] border bg-white"
+        style={{ borderColor: waiting.done ? "#15803D" : "#C5CED3", borderLeftWidth: 4, borderLeftColor: waiting.done ? "#15803D" : "#0F3B59" }}
+      >
+        <div className="text-[11px] font-bold uppercase tracking-wide text-[#6b6e72] mb-0.5">Sedang berlangsung</div>
+        <div className="text-[14.5px] font-bold text-[#0F172A]">{waiting.title}</div>
+        <p className="text-[12.5px] text-[#3a3d40] mt-0.5">{waiting.detail}</p>
+        <p className="text-[11.5px] mt-1.5" style={{ color: actions.filter((a) => a !== "edit").length > 0 ? "#B45309" : "#6b6e72", fontWeight: 600 }}>
+          {actions.filter((a) => a !== "edit").length > 0
+            ? "Ada tindakan yang perlu Anda lakukan — lihat panel di bawah."
+            : roles.length > 0
+              ? `Peran Anda pada MOC ini: ${roles.join(", ")}. Belum ada tindakan untuk Anda saat ini.`
+              : "Anda hanya dapat melihat MOC ini."}
+        </p>
+      </div>
+
       {actions.filter((a) => a !== "edit").length > 0 && (
         <div className="mb-4">
-          <MocActionsPanel moc={moc} actions={actions} />
+          <MocActionsPanel moc={moc} actions={actions} onNotice={setNotice} />
         </div>
       )}
 

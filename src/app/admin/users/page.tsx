@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { deriveDemoEmail, SimulatedUser } from "@/lib/mockData";
 import { ShieldAlert, Hourglass, CheckCircle2, UserCog, Pencil, X, Search } from "lucide-react";
+import MocRoleEditor from "@/components/MocRoleEditor";
 
 const ROLES: SimulatedUser["role"][] = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"];
 
@@ -213,6 +214,7 @@ export default function AdminUsersPage() {
                   )}
                 </div>
               ) : (
+                <>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
@@ -238,6 +240,11 @@ export default function AdminUsersPage() {
                     </button>
                   )}
                 </div>
+                <div className="mt-2.5 pt-2.5 border-t border-[#f5f5f6]">
+                  <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">Peran MOC</div>
+                  <MocRoleEditor key={`${u.id}-${(u.mocRoles ?? []).join()}-${u.mocFunction ?? ""}`} user={u} />
+                </div>
+                </>
               )}
             </div>
           ))}
@@ -251,6 +258,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Email</th>
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Peran</th>
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Lokasi</th>
+              <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Peran MOC</th>
               <th className="text-right px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Aksi</th>
             </tr>
           </thead>
@@ -285,6 +293,7 @@ export default function AdminUsersPage() {
                         ))}
                       </select>
                     </td>
+                    <td className="px-3.5 py-2.5"><MocRoleEditor key={`${u.id}-${(u.mocRoles ?? []).join()}-${u.mocFunction ?? ""}`} user={u} /></td>
                     <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
                       <button
                         onClick={() => handleSaveEdit(u)}
@@ -312,6 +321,7 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-3.5 py-3 text-[#6b6e72]">{u.location}</td>
+                    <td className="px-3.5 py-3"><MocRoleEditor key={`${u.id}-${(u.mocRoles ?? []).join()}-${u.mocFunction ?? ""}`} user={u} /></td>
                     <td className="px-3.5 py-3 text-right">
                       {justUpdated === u.id ? (
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#15803D]">
@@ -333,7 +343,7 @@ export default function AdminUsersPage() {
               </tr>
               {lockoutWarningId === u.id && (
                 <tr>
-                  <td colSpan={5} className="px-3.5 py-2.5 bg-[#FEF3C7] border-t border-[#f0f0f1] text-[11.5px] font-semibold text-[#92400E]">
+                  <td colSpan={6} className="px-3.5 py-2.5 bg-[#FEF3C7] border-t border-[#f0f0f1] text-[11.5px] font-semibold text-[#92400E]">
                     Tidak bisa disimpan — {u.name} satu-satunya Admin Regional saat ini. Tunjuk admin lain dulu sebelum menurunkan perannya.
                   </td>
                 </tr>

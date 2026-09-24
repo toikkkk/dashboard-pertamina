@@ -20,6 +20,8 @@ export function sessionUserToSimulated(u: SessionUser): SimulatedUser {
     location: u.location,
     isRegionalAdmin: u.isRegionalAdmin,
     email: u.email,
+    mocRoles: u.mocRoles as string[],
+    mocFunction: u.mocFunction,
   };
 }
 

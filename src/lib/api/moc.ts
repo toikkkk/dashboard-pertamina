@@ -113,6 +113,8 @@ function toRequest(
     performerUserId: row.performerUserId,
     performerName: row.performerName,
     approverNote: row.approverNote,
+    plannedReviewers: row.plannedReviewers as MocRequest["plannedReviewers"],
+    plannedApproverId: row.plannedApproverId,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
     createdAt: fmtTs(row.createdAt),
     updatedAt: fmtTs(row.updatedAt),
@@ -259,6 +261,11 @@ const barrier = z.object({ text: text(1000), pic: text(200) });
 
 export const mocFormPatchSchema = z
   .object({
+    // Rencana reviewer/approver (disimpan otomatis dari panel Ajukan; baris kosong boleh).
+    plannedReviewers: z
+      .array(z.object({ userId: z.union([z.string().uuid(), z.literal("")]), functionLabel: text(100), jabatan: text(200) }))
+      .max(10),
+    plannedApproverId: z.union([z.string().uuid(), z.literal("").transform(() => null), z.null()]),
     unitOperasi: text(200),
     fungsi: text(200),
     region: text(100),

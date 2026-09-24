@@ -31,6 +31,8 @@ const fetcher = (url: string) => mocFetch<MocRequest[] | MocRequest>(url);
 export function useMocList(enabled = true) {
   const { data, error, isLoading, mutate } = useSWR<MocRequest[]>(enabled ? "/api/moc" : null, fetcher as (u: string) => Promise<MocRequest[]>, {
     shouldRetryOnError: false,
+    // Notifikasi MOC (lonceng & lencana Navbar) harus muncul tanpa muat ulang halaman.
+    refreshInterval: enabled ? 15000 : 0,
   });
   return { mocs: data ?? [], error, isLoading, mutate };
 }
@@ -71,6 +73,9 @@ export const mocApi = {
   create: (patch: Partial<MocFormContent>) => post("/api/moc", patch),
   update: (id: string, patch: Partial<MocFormContent>) =>
     mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then(afterMutation),
+  // Simpan otomatis pilihan reviewer/approver yang belum diajukan (tidak mengubah status).
+  savePlan: (id: string, plan: { plannedReviewers: { userId: string; functionLabel: string; jabatan: string }[]; plannedApproverId: string | null }) =>
+    mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(plan) }).then(afterMutation),
   submit: (
     id: string,
     body: {

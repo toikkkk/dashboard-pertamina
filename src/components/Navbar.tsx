@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { canUserApproveDoc, isDocOverdue } from "@/lib/mockData";
 import { useMocList } from "@/lib/useMoc";
-import { mocActionsFor } from "@/lib/domain/moc";
+import { mocPendingActions, type MocRequest, type MocAction } from "@/lib/domain/moc";
 
 export default function Navbar() {
   const { activeUser, isLoggedIn, isAuthLoaded, logout, documents, allDocuments, users } = usePsi();
@@ -80,9 +80,22 @@ export default function Navbar() {
   // 'advance' sengaja tidak dihitung: advance selalu tersedia bagi Controller sampai
   // MOC Closed sehingga lencananya tidak akan pernah nol.
   const mocActor = { id: activeUser.id, name: activeUser.name, role: activeUser.role, location: activeUser.location, isRegionalAdmin: activeUser.isRegionalAdmin };
-  const pendingMocCount = mocs.filter((m) => mocActionsFor(m, mocActor).some((a) => a === "submit" || a === "review" || a === "decide" || a === "register")).length;
+  // MOC yang menunggu tindakan user ini = "notifikasi MOC" (diturunkan dari status, jadi
+  // otomatis hilang begitu tindakannya selesai dan tidak pernah basi).
+  const mocNotifs = mocs
+    .map((m) => ({ m, acts: mocPendingActions(m, mocActor) }))
+    .filter((x) => x.acts.length > 0);
+  const pendingMocCount = mocNotifs.length;
+  const mocNotifText = (m: MocRequest, a: MocAction): string => {
+    if (a === "review") return `MOC “${m.judul || "tanpa judul"}” diajukan kepada Anda untuk direview`;
+    if (a === "decide") return `MOC “${m.judul || "tanpa judul"}” menunggu keputusan Anda sebagai Approver`;
+    if (a === "register") return `MOC “${m.judul || "tanpa judul"}” sudah disetujui dan menunggu registrasi Anda`;
+    return m.validationState === "draft"
+      ? `Draf MOC “${m.judul || "tanpa judul"}” belum diajukan`
+      : `MOC “${m.judul || "tanpa judul"}” dikembalikan — perbaiki lalu ajukan ulang`;
+  };
   const isNavActive = (path: string) => (path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`));
-  const totalNotifications = overdueCount + pendingApprovalCount;
+  const totalNotifications = overdueCount + pendingApprovalCount + pendingMocCount;
 
   const pendingUserCount = users.filter((u) => !u.isRegionalAdmin && !u.location).length;
   const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
@@ -282,7 +295,26 @@ export default function Navbar() {
                     <div className="px-3.5 py-2.5 bg-[#f7f7f8] border-b border-[#e5e5e7] text-[11px] font-bold tracking-wider uppercase text-[#0F172A]">
                       Notifikasi
                     </div>
-                    <div>
+                    <div className="max-h-[70vh] overflow-y-auto">
+                      {mocNotifs.slice(0, 6).map(({ m, acts }) => (
+                        <Link
+                          key={m.id}
+                          href={`/moc/${m.id}`}
+                          onClick={() => setNotifOpen(false)}
+                          className="flex gap-2.5 px-3.5 py-3 border-b border-[#f0f0f1] hover:bg-[#f7f7f8] transition"
+                        >
+                          <ClipboardList className="w-[15px] h-[15px] text-[#B45309] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
+                          <span className="text-[12.5px] text-[#3a3d40]">
+                            {mocNotifText(m, acts[0])}
+                            <span className="block text-[11px] text-[#9a9da0] mt-0.5">{m.location} · {m.updatedAt}</span>
+                          </span>
+                        </Link>
+                      ))}
+                      {mocNotifs.length > 6 && (
+                        <Link href="/moc" onClick={() => setNotifOpen(false)} className="block px-3.5 py-2.5 text-[12px] font-bold text-[#0F3B59] border-b border-[#f0f0f1] hover:bg-[#f7f7f8]">
+                          Lihat {mocNotifs.length - 6} MOC lainnya →
+                        </Link>
+                      )}
                       {pendingApprovalCount > 0 && (
                         <Link
                           href="/approvals"

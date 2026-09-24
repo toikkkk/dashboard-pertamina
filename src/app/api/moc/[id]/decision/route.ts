@@ -8,6 +8,7 @@ import { mocRequests, users } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { handleEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
+import { hasMocRole } from "@/lib/domain/moc";
 
 const bodySchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -34,11 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       let performerName = performer.name;
       if (performer.userId) {
         const [p] = await db
-          .select({ name: users.name })
+          .select({ name: users.name, mocRoles: users.mocRoles })
           .from(users)
           .where(and(eq(users.id, performer.userId), eq(users.location, moc.location)))
           .limit(1);
         if (!p) throw new HttpError(400, "Performer harus pengguna terdaftar di lokasi MOC ini.");
+        if (!hasMocRole({ mocRoles: p.mocRoles as string[] }, "Performer")) {
+          throw new HttpError(400, `${p.name} belum ditetapkan sebagai MoC Performer. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
+        }
         performerName = p.name;
       }
       await db

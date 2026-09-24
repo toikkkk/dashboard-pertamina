@@ -58,6 +58,12 @@ export const users = pgTable("users", {
   // (Initiator)' and location=NULL, so nothing is granted until an admin approves.
   requestedRole: text("requested_role"),
   requestedLocation: text("requested_location").references(() => locations.name),
+  // Peran MOC per akun (TKO B13.3-07): subset dari Reviewer/Approver/Performer + fungsi
+  // (mis. "Maintenance Service", "HSSE", "Terminal Manager"). Initiator & Controller tetap
+  // lewat `role`. Dropdown pemilihan Reviewer/Approver/Performer hanya menampilkan akun
+  // yang punya peran yang sesuai; server memvalidasi ulang.
+  mocRoles: jsonb("moc_roles").notNull().default(sql`'[]'::jsonb`),
+  mocFunction: text("moc_function"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -261,6 +267,10 @@ export const mocRequests = pgTable(
     approverUserId: uuid("approver_user_id").references(() => users.id),
     performerUserId: uuid("performer_user_id").references(() => users.id),
     performerName: text("performer_name"),
+    // Pilihan reviewer/approver yang sedang disiapkan Initiator, disimpan di server agar
+    // tidak hilang saat berpindah halaman / mengubah formulir.
+    plannedReviewers: jsonb("planned_reviewers").notNull().default(sql`'[]'::jsonb`),
+    plannedApproverId: uuid("planned_approver_id").references(() => users.id),
     approverNote: text("approver_note"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id),

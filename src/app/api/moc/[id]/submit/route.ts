@@ -9,7 +9,7 @@ import { mocRequests, mocReviews, users } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { handleEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
-import { mocSubmitIssues } from "@/lib/domain/moc";
+import { hasMocRole, mocSubmitIssues } from "@/lib/domain/moc";
 
 const bodySchema = z.object({
   reviewers: z
@@ -42,13 +42,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Reviewer & Approver dipilih manual, tetapi harus user terdaftar di lokasi MOC ini.
     const wanted = Array.from(new Set([...reviewerIds, approverUserId]));
     const found = await db
-      .select({ id: users.id, name: users.name })
+      .select({ id: users.id, name: users.name, mocRoles: users.mocRoles })
       .from(users)
       .where(and(inArray(users.id, wanted), eq(users.location, moc.location)));
     if (found.length !== wanted.length) {
       throw new HttpError(400, "Reviewer dan Approver harus pengguna terdaftar di lokasi MOC ini.");
     }
     const nameOf = new Map(found.map((f) => [f.id, f.name]));
+    // Dropdown di UI hanya menampilkan akun ber-peran yang sesuai; ini penjaga di server.
+    const byId = new Map(found.map((f) => [f.id, f]));
+    for (const r of reviewers) {
+      const u = byId.get(r.userId);
+      if (!u || !hasMocRole({ mocRoles: u.mocRoles as string[] }, "Reviewer")) {
+        throw new HttpError(400, `${u?.name ?? "Pengguna"} belum ditetapkan sebagai MoC Reviewer. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
+      }
+    }
+    const approver = byId.get(approverUserId);
+    if (!approver || !hasMocRole({ mocRoles: approver.mocRoles as string[] }, "Approver")) {
+      throw new HttpError(400, `${approver?.name ?? "Pengguna"} belum ditetapkan sebagai MoC Approver. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
+    }
 
     const isFirst = moc.validationState === "draft";
     const round = isFirst ? moc.round : moc.round + 1;

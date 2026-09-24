@@ -113,6 +113,9 @@ export interface SimulatedUser {
    * suggested defaults on the activation screen. Never granted until approved. */
   requestedRole?: string | null;
   requestedLocation?: string | null;
+  // Peran MOC per akun (Reviewer/Approver/Performer) + fungsi; lihat domain/moc.ts.
+  mocRoles?: string[];
+  mocFunction?: string | null;
 }
 
 // Poin #5 & #9 Klien: "sirkuler cuma untuk beberapa jenis PSI aja, yang lain langsung ke

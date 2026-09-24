@@ -88,6 +88,8 @@ async function seedUsers(): Promise<Map<string, string>> {
         role: u.role,
         location: u.isRegionalAdmin ? null : u.location, // admin's "Semua Lokasi" isn't a real locations row
         isRegionalAdmin: u.isRegionalAdmin ?? false,
+        mocRoles: u.mocRoles ?? [],
+        mocFunction: u.mocFunction ?? null,
       })
       .returning();
     nameToId.set(u.name, created.id);
