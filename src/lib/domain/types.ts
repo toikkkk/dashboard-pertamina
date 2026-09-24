@@ -121,11 +121,4 @@ export interface SimulatedUser {
 // Poin #5 & #9 Klien: "sirkuler cuma untuk beberapa jenis PSI aja, yang lain langsung ke
 // riwayat versi". Nilai di bawah ini masih PLACEHOLDER (semua di-default wajib sirkuler)
 // sampai dikonfirmasi ke client kategori mana yang sebenarnya tidak perlu sirkuler.
-export const PSI_TYPE_REQUIRES_CIRCULAR: Record<PSIType, boolean> = {
-  'Informasi Bahan Berbahaya': true,
-  'Informasi Teknologi Proses': true,
-  'Informasi Peralatan': true,
-  'Sistem Tata Kerja': true,
-};
-
 export type LastUpdateType = 'Baru' | 'Direvisi' | 'Diperpanjang';

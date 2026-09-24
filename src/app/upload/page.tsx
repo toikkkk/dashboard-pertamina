@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { useRouter } from "next/navigation";
-import CircularRoutingBuilder from "@/components/CircularRoutingBuilder";
-import { ApprovalRouteItem, PSIType, LifecyclePhase, PSI_TYPE_REQUIRES_CIRCULAR, AuditType, AUDIT_TYPES } from "@/lib/mockData";
+import SuccessPopup from "@/components/SuccessPopup";
+import { PSIType, LifecyclePhase, AuditType, AUDIT_TYPES } from "@/lib/mockData";
 import { uploadFileToR2 } from "@/lib/uploadFile";
-import { Upload as UploadIcon, ChevronDown, X, CheckCircle2 } from "lucide-react";
+import { Upload as UploadIcon, ChevronDown, X } from "lucide-react";
 
 const PSI_TYPES: PSIType[] = [
   "Informasi Bahan Berbahaya",
@@ -32,33 +32,17 @@ export default function UploadPage() {
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [lifecyclePhase] = useState<LifecyclePhase>("Operasi");
   const [file, setFile] = useState<File | null>(null);
-  const [isCircular, setIsCircular] = useState(true);
-  const [isCircularManuallySet, setIsCircularManuallySet] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; file?: string; routes?: string }>({});
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ title?: string; file?: string }>({});
+  const [saved, setSaved] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [routes, setRoutes] = useState<ApprovalRouteItem[]>([]);
-
-  useEffect(() => {
-    if (!isCircularManuallySet && psiType) {
-      setIsCircular(PSI_TYPE_REQUIRES_CIRCULAR[psiType]);
-    }
-  }, [psiType, isCircularManuallySet]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
-    const nextErrors: { title?: string; file?: string; routes?: string } = {};
+    const nextErrors: { title?: string; file?: string } = {};
     if (!title.trim()) nextErrors.title = "Judul dokumen wajib diisi.";
     if (!file) nextErrors.file = "Berkas wajib diunggah.";
-    // Bug nyata: dokumen isCircular=true dengan routes kosong tersimpan berstatus "In
-    // Routing" tapi getPendingApprovalStepOrder() selalu null untuk routes kosong, jadi
-    // canUserApproveDoc() menolak semua orang (termasuk Controller/Admin Regional) —
-    // dokumen macet permanen, tidak pernah bisa disetujui/ditolak siapapun.
-    if (isCircular && routes.length === 0) {
-      nextErrors.routes = "Sirkuler aktif — tambahkan minimal satu approver sebelum mengajukan, atau matikan Sirkuler Persetujuan.";
-    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || !file) return;
 
@@ -77,16 +61,17 @@ export default function UploadPage() {
         auditType: auditType || undefined,
         location,
         lifecyclePhase,
-        isCircular,
-        routes: isCircular ? routes : [],
+        // PSI bersifat kustodial (Controller saja, tanpa persetujuan) — sesuai rapat klien;
+        // sirkuler hanya untuk MOC.
+        isCircular: false,
+        routes: [],
         fileId,
         expiryDate,
       });
 
-      setSuccessNotice("Dokumen berhasil diajukan. Mengalihkan ke Dashboard…");
-      setTimeout(() => router.push("/"), 1200);
+      setSaved(true);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Gagal mengajukan dokumen.");
+      setSubmitError(err instanceof Error ? err.message : "Gagal menyimpan dokumen.");
     } finally {
       setSubmitting(false);
     }
@@ -94,6 +79,7 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {saved && <SuccessPopup message="Dokumen tersimpan" onClose={() => router.push("/")} />}
       <form onSubmit={handleSubmit} className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
@@ -197,43 +183,6 @@ export default function UploadPage() {
           {errors.file && <p className="mt-1 text-[11px] text-[#DC2626]">{errors.file}</p>}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3.5 bg-[#f7f8f8] border border-[#eceded] rounded-[8px] mb-4">
-          <div>
-            <div className="text-[12.5px] font-bold text-[#3a3d40]">Sirkuler Persetujuan</div>
-            <div className="text-[11px] text-[#9a9da0]">Otomatis disarankan berdasarkan Jenis PSI, dapat diubah manual.</div>
-          </div>
-          <div
-            onClick={() => {
-              setIsCircular((v) => !v);
-              setIsCircularManuallySet(true);
-            }}
-            className="w-10 h-[22px] rounded-full relative cursor-pointer flex-shrink-0 transition-colors duration-200 active:scale-95"
-            style={{ background: isCircular ? "#0F3B59" : "#C5CED3" }}
-          >
-            <div className="w-4 h-4 rounded-full bg-white absolute top-[3px] transition-all duration-200 ease-out-expo shadow-[0_1px_3px_rgba(0,0,0,.3)]" style={{ left: isCircular ? 21 : 3 }} />
-          </div>
-        </div>
-
-        {isCircular && (
-          <div className="mb-5 animate-fadeInUp">
-            <CircularRoutingBuilder
-              routes={routes}
-              onChange={(next) => {
-                setRoutes(next);
-                if (next.length > 0) setErrors((prev) => ({ ...prev, routes: undefined }));
-              }}
-              error={errors.routes}
-            />
-          </div>
-        )}
-
-        {successNotice && (
-          <div className="mb-3.5 px-4 py-2.5 bg-[#DCFCE7] border border-[#BBF7D0] rounded-[8px] text-[12.5px] font-semibold text-[#15803D] flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            <span>{successNotice}</span>
-          </div>
-        )}
-
         {submitError && (
           <div className="mb-3.5 px-4 py-2.5 bg-[#FEE2E2] border border-[#FECACA] rounded-[8px] text-[12.5px] font-semibold text-[#DC2626]">
             {submitError}
@@ -245,7 +194,7 @@ export default function UploadPage() {
           disabled={submitting}
           className="min-h-[44px] px-6 font-heading font-bold text-[14.5px] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white rounded-[8px] transition disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
         >
-          {submitting ? "Mengunggah…" : "Ajukan Dokumen"}
+          {submitting ? "Mengunggah…" : "Simpan Dokumen"}
         </button>
       </form>
 
@@ -266,7 +215,6 @@ export default function UploadPage() {
                     key={t}
                     onClick={() => {
                       setPsiType(t);
-                      setIsCircularManuallySet(false);
                       setShowTypeModal(false);
                     }}
                     className="p-3.5 rounded-[8px] cursor-pointer transition active:scale-[0.97] hover:shadow-[0_2px_8px_rgba(0,0,0,.06)]"
