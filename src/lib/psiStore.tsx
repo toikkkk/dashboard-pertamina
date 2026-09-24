@@ -37,6 +37,10 @@ interface PsiContextType {
    * data, so a non-admin can't end up seeing the cross-location "ALL" view just
    * because the dropdown that would normally set this is hidden for them. */
   effectiveLocationFilter: string;
+  /** Mode lihat-saja untuk non-admin: dashboard menampilkan SEMUA lokasi. Tidak memberi
+   * hak tulis apa pun (itu tetap ditentukan assertLocationWrite di server). */
+  viewAll: boolean;
+  setViewAll: (v: boolean) => void;
   selectedTypeFilter: string;
   setSelectedTypeFilter: (type: string) => void;
   approveStep: (docId: string, stepOrder: number, comment?: string) => Promise<void>;
@@ -141,6 +145,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("ALL");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("ALL");
+  const [viewAll, setViewAll] = useState(false);
 
   const payload = data ?? EMPTY_BOOTSTRAP;
   const isAuthLoaded = !isLoading;
@@ -222,7 +227,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // see the exact same 5-terminal comparison an Admin Regional sees — the whole
   // point of the per-location dashboard is that they don't.
   const effectiveLocationFilter =
-    !activeUser.isRegionalAdmin && activeUser.location ? activeUser.location : selectedLocationFilter;
+    !activeUser.isRegionalAdmin && activeUser.location && !viewAll ? activeUser.location : selectedLocationFilter;
 
   // Location/type dropdown filters (ComplianceChart's selectors) applied on top of
   // the server's already-RBAC-scoped list — same two-layer filtering the client-only
@@ -296,6 +301,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         locations,
         selectedLocationFilter,
         effectiveLocationFilter,
+        viewAll,
+        setViewAll,
         setSelectedLocationFilter,
         selectedTypeFilter,
         setSelectedTypeFilter,

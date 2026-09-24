@@ -9,7 +9,7 @@ import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 gsap.registerPlugin(useGSAP);
 
-// Same 5-status set and colors as StatusOverview's segmented bar — this ledger's
+// Same status colors as the dashboard status palette — this ledger's
 // per-row mini bar is that same chart at a smaller scale, so the two widgets read
 // as one visual language instead of two unrelated ones. Draft omitted (never
 // appears in seed/real data at this granularity, and the row would be all-empty).
@@ -19,7 +19,7 @@ export default function DocsByLocationChart() {
   const { locations, allDocuments } = usePsi();
   const listRef = useRef<HTMLDivElement>(null);
 
-  // effectiveStatus mirrors StatusOverview: a doc stored "Approved" whose expiryDate
+  // effectiveStatus mirrors the KPI rule: a doc stored "Approved" whose expiryDate
   // has already passed counts as Expired here too, so the two widgets never disagree.
   const effectiveStatus = (d: (typeof allDocuments)[number]): DocumentStatus =>
     isDocOverdue(d) ? "Expired" : d.status;
@@ -57,7 +57,7 @@ export default function DocsByLocationChart() {
   );
 
   return (
-    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 h-full transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
+    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-4 transition-all duration-300 ease-out-expo hover:shadow-[0_4px_16px_rgba(0,0,0,.07)] hover:-translate-y-[1px]">
       <h3 className="text-[13px] font-bold text-[#0F172A] mb-3.5">Dokumen per Terminal</h3>
 
       <div ref={listRef} className="flex flex-col divide-y divide-[#f0f0f1]">

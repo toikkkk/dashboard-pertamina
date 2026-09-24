@@ -1,11 +1,10 @@
 import React from "react";
-import type { MocRequest } from "@/lib/domain/moc";
+import { MOC_STAGES, mocStageIndex, type MocRequest } from "@/lib/domain/moc";
 
 // Batang progres tahap MOC: 8 segmen tipis + satu kalimat "Tahap X dari 8 · Nama".
 // (Sebelumnya 8 label berderet yang sulit dibaca sekilas.) Tahap A-C diturunkan dari
 // validationState; tahap sesudahnya mengikuti status Register (Lampiran 8).
-const STEPS = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi", "Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
-const LATER = ["Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+const STEPS = MOC_STAGES;
 
 const DONE = "#15803D";
 const ACTIVE = "#0F3B59";
@@ -13,27 +12,8 @@ const WARN = "#B45309";
 const BAD = "#DC2626";
 const IDLE = "#DCE2E6";
 
-function currentIndex(moc: Pick<MocRequest, "validationState" | "registerStatus">): number {
-  switch (moc.validationState) {
-    case "draft":
-    case "returned":
-    case "rejected":
-      return 0;
-    case "in_review":
-      return 1;
-    case "pending_approval":
-      return 2;
-    case "approved":
-      return 3;
-    case "registered": {
-      const later = LATER.indexOf(moc.registerStatus as (typeof LATER)[number]);
-      return 4 + Math.max(0, later);
-    }
-  }
-}
-
 export default function MocStageStepper({ moc }: { moc: Pick<MocRequest, "validationState" | "registerStatus"> }) {
-  const cur = currentIndex(moc);
+  const cur = mocStageIndex(moc);
   const closed = moc.registerStatus === "Closed" && moc.validationState === "registered";
   const problem = moc.validationState === "returned" ? WARN : moc.validationState === "rejected" ? BAD : null;
   const label = closed ? "Selesai" : `Tahap ${cur + 1} dari ${STEPS.length} · ${STEPS[cur]}`;

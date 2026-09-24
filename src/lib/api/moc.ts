@@ -100,7 +100,8 @@ function toRequest(
   history: MocHistoryEntry[],
   evidence: MocEvidence[],
   approverName: string | null,
-  createdByName: string | null
+  createdByName: string | null,
+  stateSince: Date | null
 ): MocRequest {
   return {
     id: row.id,
@@ -108,6 +109,7 @@ function toRequest(
     location: row.location,
     createdBy: row.createdBy,
     createdByName,
+    stateSince: (stateSince ?? row.updatedAt).toISOString(),
     registerStatus: row.registerStatus as MocRequest["registerStatus"],
     validationState: row.validationState as MocRequest["validationState"],
     round: row.round,
@@ -156,6 +158,14 @@ function toRequest(
   };
 }
 
+// Saat terakhir MOC masuk ke keadaan validasi/tahap sekarang, dari riwayat (bukan
+// updatedAt, yang ikut berubah oleh suntingan biasa). null bila riwayat belum mencatatnya.
+function stateSinceOf(row: RequestRow, history: { toState: string | null; timestamp: Date }[]): Date | null {
+  const target = row.validationState === "registered" ? row.registerStatus : row.validationState;
+  const hit = history.filter((h) => h.toState === target).map((h) => h.timestamp.getTime());
+  return hit.length > 0 ? new Date(Math.max(...hit)) : null;
+}
+
 async function userNames(ids: (string | null)[]): Promise<Map<string, string>> {
   const clean = Array.from(new Set(ids.filter((x): x is string => !!x)));
   if (clean.length === 0) return new Map();
@@ -193,7 +203,7 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
     uploadedByName: uploaderName ?? "—",
     uploadedAt: fmtTs(e.uploadedAt),
   }));
-  return toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null, names.get(row.createdBy ?? "") ?? null);
+  return toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null, names.get(row.createdBy ?? "") ?? null, stateSinceOf(row, historyRows));
 }
 
 // Daftar Register MOC. Sengaja ringan: review terisi (dibutuhkan mocActionsFor untuk
@@ -203,6 +213,12 @@ export async function loadMocList(): Promise<MocRequest[]> {
   if (rows.length === 0) return [];
   const reviewRows = await db.select().from(mocReviews).where(inArray(mocReviews.mocId, rows.map((r) => r.id)));
   const names = await userNames(rows.flatMap((r) => [r.approverUserId, r.createdBy]));
+  const historyRows = await db
+    .select({ mocId: mocHistory.mocId, toState: mocHistory.toState, timestamp: mocHistory.timestamp })
+    .from(mocHistory)
+    .where(inArray(mocHistory.mocId, rows.map((r) => r.id)));
+  const historyByMoc = new Map<string, { toState: string | null; timestamp: Date }[]>();
+  for (const h of historyRows) historyByMoc.set(h.mocId, [...(historyByMoc.get(h.mocId) ?? []), h]);
   return rows.map((row) =>
     toRequest(
       row,
@@ -210,7 +226,8 @@ export async function loadMocList(): Promise<MocRequest[]> {
       [],
       [],
       names.get(row.approverUserId ?? "") ?? null,
-      names.get(row.createdBy ?? "") ?? null
+      names.get(row.createdBy ?? "") ?? null,
+      stateSinceOf(row, historyByMoc.get(row.id) ?? [])
     )
   );
 }

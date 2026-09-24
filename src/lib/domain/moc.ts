@@ -189,6 +189,8 @@ export interface MocRequest extends MocFormContent {
   location: string;
   createdBy: string | null;
   createdByName: string | null;
+  // Kapan MOC masuk ke keadaan sekarang (ISO). Dasar hitungan "melewati batas waktu".
+  stateSince: string | null;
   registerStatus: MocRegisterStatus;
   validationState: MocValidationState;
   round: number;
@@ -276,6 +278,30 @@ export function mocCanAttach(moc: MocRequest, user: MocActor): boolean {
   if (!isLocationMember(moc, user)) return false;
   if (moc.validationState !== "registered" || moc.registerStatus === "Closed") return false;
   return user.role.includes("Controller") || moc.performerUserId === user.id || moc.createdBy === user.id;
+}
+
+// Delapan tahap MOC (TKO) untuk bilah progres dan dashboard. Tahap A-C diturunkan dari
+// validationState; sesudahnya mengikuti status Register (Lampiran 8).
+export const MOC_STAGES = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi", "Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+const MOC_LATER_STAGES = ["Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+
+export function mocStageIndex(moc: Pick<MocRequest, "validationState" | "registerStatus">): number {
+  switch (moc.validationState) {
+    case "draft":
+    case "returned":
+    case "rejected":
+      return 0;
+    case "in_review":
+      return 1;
+    case "pending_approval":
+      return 2;
+    case "approved":
+      return 3;
+    case "registered": {
+      const later = MOC_LATER_STAGES.indexOf(moc.registerStatus as (typeof MOC_LATER_STAGES)[number]);
+      return 4 + Math.max(0, later);
+    }
+  }
 }
 
 export function nextRegisterStatus(current: MocRegisterStatus): MocRegisterStatus | null {

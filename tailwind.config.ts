@@ -52,6 +52,10 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        pageIn: {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         modalPop: {
           "0%": { opacity: "0", transform: "scale(0.94) translateY(6px)" },
           "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
@@ -92,6 +96,9 @@ const config: Config = {
       animation: {
         fadeIn: "fadeIn 0.25s cubic-bezier(0.16,1,0.3,1) both",
         fadeInUp: "fadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) both",
+        // "backwards", bukan "both": sesudah selesai tidak ada transform yang tertinggal,
+        // jadi elemen fixed di dalam halaman (modal) tetap menempel ke viewport.
+        pageIn: "pageIn 0.28s cubic-bezier(0.22,1,0.36,1) backwards",
         modalPop: "modalPop 0.28s cubic-bezier(0.16,1,0.3,1) both",
         backdropIn: "backdropIn 0.2s ease-out both",
         drawLine: "drawLine 1s ease-out forwards",

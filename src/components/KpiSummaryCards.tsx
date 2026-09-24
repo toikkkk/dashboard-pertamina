@@ -3,10 +3,9 @@
 import React, { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { usePsi } from "@/lib/psiStore";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCountUp } from "@/lib/useCountUp";
-import { isDocOverdue } from "@/lib/mockData";
+import type { psiInsights } from "@/lib/domain/dashboard";
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,7 +13,7 @@ interface KpiCardDef {
   label: string;
   count: number;
   rate: number;
-  path: string;
+  path: string; // rute (/directory) atau jangkar di halaman ini (#segera-kedaluwarsa)
   color: string;
 }
 
@@ -30,46 +29,43 @@ interface KpiCardDef {
 // was pure redundancy: the same "of 11" fact printed four times in a row taught the
 // reader nothing new after the first read.
 function KpiColumn({ card }: { card: KpiCardDef }) {
-  const router = useRouter();
   const animatedCount = useCountUp(card.count, 700);
-
-  return (
-    <div
-      onClick={() => router.push(card.path)}
-      className="kpi-card flex-1 lg:min-w-[160px] bg-white p-4 lg:p-5 cursor-pointer transition-colors duration-200 hover:bg-[#fafafb]"
-    >
-      <div className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#6b6e72] mb-2.5">{card.label}</div>
-      {/* Archivo (heading), not mono, on the hero value — a single standalone headline
-          figure has no neighboring digits to align against, so tabular-nums/mono buys
-          nothing here and just made the tile's one most prominent number look stiff
-          next to everything else on the page. Mono stays reserved for real tabular
-          contexts (table columns, document numbers) where digits actually line up. */}
+  const cls =
+    "kpi-card group flex-1 lg:min-w-[160px] bg-white p-4 lg:p-5 transition-colors duration-200 hover:bg-[#f6f8f9] focus-visible:bg-[#f6f8f9] block";
+  const body = (
+    <>
+      <div className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#3a3d40] mb-2.5">{card.label}</div>
+      {/* Archivo (heading), not mono, on the hero value: a single standalone figure has
+          no neighbouring digits to align against. */}
       <div className="flex items-baseline gap-2 mb-3">
         <span className="font-heading text-[30px] font-bold leading-none" style={{ color: card.color }}>{animatedCount}</span>
-        <span className="text-[12px] font-semibold text-[#9a9da0]">{card.rate}%</span>
+        <span className="text-[12px] font-semibold text-[#6b6e72]">{card.rate}%</span>
       </div>
       <div className="h-[3px] bg-[#eceded] rounded-full overflow-hidden">
-        <div className="h-full transition-all duration-700 ease-out-expo" style={{ background: card.color, width: `${card.rate}%` }} />
+        <div className="h-full origin-left transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)]" style={{ background: card.color, width: "100%", transform: `scaleX(${card.rate / 100})` }} />
       </div>
-    </div>
+    </>
+  );
+  // Rute sungguhan memakai Link, jangkar halaman memakai <a>: keduanya dapat difokus
+  // dengan keyboard (sebelumnya div dengan onClick).
+  return card.path.startsWith("#") ? (
+    <a href={card.path} className={cls}>{body}</a>
+  ) : (
+    <Link href={card.path} className={cls}>{body}</Link>
   );
 }
 
-export default function KpiSummaryCards() {
-  const { documents } = usePsi();
+export default function KpiSummaryCards({ insights }: { insights: ReturnType<typeof psiInsights> }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const totalDocs = documents.length;
-  // Overdue takes precedence: a doc stored as "Approved" whose expiryDate has already
-  // passed belongs in "Kedaluwarsa", not double-counted into both buckets (see isDocOverdue).
-  const approvedCount = documents.filter((d) => d.status === "Approved" && !isDocOverdue(d)).length;
-  const overdueCount = documents.filter(isDocOverdue).length;
-
+  const totalDocs = insights.total;
   const pct = (n: number) => (totalDocs > 0 ? Math.round((n / totalDocs) * 100) : 0);
 
   const cards: KpiCardDef[] = [
-    { label: "Approved", count: approvedCount, rate: pct(approvedCount), path: "/directory?status=Approved", color: "#15803D" },
-    { label: "Kedaluwarsa", count: overdueCount, rate: pct(overdueCount), path: "/dilemma", color: "#DC2626" },
+    { label: "Approved", count: insights.approved, rate: pct(insights.approved), path: "/directory?status=Approved", color: "#15803D" },
+    { label: "Kedaluwarsa", count: insights.overdue.length, rate: pct(insights.overdue.length), path: "/dilemma", color: "#DC2626" },
+    { label: "Berakhir dalam 90 hari", count: insights.expiring.length, rate: pct(insights.expiring.length), path: "#segera-kedaluwarsa", color: "#B45309" },
+    { label: "Belum diperbarui 12 bulan", count: insights.stale.length, rate: pct(insights.stale.length), path: "#perlu-evaluasi", color: "#0F3B59" },
   ];
 
   useGSAP(
