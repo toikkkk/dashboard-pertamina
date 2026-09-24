@@ -5,6 +5,14 @@ import * as XLSX from "xlsx";
 import { FileWarning, FileCheck2 } from "lucide-react";
 
 const SHEET_ROW_CAP = 40;
+// XLSX.read is synchronous and blocks the main thread, and `arrayBuffer()` still has
+// to pull the whole file off the network first. The largest curated document is a
+// 23MB .xlsm that took ~10s+ just to download and would freeze the tab on parse, which
+// is what made "Lihat" look permanently broken. Capped well below that: spreadsheet
+// preview is a quick glance, not a full editor — past 8MB the honest answer is
+// "download it". (The value is also checked against Content-Length BEFORE reading the
+// body, so an over-size file bails immediately instead of after a full download.)
+const MAX_PARSE_BYTES = 8 * 1024 * 1024;
 
 // Real backend era: every fileUrl is an opaque /api/files/:id/download route (see
 // CLAUDE.md's "Backend / database" section) — no extension in the URL itself, so kind
@@ -39,27 +47,85 @@ interface DocumentContentPreviewProps {
 export default function DocumentContentPreview({ fileUrl, fileName, title, fallback }: DocumentContentPreviewProps) {
   const kind = getFileKind(fileName);
   const [sheetRows, setSheetRows] = useState<string[][] | null>(null);
-  const [sheetError, setSheetError] = useState(false);
+  const [sheetError, setSheetError] = useState<string | null>(null);
 
+  // Spreadsheets are the only kind fetched+parsed in the browser (PDF/image hand the
+  // URL straight to the browser) — so this effect is the only place a preview can
+  // hang, and it did.
+  //
+  // REAL BUG FIXED HERE (2026-09-17, reproduced in Chromium, not inferred): the old
+  // version used a `cancelled` boolean but never ABORTED the in-flight request. React
+  // StrictMode double-invokes effects in dev, so opening a preview fired two identical
+  // full-size downloads of the same file; the orphaned one kept streaming, the two
+  // competed, and one died with net::ERR_CONTENT_LENGTH_MISMATCH. Because that
+  // rejection belonged to the run whose `cancelled` flag was already true, the error
+  // was swallowed and no state was ever set — leaving "Memuat data spreadsheet…" on
+  // screen forever. That is exactly the reported "Lihat shows no document" in the
+  // Directory: 8 of 11 curated documents are spreadsheets (up to 23MB), while Arsip
+  // Registry happened to open PDFs, which never take this path. The API, RBAC and
+  // presigned URLs were all verified correct and identical for both pages.
+  //
+  // Three things make it robust now: a real AbortController (no orphaned stream, so
+  // the mismatch can't happen), AbortError distinguished from genuine failure, and
+  // every failure path setting an explicit message — this must never silently sit on
+  // the loading state again.
   useEffect(() => {
     if (kind !== "spreadsheet") return;
-    let cancelled = false;
+
+    const controller = new AbortController();
+    let settled = false;
     setSheetRows(null);
-    setSheetError(false);
-    fetch(fileUrl)
-      .then((r) => r.arrayBuffer())
-      .then((buf) => {
-        if (cancelled) return;
+    setSheetError(null);
+
+    // A stalled/blocked response would otherwise leave the loading text up
+    // indefinitely with nothing to click; surface it as an error instead.
+    const timeoutId = setTimeout(() => {
+      if (!settled) controller.abort(new DOMException("timeout", "TimeoutError"));
+    }, 45000);
+
+    (async () => {
+      try {
+        const res = await fetch(fileUrl, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Bail BEFORE reading the body when the redirect target already advertises a
+        // size over the cap — otherwise a large file gets fully downloaded (slow) and
+        // only then rejected, which was the "stuck loading for 10+ seconds" symptom.
+        const declaredLength = Number(res.headers.get("content-length") ?? "0");
+        if (declaredLength > MAX_PARSE_BYTES) {
+          settled = true;
+          setSheetError("Berkas terlalu besar untuk dipratinjau di browser. Silakan unduh berkasnya.");
+          return;
+        }
+        const buf = await res.arrayBuffer();
+        // Defensive second check for responses that stream without a Content-Length.
+        if (buf.byteLength > MAX_PARSE_BYTES) {
+          settled = true;
+          setSheetError("Berkas terlalu besar untuk dipratinjau di browser. Silakan unduh berkasnya.");
+          return;
+        }
         const wb = XLSX.read(buf, { type: "array" });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false, defval: "" });
+        settled = true;
         setSheetRows(rows.slice(0, SHEET_ROW_CAP));
-      })
-      .catch(() => {
-        if (!cancelled) setSheetError(true);
-      });
+      } catch (err) {
+        // An abort from StrictMode's cleanup (or unmount) is expected and must stay
+        // silent — the surviving run owns the UI state.
+        if (controller.signal.aborted && (err as DOMException)?.name !== "TimeoutError") return;
+        settled = true;
+        setSheetError(
+          (err as DOMException)?.name === "TimeoutError"
+            ? "Berkas terlalu lama dimuat. Coba lagi atau unduh berkasnya."
+            : "Berkas tidak bisa dimuat sebagai pratinjau tabel."
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    })();
+
     return () => {
-      cancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [fileUrl, kind]);
 
@@ -95,9 +161,12 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
       return (
         <div>
           <RealFileBadge />
-          <div className="flex items-center gap-2.5 p-5 border border-[#C5CED3] rounded-[8px] text-[#6b6e72]">
-            <FileWarning className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-            <span className="text-[12.5px]">Berkas tidak bisa dimuat sebagai pratinjau tabel.</span>
+          <div className="flex items-start gap-2.5 p-5 border border-[#C5CED3] rounded-[8px] text-[#6b6e72]">
+            <FileWarning className="w-4 h-4 flex-shrink-0 mt-px" strokeWidth={1.8} />
+            {/* The specific reason, not one generic line for every failure — a
+                too-large file, a timeout and a parse error need different actions
+                from the user. */}
+            <span className="text-[12.5px] leading-relaxed">{sheetError}</span>
           </div>
         </div>
       );

@@ -51,6 +51,13 @@ export const users = pgTable("users", {
   // SimulatedUser.location's nullable meaning from the client-only prototype.
   location: text("location").references(() => locations.name),
   isRegionalAdmin: boolean("is_regional_admin").notNull().default(false),
+  // Self-selected at registration, before any Admin Regional approval. Stored so the
+  // admin's activation screen can prefill these as the suggested role/location instead
+  // of defaulting every pending account to "Initiator / first terminal". They are
+  // ONLY ever defaults — the account is still created with role='Penanggung Jawab PSI
+  // (Initiator)' and location=NULL, so nothing is granted until an admin approves.
+  requestedRole: text("requested_role"),
+  requestedLocation: text("requested_location").references(() => locations.name),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
-import { CheckCircle2, Upload as UploadIcon, RefreshCw } from "lucide-react";
+import { CheckCircle2, Upload as UploadIcon, RefreshCw, FileText, FileSpreadsheet, FileType } from "lucide-react";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import StatusTag from "@/components/StatusTag";
 import { isDocOverdue } from "@/lib/mockData";
@@ -101,6 +101,58 @@ function ReviseForm({
   );
 }
 
+// Helper untuk menampilkan tipe file berdasarkan ekstensi (PDF, Excel, Word, Image, dll)
+function FileTypeBadge({ fileName }: { fileName?: string }) {
+  if (!fileName) return <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[8px] bg-[#F5F7F9] text-[#9a9da0]"><FileType className="w-3 h-3" /> Unknown</span>;
+
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  let icon: JSX.Element, label: string, color: string, bgColor: string;
+
+  switch (ext) {
+    case "pdf":
+      icon = <FileText className="w-3 h-3" strokeWidth={1.8} />;
+      label = "PDF";
+      color = "#DC2626";
+      bgColor = "#FEE2E2";
+      break;
+    case "xlsx":
+    case "xls":
+    case "xlsm":
+      icon = <FileSpreadsheet className="w-3 h-3" strokeWidth={1.8} />;
+      label = "Excel";
+      color = "#15803D";
+      bgColor = "#DCFCE7";
+      break;
+    case "doc":
+    case "docx":
+      icon = <FileText className="w-3 h-3" strokeWidth={1.8} />;
+      label = "Word";
+      color = "#2563EB";
+      bgColor = "#DBEAFE";
+      break;
+    case "jpg":
+    case "jpeg":
+    case "png":
+      icon = <FileType className="w-3 h-3" strokeWidth={1.8} />;
+      label = "Image";
+      color = "#7C3AED";
+      bgColor = "#EDE9FE";
+      break;
+    default:
+      icon = <FileType className="w-3 h-3" strokeWidth={1.8} />;
+      label = "File";
+      color = "#6B7280";
+      bgColor = "#F3F4F6";
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-[8px]" style={{ background: bgColor, color }}>
+      {icon}
+      {label}
+    </span>
+  );
+}
+
 export default function ExpiringDocsTable() {
   const { documents, extendValidity, reviseDocument } = usePsi();
   const [selectedDocForRevise, setSelectedDocForRevise] = useState<string | null>(null);
@@ -183,7 +235,9 @@ export default function ExpiringDocsTable() {
                 <span className="text-[#6b6e72] font-mono text-xs">{doc.documentNumber}</span>
                 <span className="flex-shrink-0"><StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" size="sm" /></span>
               </div>
-              <div className="font-semibold text-[13px] mb-0.5">{doc.title}</div>
+              <div className="font-semibold text-[13px] mb-0.5">{doc.title}
+                <div className="mt-0.5"><FileTypeBadge fileName={doc.fileName} /></div>
+              </div>
               <div className="mb-1"><UpdateTypeBadge history={doc.history} /></div>
               <div className="text-[12px] text-[#6b6e72] mb-2.5">
                 {doc.location} · Expired {fmtDate(doc.expiryDate)}
@@ -243,6 +297,7 @@ export default function ExpiringDocsTable() {
           <tr className="bg-[#fafafb]">
             <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">No. Kasus</th>
             <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Judul</th>
+            <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Tipe Berkas</th>
             <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Lokasi</th>
             <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Expired</th>
             <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Status</th>
@@ -265,6 +320,7 @@ export default function ExpiringDocsTable() {
                     {doc.title}
                     <div className="mt-0.5"><UpdateTypeBadge history={doc.history} /></div>
                   </td>
+                  <td className="px-3.5 py-3"><FileTypeBadge fileName={doc.fileName} /></td>
                   <td className="px-3.5 py-3">{doc.location}</td>
                   <td className="px-3.5 py-3">{fmtDate(doc.expiryDate)}</td>
                   <td className="px-3.5 py-3">

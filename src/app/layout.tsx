@@ -4,6 +4,7 @@ import { Archivo, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import ClientProvider from "@/components/ClientProvider";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
+import OnboardingPreferencesModal from "@/components/OnboardingPreferencesModal";
 
 const archivo = Archivo({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -35,6 +36,7 @@ export default function RootLayout({
                 &copy; 2026 PT Pertamina (Persero) — Direktorat Logistik & Infrastruktur.
               </footer>
             </div>
+            <OnboardingPreferencesModal />
           </AuthGuard>
         </ClientProvider>
       </body>

@@ -109,6 +109,10 @@ export interface SimulatedUser {
   /** Only set for accounts created via the Register form — the 4 built-in demo users
    * derive a mocked @gmail.com address from their name instead (see login/page.tsx). */
   email?: string;
+  /** Self-selected preferences from the Register form, shown to the Admin Regional as
+   * suggested defaults on the activation screen. Never granted until approved. */
+  requestedRole?: string | null;
+  requestedLocation?: string | null;
 }
 
 // Poin #5 & #9 Klien: "sirkuler cuma untuk beberapa jenis PSI aja, yang lain langsung ke

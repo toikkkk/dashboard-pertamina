@@ -59,6 +59,9 @@ interface PsiContextType {
    * as the client-only prototype (server always creates with location=NULL) — the
    * only real change is that the password is now actually hashed and stored. */
   register: (name: string, email: string, password: string) => Promise<SimulatedUser>;
+  /** PATCHes /api/auth/preferences — the current user's self-selected role + terminal,
+   * shown to the Admin Regional as activation defaults. Never auto-grants access. */
+  saveOnboardingPreferences: (role: string, location: string) => Promise<SimulatedUser>;
   /** POSTs to /api/auth/forgot-password. Always resolves with a generic message
    * regardless of whether the email is registered (anti-enumeration) — never throws
    * for "email not found", only for genuine request failures. */
@@ -156,6 +159,12 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const register = async (name: string, email: string, password: string): Promise<SimulatedUser> => {
     const user = await fetchJson("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+    await mutate();
+    return user;
+  };
+
+  const saveOnboardingPreferences = async (role: string, location: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/preferences", { method: "PATCH", body: JSON.stringify({ role, location }) });
     await mutate();
     return user;
   };
@@ -303,6 +312,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         forgotPassword,
         resetPassword,
         assignUserAccess,
+        saveOnboardingPreferences,
         isAuthLoaded,
       }}
     >

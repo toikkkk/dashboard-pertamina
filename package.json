@@ -11,7 +11,8 @@
     "db:push": "drizzle-kit push",
     "migrate:dry-run": "tsx scripts/migrate.ts --dry-run",
     "migrate:files": "tsx scripts/migrate.ts",
-    "seed:documents": "tsx scripts/seed-curated-documents.ts"
+    "seed:documents": "tsx scripts/seed-curated-documents.ts",
+    "seed:demo-volume": "tsx scripts/seed-demo-volume.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1113.0",

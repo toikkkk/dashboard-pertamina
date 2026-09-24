@@ -40,8 +40,8 @@ export default function AdminUsersPage() {
   const adminCount = users.filter((u) => u.isRegionalAdmin).length;
 
   const handleAssign = (u: SimulatedUser) => {
-    const role = draftRole[u.id] ?? "Penanggung Jawab PSI (Initiator)";
-    const location = draftLocation[u.id] ?? locations[0].locationName;
+    const role = draftRole[u.id] ?? u.requestedRole ?? "Penanggung Jawab PSI (Initiator)";
+    const location = draftLocation[u.id] ?? u.requestedLocation ?? locations[0].locationName;
     assignUserAccess(u.id, role, location);
     setJustActivated(u.id);
     setTimeout(() => setJustActivated(null), 3000);
@@ -103,6 +103,12 @@ export default function AdminUsersPage() {
                 <div className="min-w-[160px] flex-1">
                   <div className="text-[13px] font-bold text-[#0F172A]">{u.name}</div>
                   <div className="text-[11px] text-[#9a9da0]">{u.email ?? deriveDemoEmail(u.name)}</div>
+                  {(u.requestedRole || u.requestedLocation) && (
+                    <div className="mt-0.5 text-[10.5px] text-[#B45309]">
+                      Mengajukan: {u.requestedRole ?? "—"}
+                      {u.requestedLocation ? ` · ${u.requestedLocation}` : ""}
+                    </div>
+                  )}
                 </div>
 
                 {justActivated === u.id ? (
@@ -113,7 +119,7 @@ export default function AdminUsersPage() {
                 ) : (
                   <>
                     <select
-                      value={draftRole[u.id] ?? "Penanggung Jawab PSI (Initiator)"}
+                      value={draftRole[u.id] ?? u.requestedRole ?? "Penanggung Jawab PSI (Initiator)"}
                       onChange={(e) => setDraftRole((s) => ({ ...s, [u.id]: e.target.value as SimulatedUser["role"] }))}
                       className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold"
                     >
@@ -122,7 +128,7 @@ export default function AdminUsersPage() {
                       ))}
                     </select>
                     <select
-                      value={draftLocation[u.id] ?? locations[0].locationName}
+                      value={draftLocation[u.id] ?? u.requestedLocation ?? locations[0].locationName}
                       onChange={(e) => setDraftLocation((s) => ({ ...s, [u.id]: e.target.value }))}
                       className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold"
                     >

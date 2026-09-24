@@ -12,7 +12,16 @@ export async function GET() {
   return withErrorHandling(async () => {
     const sessionUser = await getSessionUser();
     if (!sessionUser) {
-      return NextResponse.json({ user: null, documents: [], users: [], locations: [] });
+      // Return minimal stub for unauthenticated users to prevent SWR from hanging
+      // This also ensures the landing page can show at least some structure while waiting
+      const { REGIONAL_LOCATIONS } = await import("@/lib/mockData");
+      return NextResponse.json({
+        user: null,
+        documents: [],
+        allDocuments: [],
+        users: [],
+        locations: REGIONAL_LOCATIONS, // Fallback to mock data when no session
+      });
     }
 
     // allDocuments is a deliberate, pre-existing exception (see CLAUDE.md): the
@@ -23,7 +32,7 @@ export async function GET() {
       loadDocumentsForUser(sessionUser),
       loadAllDocuments(),
       db
-        .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin })
+        .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation })
         .from(users),
       db.select().from(locations),
       db.select().from(locationTargets),
@@ -45,6 +54,8 @@ export async function GET() {
         role: sessionUser.role,
         location: sessionUser.location,
         isRegionalAdmin: sessionUser.isRegionalAdmin,
+        requestedRole: sessionUser.requestedRole,
+        requestedLocation: sessionUser.requestedLocation,
       },
       documents: documentItems,
       allDocuments: allDocumentItems,
