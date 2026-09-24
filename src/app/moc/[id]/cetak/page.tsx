@@ -1,14 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMocItem } from "@/lib/useMoc";
-import MocSheet from "@/components/MocSheet";
+import MocFormViewer from "@/components/MocFormViewer";
+import type { MocFormKey } from "@/components/MocSheet";
 
-// Lembar cetak Lampiran 5 untuk ditandatangani di luar web. Navbar & footer
-// disembunyikan saat cetak; "Simpan sebagai PDF" dari dialog cetak browser.
-export default function MocPrintPage({ params }: { params: { id: string } }) {
-  const { moc, isLoading, error } = useMocItem(params.id);
+// Halaman cetak/unduh formulir MoC untuk ditandatangani di luar web. Navbar & footer
+// disembunyikan saat cetak. ?form=pengusulan|pemantauan|tinjauan memilih lampiran;
+// ?print=1 langsung membuka dialog cetak (dipakai tombol "Unduh PDF").
+function PrintContent({ id }: { id: string }) {
+  const params = useSearchParams();
+  const { moc, isLoading, error } = useMocItem(id);
+  const formParam = params.get("form");
+  const form: MocFormKey = formParam === "pemantauan" || formParam === "tinjauan" ? formParam : "pengusulan";
+
   if (isLoading || (!moc && !error)) return <div className="text-[13px] text-[#6b6e72]">Memuat…</div>;
   if (error || !moc) return <div className="text-[13px] text-[#DC2626]">MOC tidak ditemukan.</div>;
 
@@ -23,20 +30,23 @@ export default function MocPrintPage({ params }: { params: { id: string } }) {
           @page { size: A4; margin: 10mm; }
         }
       `}</style>
-      <div className="no-print flex items-center justify-between gap-3 flex-wrap mb-4">
+      <div className="no-print mb-3">
         <Link href={`/moc/${moc.id}`} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">← Kembali ke detail</Link>
-        <div className="flex items-center gap-3">
-          <span className="text-[11.5px] text-[#6b6e72]">Pilih “Simpan sebagai PDF” di dialog cetak, tandatangani di luar web, lalu unggah hasilnya di halaman detail.</span>
-          <button type="button" onClick={() => window.print()} className="px-4 py-1.5 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white text-[12.5px] font-bold transition-colors">
-            Cetak / Simpan PDF
-          </button>
-        </div>
+        <p className="text-[11.5px] text-[#6b6e72] mt-1">
+          “Unduh PDF” membuka dialog cetak — pilih <strong>Simpan sebagai PDF</strong>. Tandatangani di luar web, lalu unggah hasilnya di halaman detail.
+        </p>
       </div>
-      <div className="bg-white p-3 border border-[#C5CED3] rounded-[8px] print:border-0 print:p-0 overflow-x-auto">
-        <div style={{ minWidth: 860 }}>
-          <MocSheet moc={moc} />
-        </div>
+      <div className="bg-white p-3 border border-[#C5CED3] rounded-[8px] print:border-0 print:p-0">
+        <MocFormViewer moc={moc} initialForm={form} standalone autoPrint={params.get("print") === "1"} />
       </div>
     </div>
+  );
+}
+
+export default function MocPrintPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div className="text-[13px] text-[#6b6e72]">Memuat…</div>}>
+      <PrintContent id={params.id} />
+    </Suspense>
   );
 }

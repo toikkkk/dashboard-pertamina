@@ -8,7 +8,7 @@ import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import { MOC_REVIEW_SLA_DAYS, MOC_RISK_LEVEL_LABEL, mocWaitingOn, mocRolesOf } from "@/lib/domain/moc";
 import StatusTag from "@/components/StatusTag";
 import MocStageStepper from "@/components/MocStageStepper";
-import MocSheet from "@/components/MocSheet";
+import MocFormViewer from "@/components/MocFormViewer";
 import MocActionsPanel from "@/components/MocActionsPanel";
 
 const CARD =
@@ -63,7 +63,7 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
               </Link>
             )}
             <Link href={`/moc/${moc.id}/cetak`} target="_blank" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[12.5px] font-bold rounded-full border border-[#C5CED3] text-[#0F172A] hover:border-[#0F3B59] transition-colors">
-              <Printer className="w-3.5 h-3.5" strokeWidth={2} /> Cetak Lembar
+              <Printer className="w-3.5 h-3.5" strokeWidth={2} /> Unduh / Cetak Formulir
             </Link>
           </div>
         </div>
@@ -137,10 +137,9 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      <div className={`${CARD} p-3 mb-4 overflow-x-auto`}>
-        <div style={{ minWidth: 860 }}>
-          <MocSheet moc={moc} />
-        </div>
+      <div className={`${CARD} p-3 mb-4`}>
+        <h2 className="text-[13px] font-bold text-[#0F172A] mb-2.5">Formulir MoC</h2>
+        <MocFormViewer moc={moc} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
