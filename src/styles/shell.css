@@ -745,3 +745,12 @@
 .hsse-shell .scope-select:focus-visible { outline: 2px solid #0F3B59; outline-offset: 2px; }
 .hsse-shell .brand-link { display: block; text-decoration: none; color: #0F172A; border-radius: 6px; transition: color 160ms ease-out; }
 .hsse-shell .brand-link:hover { color: #0F3B59; }
+
+/* --- Tambahan proyek: di ponsel panel notifikasi/menu memakai posisi fixed selebar layar
+   (dengan jarak tepi) supaya tidak terpotong; sebelumnya menempel ke tombol lonceng
+   yang berada di sisi kiri topbar sehingga meluber keluar layar. */
+@media (max-width: 680px) {
+  .hsse-shell .topbar-panel { position: fixed; top: 72px; left: 10px; right: 10px; width: auto; max-width: none; }
+  .hsse-shell .topbar-panel-body { max-height: calc(100vh - 150px); }
+  .hsse-shell .topbar-search-error { position: fixed; top: 72px; left: 10px; }
+}

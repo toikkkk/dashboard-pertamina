@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
-import { FileWarning, FileCheck2 } from "lucide-react";
+import { FileWarning, FileCheck2, FileText } from "lucide-react";
 
 const SHEET_ROW_CAP = 40;
 // XLSX.read is synchronous and blocks the main thread, and `arrayBuffer()` still has
@@ -48,6 +48,14 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
   const kind = getFileKind(fileName);
   const [sheetRows, setSheetRows] = useState<string[][] | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  // null = belum dicek (render <embed> seperti biasa); false = perangkat tanpa penampil PDF.
+  const [inlinePdf, setInlinePdf] = useState<boolean | null>(null);
+  useEffect(() => {
+    const nav = navigator as Navigator & { pdfViewerEnabled?: boolean };
+    const touchMac = navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform);
+    const phone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || touchMac;
+    setInlinePdf(!phone && (nav.pdfViewerEnabled ?? true));
+  }, []);
 
   // Spreadsheets are the only kind fetched+parsed in the browser (PDF/image hand the
   // URL straight to the browser) — so this effect is the only place a preview can
@@ -136,6 +144,24 @@ export default function DocumentContentPreview({ fileUrl, fileName, title, fallb
         <div className="flex items-center justify-center border border-[#C5CED3] rounded-[8px] bg-[#fafafb] p-3 max-h-[70vh] overflow-auto">
           {/* eslint-disable-next-line @next/next/no-img-element -- remote, private (RBAC-gated) source; next/image's optimizer needs a whitelisted domain, not applicable to a same-origin proxy route like this */}
           <img src={fileUrl} alt={title} className="max-w-full max-h-[66vh] object-contain" />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "pdf" && inlinePdf === false) {
+    // Ponsel (iOS/Android) dan browser tanpa penampil PDF bawaan tidak bisa merender <embed>:
+    // hasilnya kotak kosong. Beri tombol buka (penampil bawaan perangkat) dan unduh.
+    return (
+      <div>
+        <RealFileBadge />
+        <div className="flex flex-col items-center text-center gap-3 p-8 border border-[#C5CED3] rounded-[12px] bg-[#fafafb]">
+          <FileText className="w-8 h-8 text-[#0F3B59]" strokeWidth={1.5} />
+          <p className="text-[13px] font-semibold text-[#0F172A] break-words max-w-full">{fileName ?? title}</p>
+          <div className="flex flex-wrap justify-center gap-2.5">
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 rounded-[8px] bg-[#0F3B59] hover:bg-[#0B2C43] text-white text-[13px] font-bold transition-colors">Buka PDF</a>
+            <a href={fileUrl} download className="px-4 py-2.5 rounded-[8px] border border-[#0F3B59] text-[#0F3B59] hover:bg-[#E2E8EB] text-[13px] font-bold transition-colors">Unduh</a>
+          </div>
         </div>
       </div>
     );

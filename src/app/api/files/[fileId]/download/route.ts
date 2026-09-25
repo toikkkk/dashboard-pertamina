@@ -24,6 +24,25 @@ function contentDispositionHeader(filename: string, inline: boolean): string {
   return `${inline ? "inline" : "attachment"}; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
+// Nama berkas hasil unduhan = judul dokumen yang tampil di aplikasi (+ " v<versi>" untuk
+// versi lama di riwayat) + ekstensi asli. Sebelumnya memakai nama berkas unggahan asli,
+// yang sering sama sekali berbeda dari judul di layar. Berkas tanpa dokumen (arsip
+// registry, bukti MOC) tetap memakai nama aslinya.
+function downloadName(
+  original: string,
+  primaryTitle: string | undefined,
+  history: { title: string; version: string; current: string } | undefined
+): string {
+  const title = primaryTitle ?? history?.title;
+  if (!title) return original;
+  const dot = original.lastIndexOf(".");
+  const ext = dot > -1 ? original.slice(dot) : "";
+  const clean = title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (!clean) return original;
+  const older = !primaryTitle && history && history.version !== history.current;
+  return `${clean}${older ? ` v${history!.version}` : ""}${ext}`;
+}
+
 export async function GET(_req: Request, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
@@ -33,9 +52,9 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
       return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
     }
 
-    const [asPrimary] = await db.select({ location: documents.location }).from(documents).where(eq(documents.primaryFileId, file.id)).limit(1);
+    const [asPrimary] = await db.select({ location: documents.location, title: documents.title }).from(documents).where(eq(documents.primaryFileId, file.id)).limit(1);
     const [asHistory] = await db
-      .select({ location: documents.location })
+      .select({ location: documents.location, title: documents.title, version: historyItems.version, current: documents.currentVersion })
       .from(historyItems)
       .innerJoin(documents, eq(historyItems.documentId, documents.id))
       .where(eq(historyItems.fileId, file.id))
@@ -68,7 +87,7 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
       new GetObjectCommand({
         Bucket: R2_BUCKET,
         Key: file.r2ObjectKey,
-        ResponseContentDisposition: contentDispositionHeader(file.originalFilename, inline),
+        ResponseContentDisposition: contentDispositionHeader(downloadName(file.originalFilename, asPrimary?.title, asHistory), inline),
         ResponseContentType: kind?.mime ?? (known ? file.mimeType : "application/octet-stream"),
       }),
       { expiresIn: 300 }
