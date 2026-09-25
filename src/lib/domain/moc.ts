@@ -93,6 +93,17 @@ export interface MocPlannedReviewer {
   jabatan: string;
 }
 
+// Saran fungsi/jabatan per peran MOC di tingkat Lokasi (TKO B13.3-07 Tabel 3): Reviewer =
+// Maintenance Service & HSSE (+ Fungsi IT untuk scope 13), Approver = Terminal Manager /
+// Operation Head. Performer ditunjuk Approver (tidak terikat fungsi tertentu).
+export const MOC_FUNCTION_SUGGESTIONS: Record<MocRoleFlag, readonly string[]> = {
+  Reviewer: ["Maintenance Service", "HSSE", "Fungsi IT"],
+  Approver: ["Terminal Manager", "Operation Head"],
+  Performer: [],
+};
+// Reviewer/Approver wajib punya fungsi/jabatan (dipakai di dropdown & lembar cetak).
+export const MOC_ROLES_NEED_FUNCTION: readonly MocRoleFlag[] = ["Reviewer", "Approver"];
+
 export function hasMocRole(user: { mocRoles?: string[] | null }, flag: MocRoleFlag): boolean {
   return !!user.mocRoles && user.mocRoles.includes(flag);
 }

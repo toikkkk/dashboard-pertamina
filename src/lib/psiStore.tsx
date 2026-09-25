@@ -66,7 +66,7 @@ interface PsiContextType {
   register: (name: string, email: string, password: string, username?: string) => Promise<SimulatedUser>;
   /** PATCHes /api/auth/preferences — the current user's self-selected role + terminal,
    * shown to the Admin Regional as activation defaults. Never auto-grants access. */
-  saveOnboardingPreferences: (role: string, location: string) => Promise<SimulatedUser>;
+  saveOnboardingPreferences: (role: string, location: string, mocRoles?: string[], mocFunction?: string | null) => Promise<SimulatedUser>;
   /** POSTs to /api/auth/forgot-password. Always resolves with a generic message
    * regardless of whether the email is registered (anti-enumeration) — never throws
    * for "email not found", only for genuine request failures. */
@@ -75,10 +75,13 @@ interface PsiContextType {
    * token is invalid/expired/used or the password fails policy. */
   resetPassword: (token: string, password: string) => Promise<{ message: string }>;
   /** PATCHes /api/admin/users/:id — server re-derives isRegionalAdmin from role. */
-  assignUserAccess: (userId: string, role: SimulatedUser["role"], location: string) => Promise<void>;
+  assignUserAccess: (userId: string, role: SimulatedUser["role"], location: string, moc?: { mocRoles: string[]; mocFunction: string | null }) => Promise<void>;
   /** DELETEs /api/admin/users/:id. Throws with the server's message (e.g. 409 when the
    * user is already referenced by documents/MOC, or when deleting one's own account). */
   deleteUser: (userId: string) => Promise<void>;
+  /** POSTs /api/admin/users/bulk-delete. Never throws for per-user refusals — those come
+   * back in `failed` (referenced by documents/MOC, own account) so the rest still go through. */
+  deleteUsers: (userIds: string[]) => Promise<{ deleted: string[]; failed: { id: string; error: string }[] }>;
   isAuthLoaded: boolean;
 }
 
@@ -172,8 +175,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return user;
   };
 
-  const saveOnboardingPreferences = async (role: string, location: string): Promise<SimulatedUser> => {
-    const user = await fetchJson("/api/auth/preferences", { method: "PATCH", body: JSON.stringify({ role, location }) });
+  const saveOnboardingPreferences = async (role: string, location: string, mocRoles?: string[], mocFunction?: string | null): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/preferences", { method: "PATCH", body: JSON.stringify({ role, location, mocRoles, mocFunction }) });
     await mutate();
     return user;
   };
@@ -193,14 +196,20 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     void fetch("/api/auth/logout", { method: "POST" });
   };
 
-  const assignUserAccess = async (userId: string, role: SimulatedUser["role"], location: string): Promise<void> => {
-    await fetchJson(`/api/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role, location }) });
+  const assignUserAccess = async (userId: string, role: SimulatedUser["role"], location: string, moc?: { mocRoles: string[]; mocFunction: string | null }): Promise<void> => {
+    await fetchJson(`/api/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role, location, ...(moc ?? {}) }) });
     await mutate();
   };
 
   const deleteUser = async (userId: string): Promise<void> => {
     await fetchJson(`/api/admin/users/${userId}`, { method: "DELETE" });
     await mutate();
+  };
+
+  const deleteUsers = async (userIds: string[]) => {
+    const result = await fetchJson("/api/admin/users/bulk-delete", { method: "POST", body: JSON.stringify({ ids: userIds }) });
+    await mutate();
+    return result as { deleted: string[]; failed: { id: string; error: string }[] };
   };
 
   const approveStep = async (docId: string, stepOrder: number, comment?: string): Promise<void> => {
@@ -332,6 +341,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetPassword,
         assignUserAccess,
         deleteUser,
+        deleteUsers,
         saveOnboardingPreferences,
         isAuthLoaded,
       }}

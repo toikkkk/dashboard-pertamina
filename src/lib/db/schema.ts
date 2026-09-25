@@ -58,6 +58,11 @@ export const users = pgTable("users", {
   // (Initiator)' and location=NULL, so nothing is granted until an admin approves.
   requestedRole: text("requested_role"),
   requestedLocation: text("requested_location").references(() => locations.name),
+  // Peran MOC (Reviewer/Approver/Performer) + fungsi yang DIAJUKAN user saat melengkapi
+  // profil. Sama seperti requested_role: hanya usulan yang diisikan otomatis di layar
+  // aktivasi Admin Regional, tidak pernah memberi akses sendiri.
+  requestedMocRoles: jsonb("requested_moc_roles").notNull().default(sql`'[]'::jsonb`),
+  requestedMocFunction: text("requested_moc_function"),
   // Peran MOC per akun (TKO B13.3-07): subset dari Reviewer/Approver/Performer + fungsi
   // (mis. "Maintenance Service", "HSSE", "Terminal Manager"). Initiator & Controller tetap
   // lewat `role`. Dropdown pemilihan Reviewer/Approver/Performer hanya menampilkan akun

@@ -10,7 +10,7 @@ import MocRoleEditor from "@/components/MocRoleEditor";
 const ROLES: SimulatedUser["role"][] = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"];
 
 export default function AdminUsersPage() {
-  const { activeUser, users, locations, assignUserAccess, deleteUser } = usePsi();
+  const { activeUser, users, locations, assignUserAccess, deleteUsers } = usePsi();
 
   const [draftRole, setDraftRole] = useState<Record<string, SimulatedUser["role"]>>({});
   const [draftLocation, setDraftLocation] = useState<Record<string, string>>({});
@@ -19,7 +19,8 @@ export default function AdminUsersPage() {
   const [justUpdated, setJustUpdated] = useState<string | null>(null);
   const [lockoutWarningId, setLockoutWarningId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleting, setDeleting] = useState<SimulatedUser | null>(null);
+  const [deleting, setDeleting] = useState<SimulatedUser[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -47,14 +48,40 @@ export default function AdminUsersPage() {
   const handleAssign = (u: SimulatedUser) => {
     const role = draftRole[u.id] ?? u.requestedRole ?? "Penanggung Jawab PSI (Initiator)";
     const location = draftLocation[u.id] ?? u.requestedLocation ?? locations[0].locationName;
-    assignUserAccess(u.id, role, location);
+    const requestedMoc = (u.requestedMocRoles ?? []).length > 0
+      ? { mocRoles: u.requestedMocRoles ?? [], mocFunction: u.requestedMocFunction ?? null }
+      : undefined;
+    assignUserAccess(u.id, role, location, requestedMoc);
     setJustActivated(u.id);
     setTimeout(() => setJustActivated(null), 3000);
   };
 
-  const askDelete = (u: SimulatedUser) => {
+  // Akun sendiri tidak pernah bisa dipilih/dihapus.
+  const canSelect = (u: SimulatedUser) => u.id !== activeUser.id;
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allSelected = (list: SimulatedUser[]) => {
+    const ids = list.filter(canSelect);
+    return ids.length > 0 && ids.every((u) => selected.has(u.id));
+  };
+  const toggleAll = (list: SimulatedUser[]) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const ids = list.filter(canSelect).map((u) => u.id);
+      if (ids.every((id) => next.has(id))) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  const selectedUsers = users.filter((u) => selected.has(u.id) && canSelect(u));
+
+  const askDelete = (list: SimulatedUser[]) => {
     setDeleteError(null);
-    setDeleting(u);
+    setDeleting(list);
   };
 
   const confirmDelete = async () => {
@@ -62,8 +89,19 @@ export default function AdminUsersPage() {
     setDeleteBusy(true);
     setDeleteError(null);
     try {
-      await deleteUser(deleting.id);
-      setDeleting(null);
+      const { deleted, failed } = await deleteUsers(deleting.map((u) => u.id));
+      const failedIds = new Set(failed.map((f) => f.id));
+      // Yang terhapus keluar dari pilihan; yang gagal tetap dipilih agar terlihat.
+      setSelected((prev) => new Set(Array.from(prev).filter((id) => failedIds.has(id))));
+      if (failed.length === 0) {
+        setDeleting(null);
+      } else {
+        const names = deleting.filter((u) => failedIds.has(u.id)).map((u) => u.name).join(", ");
+        setDeleting(deleting.filter((u) => failedIds.has(u.id)));
+        setDeleteError(
+          `${deleted.length} user dihapus. ${failed.length} tidak dapat dihapus (${failed[0].error}): ${names}.`
+        );
+      }
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Gagal menghapus user.");
     } finally {
@@ -115,15 +153,52 @@ export default function AdminUsersPage() {
         />
       </div>
 
+      {selectedUsers.length > 0 && (
+        <div className="sticky top-2 z-30 mb-4 flex items-center gap-3 rounded-[10px] bg-[#0F3B59] px-4 py-2.5 text-white shadow-[0_8px_24px_-8px_rgba(15,23,42,.45)] animate-fadeIn">
+          <span className="text-[13px] font-bold">{selectedUsers.length} user dipilih</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setSelected(new Set())}
+              className="min-h-[34px] px-3 rounded-[8px] border border-white/30 text-[12px] font-bold hover:bg-white/10 active:scale-[0.97] transition-all duration-200"
+            >
+              Batal pilih
+            </button>
+            <button
+              onClick={() => askDelete(selectedUsers)}
+              className="inline-flex items-center gap-1.5 min-h-[34px] px-3 rounded-[8px] bg-[#DC2626] hover:bg-[#B91C1C] text-[12px] font-bold active:scale-[0.97] transition-all duration-200"
+            >
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+              Hapus
+            </button>
+          </div>
+        </div>
+      )}
+
       {pending.length > 0 && (
         <div className="bg-white border border-[#B45309] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] mb-4 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FEF3C7]">
+            <input
+              type="checkbox"
+              checked={allSelected(pending)}
+              onChange={() => toggleAll(pending)}
+              aria-label="Pilih semua user yang menunggu aktivasi"
+              className="w-4 h-4 shrink-0 accent-[#0F3B59] cursor-pointer"
+            />
             <Hourglass className="w-[15px] h-[15px] text-[#B45309]" strokeWidth={1.8} />
             <span className="text-[12.5px] font-bold text-[#B45309]">Menunggu Aktivasi ({pending.length})</span>
           </div>
           <div className="flex flex-col divide-y divide-[#f0f0f1]">
             {pending.map((u) => (
               <div key={u.id} className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                {canSelect(u) && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(u.id)}
+                    onChange={() => toggleSelected(u.id)}
+                    aria-label={`Pilih ${u.name}`}
+                    className="w-4 h-4 shrink-0 accent-[#0F3B59] cursor-pointer"
+                  />
+                )}
                 <div className="min-w-[160px] flex-1">
                   <div className="text-[13px] font-bold text-[#0F172A]">{u.name}</div>
                   <div className="text-[11px] text-[#9a9da0]">{u.email ?? deriveDemoEmail(u.name)}</div>
@@ -131,6 +206,9 @@ export default function AdminUsersPage() {
                     <div className="mt-0.5 text-[10.5px] text-[#B45309]">
                       Mengajukan: {u.requestedRole ?? "—"}
                       {u.requestedLocation ? ` · ${u.requestedLocation}` : ""}
+                      {(u.requestedMocRoles ?? []).length > 0
+                        ? ` · MoC ${(u.requestedMocRoles ?? []).join(", ")}${u.requestedMocFunction ? ` (${u.requestedMocFunction})` : ""}`
+                        : ""}
                     </div>
                   )}
                 </div>
@@ -167,7 +245,7 @@ export default function AdminUsersPage() {
                       Aktifkan
                     </button>
                     <button
-                      onClick={() => askDelete(u)}
+                      onClick={() => askDelete([u])}
                       aria-label={`Hapus ${u.name}`}
                       className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
                     >
@@ -183,6 +261,13 @@ export default function AdminUsersPage() {
 
       <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 bg-[#fafafb] border-b border-[#f0f0f1]">
+          <input
+            type="checkbox"
+            checked={allSelected(activeUsers)}
+            onChange={() => toggleAll(activeUsers)}
+            aria-label="Pilih semua user aktif"
+            className="w-4 h-4 shrink-0 accent-[#0F3B59] cursor-pointer"
+          />
           <UserCog className="w-[15px] h-[15px] text-[#0F3B59]" strokeWidth={1.8} />
           <span className="text-[12.5px] font-bold text-[#3a3d40]">Semua User Aktif ({activeUsers.length})</span>
         </div>
@@ -200,8 +285,21 @@ export default function AdminUsersPage() {
         <div className="lg:hidden divide-y divide-[#f0f0f1]">
           {activeUsers.map((u) => (
             <div key={u.id} className="p-3.5">
-              <div className="font-semibold text-[13.5px] text-[#0F172A]">{u.name}</div>
-              <div className="text-[12px] text-[#6b6e72] mb-2">{u.email ?? deriveDemoEmail(u.name)}</div>
+              <div className="flex items-start gap-2.5">
+                {canSelect(u) && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(u.id)}
+                    onChange={() => toggleSelected(u.id)}
+                    aria-label={`Pilih ${u.name}`}
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-[#0F3B59] cursor-pointer"
+                  />
+                )}
+                <div>
+                  <div className="font-semibold text-[13.5px] text-[#0F172A]">{u.name}</div>
+                  <div className="text-[12px] text-[#6b6e72] mb-2">{u.email ?? deriveDemoEmail(u.name)}</div>
+                </div>
+              </div>
 
               {editingId === u.id ? (
                 <div className="flex flex-col gap-2 mt-2">
@@ -271,7 +369,7 @@ export default function AdminUsersPage() {
                       </button>
                       {u.id !== activeUser.id && (
                         <button
-                          onClick={() => askDelete(u)}
+                          onClick={() => askDelete([u])}
                           aria-label={`Hapus ${u.name}`}
                           className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
                         >
@@ -295,6 +393,7 @@ export default function AdminUsersPage() {
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-[#fafafb]">
+              <th className="w-9 pl-3.5 py-2.5" aria-hidden />
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Nama</th>
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Email</th>
               <th className="text-left px-3.5 py-2.5 text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">Peran</th>
@@ -307,6 +406,17 @@ export default function AdminUsersPage() {
             {activeUsers.map((u) => (
               <React.Fragment key={u.id}>
               <tr className="border-t border-[#f0f0f1]">
+                <td className="w-9 pl-3.5 py-3">
+                  {canSelect(u) && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(u.id)}
+                      onChange={() => toggleSelected(u.id)}
+                      aria-label={`Pilih ${u.name}`}
+                      className="w-4 h-4 shrink-0 accent-[#0F3B59] cursor-pointer"
+                    />
+                  )}
+                </td>
                 <td className="px-3.5 py-3 font-semibold text-[#0F172A]">{u.name}</td>
                 <td className="px-3.5 py-3 text-[#6b6e72]">{u.email ?? deriveDemoEmail(u.name)}</td>
 
@@ -380,7 +490,7 @@ export default function AdminUsersPage() {
                           </button>
                           {u.id !== activeUser.id && (
                             <button
-                              onClick={() => askDelete(u)}
+                              onClick={() => askDelete([u])}
                               aria-label={`Hapus ${u.name}`}
                               className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
                             >
@@ -395,7 +505,7 @@ export default function AdminUsersPage() {
               </tr>
               {lockoutWarningId === u.id && (
                 <tr>
-                  <td colSpan={6} className="px-3.5 py-2.5 bg-[#FEF3C7] border-t border-[#f0f0f1] text-[11.5px] font-semibold text-[#92400E]">
+                  <td colSpan={7} className="px-3.5 py-2.5 bg-[#FEF3C7] border-t border-[#f0f0f1] text-[11.5px] font-semibold text-[#92400E]">
                     Tidak bisa disimpan — {u.name} satu-satunya Admin Regional saat ini. Tunjuk admin lain dulu sebelum menurunkan perannya.
                   </td>
                 </tr>
@@ -411,7 +521,7 @@ export default function AdminUsersPage() {
 
       <ConfirmDialog
         open={deleting !== null}
-        title={deleting ? `Hapus ${deleting.name}?` : ""}
+        title={deleting ? (deleting.length === 1 ? `Hapus ${deleting[0].name}?` : `Hapus ${deleting.length} user?`) : ""}
         confirmLabel="Ya, hapus"
         busy={deleteBusy}
         error={deleteError}

@@ -57,6 +57,13 @@
       "when": 1790333439403,
       "tag": "0007_users_username",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790345428838,
+      "tag": "0008_requested_moc_roles",
+      "breakpoints": true
     }
   ]
 }

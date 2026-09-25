@@ -113,6 +113,9 @@ export interface SimulatedUser {
    * suggested defaults on the activation screen. Never granted until approved. */
   requestedRole?: string | null;
   requestedLocation?: string | null;
+  // Usulan peran MOC + fungsi dari layar "Lengkapi Profil" (hanya usulan, lihat requestedRole).
+  requestedMocRoles?: string[];
+  requestedMocFunction?: string | null;
   // Peran MOC per akun (Reviewer/Approver/Performer) + fungsi; lihat domain/moc.ts.
   mocRoles?: string[];
   mocFunction?: string | null;

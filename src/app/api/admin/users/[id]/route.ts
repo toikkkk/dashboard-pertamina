@@ -14,10 +14,14 @@ import { users } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertRegionalAdmin, ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
+import { MOC_ROLE_FLAGS } from "@/lib/domain/moc";
 
 const bodySchema = z.object({
   role: z.enum(["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"]),
   location: z.string().trim().min(1),
+  // Opsional: dikirim saat aktivasi agar usulan peran MOC user ikut diterapkan.
+  mocRoles: z.array(z.enum(MOC_ROLE_FLAGS)).max(MOC_ROLE_FLAGS.length).optional(),
+  mocFunction: z.string().trim().max(100).nullable().optional(),
 });
 
 // Menghapus akun. Hanya Admin Regional; tidak boleh menghapus akun sendiri. Akun yang
@@ -58,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const admin = await requireSessionUser();
     assertRegionalAdmin(admin);
 
-    const { role, location } = bodySchema.parse(await req.json());
+    const { role, location, mocRoles, mocFunction } = bodySchema.parse(await req.json());
     const isRegionalAdmin = role === "Admin Regional";
 
     if (!isRegionalAdmin) {
@@ -73,7 +77,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const [updated] = await db
       .update(users)
-      .set({ role, location, isRegionalAdmin, updatedAt: new Date() })
+      .set({
+        role,
+        location,
+        isRegionalAdmin,
+        ...(mocRoles !== undefined
+          ? { mocRoles: isRegionalAdmin ? [] : Array.from(new Set(mocRoles)), mocFunction: mocRoles.length > 0 && !isRegionalAdmin ? mocFunction || null : null }
+          : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, params.id))
       .returning();
 

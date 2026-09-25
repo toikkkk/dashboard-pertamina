@@ -32,7 +32,7 @@ export async function GET() {
       loadDocumentsForUser(sessionUser),
       loadAllDocuments(),
       db
-        .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
+        .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation, requestedMocRoles: users.requestedMocRoles, requestedMocFunction: users.requestedMocFunction, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
         .from(users),
       db.select().from(locations),
       db.select().from(locationTargets),
@@ -56,6 +56,8 @@ export async function GET() {
         isRegionalAdmin: sessionUser.isRegionalAdmin,
         requestedRole: sessionUser.requestedRole,
         requestedLocation: sessionUser.requestedLocation,
+        requestedMocRoles: sessionUser.requestedMocRoles,
+        requestedMocFunction: sessionUser.requestedMocFunction,
         mocRoles: sessionUser.mocRoles,
         mocFunction: sessionUser.mocFunction,
       },
