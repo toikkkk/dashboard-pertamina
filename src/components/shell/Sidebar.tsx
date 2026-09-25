@@ -3,7 +3,7 @@
 // Panel navigasi kiri. DOM/kelas CSS ini adalah porting literal dari desain Manus
 // (lihat src/styles/shell.css, hasil scoping otomatis dari "ui terbaru dari manus" di
 // root repo) — hanya isi (rute, lencana, peran) yang disesuaikan dengan aplikasi ini.
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { userRoleLabel } from "@/lib/domain/roleLabel";
+import LogoutConfirm from "@/components/shell/LogoutConfirm";
 
 interface NavItem {
   name: string;
@@ -54,7 +55,14 @@ export default function Sidebar({
 
   const isNavActive = (path: string) => (path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`));
 
+  // Keluar selalu lewat konfirmasi (dialog) supaya tidak logout tak sengaja.
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const askLogout = () => {
+    setMobileOpen(false);
+    setConfirmLogout(true);
+  };
   const handleLogout = () => {
+    setConfirmLogout(false);
     logout();
     router.push("/login");
   };
@@ -128,7 +136,7 @@ export default function Sidebar({
 
         <div className="sidebar-label sidebar-label-general">Umum</div>
         <nav className="sidebar-nav sidebar-nav-general" aria-label="Navigasi umum">
-          <button className="nav-item" title={collapsed ? "Keluar" : undefined} onClick={handleLogout}>
+          <button className="nav-item" title={collapsed ? "Keluar" : undefined} onClick={askLogout}>
             <LogOut className="h-[16px] w-[16px]" strokeWidth={1.7} />
             <span>Keluar</span>
           </button>
@@ -142,11 +150,12 @@ export default function Sidebar({
             <div className="sidebar-user-role">{isPending ? "Menunggu Aktivasi" : userRoleLabel(activeUser)}</div>
             {!isPending && <div className="sidebar-user-role">{activeUser.location ?? "Semua Lokasi"}</div>}
           </div>
-          <button aria-label="Menu pengguna" className="icon-button icon-button-dark" onClick={handleLogout} title="Keluar">
+          <button aria-label="Menu pengguna" className="icon-button icon-button-dark" onClick={askLogout} title="Keluar">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
       </aside>
+      <LogoutConfirm open={confirmLogout} onCancel={() => setConfirmLogout(false)} onConfirm={handleLogout} />
     </>
   );
 }
