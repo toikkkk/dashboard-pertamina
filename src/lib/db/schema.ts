@@ -5,7 +5,7 @@
 // a raw fileUrl string. Column names use snake_case to match plain-SQL conventions;
 // Drizzle maps them to camelCase JS property names automatically.
 
-import { pgTable, text, uuid, integer, boolean, timestamp, date, bigint, jsonb, primaryKey, check } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, boolean, timestamp, date, bigint, jsonb, primaryKey, check, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -64,9 +64,12 @@ export const users = pgTable("users", {
   // yang punya peran yang sesuai; server memvalidasi ulang.
   mocRoles: jsonb("moc_roles").notNull().default(sql`'[]'::jsonb`),
   mocFunction: text("moc_function"),
+  // Nama pengguna alternatif untuk masuk (selain email). Nullable: akun lama diisi dari
+  // bagian depan email lewat migrasi 0007; unik tanpa membedakan huruf besar/kecil.
+  username: text("username"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [uniqueIndex("users_username_lower_idx").on(sql`lower(${t.username})`)]);
 
 // Opaque-token sessions, not stateless JWT: assignUserAccess() needs a role/location
 // change to take effect on the affected user's very next request (already a real

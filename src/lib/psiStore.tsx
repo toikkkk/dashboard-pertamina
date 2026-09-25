@@ -57,12 +57,13 @@ interface PsiContextType {
   isLoggedIn: boolean;
   /** POSTs to /api/auth/login. Throws on failure (wrong email/password) — callers
    * show the thrown message inline rather than this returning a boolean. */
-  login: (email: string, password: string) => Promise<SimulatedUser>;
+  /** identifier = email ATAU username. */
+  login: (identifier: string, password: string) => Promise<SimulatedUser>;
   logout: () => void;
   /** POSTs to /api/auth/register. Same pending-until-admin-assigns-location outcome
    * as the client-only prototype (server always creates with location=NULL) — the
    * only real change is that the password is now actually hashed and stored. */
-  register: (name: string, email: string, password: string) => Promise<SimulatedUser>;
+  register: (name: string, email: string, password: string, username?: string) => Promise<SimulatedUser>;
   /** PATCHes /api/auth/preferences — the current user's self-selected role + terminal,
    * shown to the Admin Regional as activation defaults. Never auto-grants access. */
   saveOnboardingPreferences: (role: string, location: string) => Promise<SimulatedUser>;
@@ -156,14 +157,14 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // request resolves don't crash on an empty array.
   const locations = payload.locations.length > 0 ? payload.locations : REGIONAL_LOCATIONS;
 
-  const login = async (email: string, password: string): Promise<SimulatedUser> => {
-    const user = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+  const login = async (identifier: string, password: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) });
     await mutate();
     return user;
   };
 
-  const register = async (name: string, email: string, password: string): Promise<SimulatedUser> => {
-    const user = await fetchJson("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+  const register = async (name: string, email: string, password: string, username?: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password, ...(username ? { username } : {}) }) });
     await mutate();
     return user;
   };

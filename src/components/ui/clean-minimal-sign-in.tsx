@@ -6,27 +6,36 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePsi } from "@/lib/psiStore";
 import { passwordPolicyIssues } from "@/lib/mockData";
-import { LogIn, Mail, Lock, User, Eye, EyeOff, UserPlus, CheckCircle2, KeyRound, ArrowLeft } from "lucide-react";
+import { Mail, Lock, User, AtSign, Eye, EyeOff, CheckCircle2, ArrowLeft } from "lucide-react";
 import PasswordChecklist from "@/components/PasswordChecklist";
+import { ENTER_FLAG } from "@/lib/localPref";
 
 gsap.registerPlugin(useGSAP);
 
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+// Username: sama dengan aturan server (lib/auth/username.ts), tanpa membedakan huruf besar/kecil.
+const validateUsername = (u: string) => /^[a-z0-9._-]{3,30}$/i.test(u);
 
-const inputClass =
-  "w-full pl-10 pr-3 py-2.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59] focus:ring-[3px] focus:ring-[#0F3B59]/[.12] bg-[#F5F7F9] focus:bg-white text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#9a9da0]";
-
-// Icon wrapper reacts to the sibling input's focus via `group-focus-within` — a
-// small, deliberate detail (icon picks up brand blue while its field is active)
-// rather than a static gray icon regardless of state.
-function FieldIcon({ children }: { children: React.ReactNode }) {
-  return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a9da0] transition-colors duration-200 group-focus-within:text-[#0F3B59]">{children}</span>;
+// Pengenal masuk: ada "@" = email, selain itu username.
+function identifierIssue(v: string): string | null {
+  if (!v.trim()) return "Mohon isi email atau username.";
+  if (v.includes("@")) return validateEmail(v.trim()) ? null : "Format email tidak valid.";
+  return validateUsername(v.trim()) ? null : "Username 3-30 karakter: huruf, angka, titik, garis bawah, atau strip.";
 }
 
-// Official 4-color "G" mark — Google's brand guidelines require the real logo, not a
-// generic icon-font substitute, for any "Sign in with Google" control.
+const inputClass =
+  "w-full pl-10 pr-3 py-2.5 rounded-[8px] border border-transparent bg-[#EEF2F4] focus:outline-none focus:border-[#0F3B59] focus:bg-white focus:ring-[3px] focus:ring-[#0F3B59]/[.12] text-[#0F172A] text-sm transition-all duration-200 ease-out-expo placeholder:text-[#6b7780]";
+const primaryBtn =
+  "w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14px] tracking-wide py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100";
+
+// Ikon di dalam kolom berubah biru saat kolomnya aktif (group-focus-within).
+function FieldIcon({ children }: { children: React.ReactNode }) {
+  return <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7780] transition-colors duration-200 group-focus-within:text-[#0F3B59]">{children}</span>;
+}
+
+// Logo "G" resmi 4 warna — pedoman Google mewajibkan logo asli untuk kontrol "Masuk dengan Google".
 function GoogleLogo() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
@@ -43,7 +52,8 @@ function SignIn2Content() {
   const searchParams = useSearchParams();
   const { login, register, forgotPassword } = usePsi();
 
-  const [mode, setMode] = useState<"signin" | "register" | "forgot">("signin");
+  const [mode, setMode] = useState<"signin" | "register">("signin");
+  const [forgot, setForgot] = useState(false);
 
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState("");
@@ -52,7 +62,7 @@ function SignIn2Content() {
   const [sendingForgot, setSendingForgot] = useState(false);
 
   // Sign in
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -60,10 +70,8 @@ function SignIn2Content() {
   const [signInSuccess, setSignInSuccess] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Surfaces a failure from the Google OAuth round trip (see
-  // /api/auth/google/callback, which redirects here with ?googleError=... instead of
-  // throwing — there's no client-side call to catch an error from, it's a full page
-  // redirect the whole way).
+  // Galat dari putaran OAuth Google (/api/auth/google/callback mengarahkan ke sini dengan
+  // ?googleError=...; tidak ada panggilan klien yang bisa di-catch, semuanya redirect).
   useEffect(() => {
     const googleError = searchParams.get("googleError");
     if (googleError) setError(googleError);
@@ -71,61 +79,68 @@ function SignIn2Content() {
 
   // Register
   const [regName, setRegName] = useState("");
+  const [regUsername, setRegUsername] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regError, setRegError] = useState("");
   const [regSuccess, setRegSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const handleSignIn = async () => {
-    if (!email || !password) {
-      setError("Mohon isi email dan kata sandi.");
+    const issue = identifierIssue(identifier);
+    if (issue) {
+      setError(issue);
       return;
     }
-    if (!validateEmail(email)) {
-      setError("Format email tidak valid.");
+    if (!password) {
+      setError("Mohon isi kata sandi.");
       return;
     }
     setError("");
     setSigningIn(true);
     try {
-      await login(email, password);
-      // Hand off to the exit-transition effect below instead of navigating right
-      // away — an instant router.push here is what made login->dashboard feel
-      // like an abrupt cut rather than a transition in the first place.
+      await login(identifier.trim(), password);
       setSignInSuccess(true);
+      setLeaving(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal masuk.");
       setSigningIn(false);
     }
   };
 
-  // Brief success state (checkmark, same language as the register flow below),
-  // then the card fades/scales out before the actual navigation — so the two
-  // screens hand off to each other instead of one instantly replacing the other.
-  // Reduced-motion still gets the pause (long enough to read "Berhasil masuk"),
-  // just without the tween itself.
+  // Keluar: centang sebentar, lalu seluruh kartu meluncur ke ATAS dan pudar; dashboard
+  // masuk dari bawah (lihat AppShell). Navigasi baru terjadi sesudah gerak selesai.
+  // Reduced-motion: jeda singkat tanpa gerak.
   useGSAP(
     () => {
-      if (!signInSuccess) return;
+      if (!leaving) return;
+      const go = () => {
+        try { window.sessionStorage.setItem(ENTER_FLAG, "1"); } catch { /* tidak masalah */ }
+        router.push("/");
+      };
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const tl = gsap.timeline({ onComplete: () => router.push("/") });
-        tl.to({}, { duration: 0.55 }); // hold on the success state so it's actually readable
-        tl.to(cardRef.current, { opacity: 0, scale: 0.96, y: -8, duration: 0.32, ease: "power2.in" });
+        const tl = gsap.timeline({ onComplete: go });
+        tl.to({}, { duration: 0.6 });
+        tl.to(cardRef.current, { yPercent: -125, opacity: 0, duration: 0.7, ease: "power3.in" });
       });
       mm.add("(prefers-reduced-motion: reduce)", () => {
-        gsap.delayedCall(0.7, () => router.push("/"));
+        gsap.delayedCall(0.7, go);
       });
       return () => mm.revert();
     },
-    { dependencies: [signInSuccess] }
+    { dependencies: [leaving] }
   );
 
   const handleRegister = async () => {
-    if (!regName.trim() || !regEmail || !regPassword) {
+    if (!regName.trim() || !regUsername || !regEmail || !regPassword) {
       setRegError("Semua kolom wajib diisi.");
+      return;
+    }
+    if (!validateUsername(regUsername.trim())) {
+      setRegError("Username 3-30 karakter: huruf, angka, titik, garis bawah, atau strip.");
       return;
     }
     if (!validateEmail(regEmail)) {
@@ -140,9 +155,9 @@ function SignIn2Content() {
     setRegError("");
     setRegistering(true);
     try {
-      await register(regName.trim(), regEmail, regPassword);
+      await register(regName.trim(), regEmail, regPassword, regUsername.trim().toLowerCase());
       setRegSuccess(true);
-      setTimeout(() => router.push("/"), 1600);
+      setTimeout(() => setLeaving(true), 900);
     } catch (err) {
       setRegError(err instanceof Error ? err.message : "Gagal mendaftar.");
     } finally {
@@ -172,272 +187,247 @@ function SignIn2Content() {
   };
 
   const backToSignIn = () => {
-    setMode("signin");
+    setForgot(false);
     setForgotEmail("");
     setForgotError("");
     setForgotSent(false);
   };
 
+  const goMode = (m: "signin" | "register") => {
+    setMode(m);
+    if (m === "register") backToSignIn();
+  };
+
+  const isSignin = mode === "signin";
+  // Panel tidak aktif disembunyikan (tidak bisa difokus/diklik) tapi tetap ikut
+  // menentukan tinggi kartu di ponsel, tempat kedua panel bertumpuk.
+  const panel = (active: boolean, dir: "l" | "r") =>
+    `col-start-1 row-start-1 flex flex-col justify-center px-7 py-9 sm:px-10 transition-all duration-500 ease-out-expo ${
+      dir === "r" ? "md:col-start-2" : ""
+    } ${
+      active
+        ? "opacity-100 translate-x-0 z-[2] delay-150"
+        : `opacity-0 pointer-events-none invisible ${dir === "l" ? "md:-translate-x-6" : "md:translate-x-6"} z-[1]`
+    }`;
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#CAD4DA] p-6">
-      <div ref={cardRef} className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_7px_24px_rgba(15,23,42,.09)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
-        <div
-          className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0F3B59] mb-6 animate-popIn"
-          style={{ animationDelay: "80ms" }}
-        >
-          {mode === "signin" ? (
-            <LogIn className="w-6 h-6 text-white" strokeWidth={2} />
-          ) : mode === "register" ? (
-            <UserPlus className="w-6 h-6 text-white" strokeWidth={2} />
-          ) : (
-            <KeyRound className="w-6 h-6 text-white" strokeWidth={2} />
-          )}
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#CAD4DA] p-4 sm:p-6 overflow-hidden">
+      <div className="w-full max-w-[920px] animate-fadeInUp">
+      <div
+        ref={cardRef}
+        className="relative w-full min-h-[600px] bg-white rounded-[18px] shadow-[0_7px_24px_rgba(15,23,42,.09)] border border-[#C5CED3] overflow-hidden grid grid-cols-1 md:grid-cols-2"
+      >
+        {/* ---------- Masuk ---------- */}
+        <div className={panel(isSignin, "l")} aria-hidden={!isSignin}>
+          <div className="w-full max-w-[330px] mx-auto">
+            <div className="text-center mb-7">
+              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+              <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">{forgot ? "Atur Ulang Sandi" : "Masuk"}</h1>
+            </div>
+
+            {signInSuccess ? (
+              <div className="flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
+                <CheckCircle2 className="w-10 h-10 text-[#15803D] animate-popIn" strokeWidth={1.7} />
+                <p className="text-[13.5px] font-bold text-[#0F172A]">Berhasil masuk</p>
+              </div>
+            ) : forgot ? (
+              forgotSent ? (
+                <div className="flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
+                  <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
+                  <p className="text-[13px] font-bold text-[#0F172A]">Tautan terkirim</p>
+                  <p className="text-[12px] text-[#4b5560] leading-relaxed">
+                    Kalau <strong>{forgotEmail}</strong> terdaftar, tautan atur ulang kata sandi sudah dikirim ke email tersebut. Berlaku 30 menit.
+                  </p>
+                  <button type="button" onClick={backToSignIn} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline mt-1">Kembali ke Masuk</button>
+                </div>
+              ) : (
+                <>
+                  <button type="button" onClick={backToSignIn} className="flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] mb-4 transition-colors duration-200">
+                    <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} /> Kembali ke Masuk
+                  </button>
+                  <div className="flex flex-col gap-3 mb-3">
+                    <div className="relative group">
+                      <FieldIcon><Mail className="w-4 h-4" /></FieldIcon>
+                      <input
+                        placeholder="Email"
+                        type="email"
+                        value={forgotEmail}
+                        className={inputClass}
+                        onChange={(e) => { setForgotEmail(e.target.value); setForgotError(""); }}
+                        onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()}
+                      />
+                    </div>
+                    {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{forgotError}</div>}
+                  </div>
+                  <button onClick={handleForgotPassword} disabled={sendingForgot} className={primaryBtn}>
+                    {sendingForgot ? "Mengirim…" : "KIRIM TAUTAN"}
+                  </button>
+                </>
+              )
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 mb-2">
+                  <div className="relative group">
+                    <FieldIcon><AtSign className="w-4 h-4" /></FieldIcon>
+                    <input
+                      placeholder="Email atau username"
+                      type="text"
+                      autoComplete="username"
+                      value={identifier}
+                      className={inputClass}
+                      onChange={(e) => { setIdentifier(e.target.value); setError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                    />
+                  </div>
+                  <div className="relative group">
+                    <FieldIcon><Lock className="w-4 h-4" /></FieldIcon>
+                    <input
+                      placeholder="Kata sandi"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      className={`${inputClass} pr-10`}
+                      onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7780] hover:text-[#0F172A] transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => setForgot(true)} className="self-center text-[12px] font-bold text-[#0F3B59] hover:underline -mt-0.5">
+                    Lupa kata sandi?
+                  </button>
+                  {error && <div role="alert" className="text-[11.5px] text-[#DC2626] font-medium text-center animate-fadeIn">{error}</div>}
+                </div>
+
+                <button onClick={handleSignIn} disabled={signingIn} className={`${primaryBtn} mt-1 mb-5`}>
+                  {signingIn ? "Memproses…" : "MASUK"}
+                </button>
+
+                <div className="flex items-center w-full mb-4">
+                  <div className="flex-grow border-t border-dashed border-[#d5dde1]" />
+                  <span className="mx-2.5 text-[10.5px] font-semibold text-[#6b7780] uppercase tracking-wide">atau</span>
+                  <div className="flex-grow border-t border-dashed border-[#d5dde1]" />
+                </div>
+
+                <a
+                  href="/api/auth/google"
+                  className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#C5CED3] active:scale-[0.98] transition-all duration-200 ease-out-expo"
+                >
+                  <GoogleLogo /> Masuk dengan Google
+                </a>
+
+                <p className="md:hidden text-center text-[12.5px] text-[#4b5560] mt-6">
+                  Belum punya akun?{" "}
+                  <button type="button" onClick={() => goMode("register")} className="font-bold text-[#0F3B59] hover:underline">Daftar</button>
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
-        <h2 className="font-heading text-xl font-bold mb-1.5 text-center text-[#0F172A]">
-          {mode === "signin" ? "Portal PSI & MOC" : mode === "register" ? "Daftar Akun Baru" : "Atur Ulang Kata Sandi"}
-        </h2>
-        <p className="text-[#6b6e72] text-[12.5px] mb-6 text-center leading-relaxed">
-          {mode === "signin"
-            ? "Kelola dokumen keselamatan proses Regional Jatimbalinus."
-            : mode === "register"
-            ? "Akun Anda perlu diaktifkan Admin Regional sebelum dapat digunakan."
-            : "Masukkan email Anda dan kami kirimkan tautan untuk membuat kata sandi baru."}
-        </p>
-
-        {mode === "forgot" ? (
-          <button
-            type="button"
-            onClick={backToSignIn}
-            className="w-full flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] mb-5 transition-colors duration-200"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />
-            Kembali ke Masuk
-          </button>
-        ) : (
-          /* Mode switch — sliding pill indicator instead of a hard cut between tabs */
-          <div className="relative w-full flex bg-[#F5F7F9] border border-[#eceded] rounded-[8px] p-1 mb-5">
-            <div
-              className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.08)] transition-transform duration-300 ease-out-expo"
-              style={{ transform: mode === "register" ? "translateX(calc(100% + 4px))" : "translateX(0)" }}
-            />
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
-                mode === "signin" ? "text-[#0F3B59]" : "text-[#6b6e72] hover:text-[#0F172A]"
-              }`}
-            >
-              Masuk
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("register")}
-              className={`relative z-10 flex-1 text-[12.5px] font-bold py-1.5 rounded-[8px] transition-colors duration-200 ${
-                mode === "register" ? "text-[#0F3B59]" : "text-[#6b6e72] hover:text-[#0F172A]"
-              }`}
-            >
-              Daftar
-            </button>
-          </div>
-        )}
-
-        {mode === "signin" ? (
-          signInSuccess ? (
-            <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
-              <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
-              <p className="text-[13px] font-bold text-[#0F172A]">Berhasil masuk</p>
-              <p className="text-[12px] text-[#6b6e72] leading-relaxed">Mengalihkan ke dashboard…</p>
+        {/* ---------- Daftar ---------- */}
+        <div className={panel(!isSignin, "r")} aria-hidden={isSignin}>
+          <div className="w-full max-w-[330px] mx-auto">
+            <div className="text-center mb-6">
+              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+              <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">Buat Akun</h1>
             </div>
-          ) : (
-          <>
-            <div className="w-full flex flex-col gap-3 mb-2">
-              <div className="relative group">
-                <FieldIcon>
-                  <Mail className="w-4 h-4" />
-                </FieldIcon>
-                <input
-                  placeholder="Email"
-                  type="email"
-                  value={email}
-                  className={inputClass}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                  }}
-                />
+
+            {regSuccess ? (
+              <div className="flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
+                <CheckCircle2 className="w-10 h-10 text-[#15803D] animate-popIn" strokeWidth={1.7} />
+                <p className="text-[13.5px] font-bold text-[#0F172A]">Akun berhasil dibuat</p>
+                <p className="text-[12px] text-[#4b5560] leading-relaxed">Menunggu Admin Regional menetapkan lokasi &amp; peran Anda.</p>
               </div>
-              <div className="relative group">
-                <FieldIcon>
-                  <Lock className="w-4 h-4" />
-                </FieldIcon>
-                <input
-                  placeholder="Kata Sandi"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  className={`${inputClass} pr-10`}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError("");
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9a9da0] hover:text-[#0F172A] transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMode("forgot")}
-                className="self-end text-[11.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200 -mt-1.5"
-              >
-                Lupa kata sandi?
-              </button>
-              {error && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{error}</div>}
-            </div>
-
-            <button
-              onClick={handleSignIn}
-              disabled={signingIn}
-              className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mb-5 mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
-            >
-              {signingIn ? "Memproses…" : "Masuk"}
-            </button>
-
-            <div className="flex items-center w-full mb-4">
-              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
-              <span className="mx-2.5 text-[10.5px] font-semibold text-[#9a9da0] uppercase tracking-wide">atau</span>
-              <div className="flex-grow border-t border-dashed border-[#e2e5e9]" />
-            </div>
-
-            <a
-              href="/api/auth/google"
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#C5CED3] active:scale-[0.98] transition-all duration-200 ease-out-expo"
-            >
-              <GoogleLogo />
-              Masuk dengan Google
-            </a>
-          </>
-          )
-        ) : mode === "forgot" ? (
-          forgotSent ? (
-            <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
-              <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
-              <p className="text-[13px] font-bold text-[#0F172A]">Tautan terkirim</p>
-              <p className="text-[12px] text-[#6b6e72] leading-relaxed">
-                Kalau <strong>{forgotEmail}</strong> terdaftar, kami sudah mengirimkan tautan atur ulang kata sandi ke email tersebut. Berlaku 30 menit.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="w-full flex flex-col gap-3 mb-2">
-                <div className="relative group">
-                  <FieldIcon>
-                    <Mail className="w-4 h-4" />
-                  </FieldIcon>
-                  <input
-                    placeholder="Email"
-                    type="email"
-                    value={forgotEmail}
-                    className={inputClass}
-                    onChange={(e) => {
-                      setForgotEmail(e.target.value);
-                      setForgotError("");
-                    }}
-                  />
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 mb-2">
+                  <div className="relative group">
+                    <FieldIcon><User className="w-4 h-4" /></FieldIcon>
+                    <input placeholder="Nama lengkap" type="text" value={regName} className={inputClass} onChange={(e) => { setRegName(e.target.value); setRegError(""); }} />
+                  </div>
+                  <div className="relative group">
+                    <FieldIcon><AtSign className="w-4 h-4" /></FieldIcon>
+                    <input placeholder="Username" type="text" autoComplete="username" value={regUsername} className={inputClass} onChange={(e) => { setRegUsername(e.target.value); setRegError(""); }} />
+                  </div>
+                  <div className="relative group">
+                    <FieldIcon><Mail className="w-4 h-4" /></FieldIcon>
+                    <input placeholder="Email" type="email" value={regEmail} className={inputClass} onChange={(e) => { setRegEmail(e.target.value); setRegError(""); }} />
+                  </div>
+                  <div className="relative group">
+                    <FieldIcon><Lock className="w-4 h-4" /></FieldIcon>
+                    <input
+                      placeholder="Kata sandi"
+                      type={showRegPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={regPassword}
+                      className={`${inputClass} pr-10`}
+                      onChange={(e) => { setRegPassword(e.target.value); setRegError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword((v) => !v)}
+                      aria-label={showRegPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7780] hover:text-[#0F172A] transition-colors"
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <PasswordChecklist password={regPassword} />
+                  {regError && <div role="alert" className="text-[11.5px] text-[#DC2626] font-medium text-center animate-fadeIn">{regError}</div>}
                 </div>
-                {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{forgotError}</div>}
-              </div>
-              <button
-                onClick={handleForgotPassword}
-                disabled={sendingForgot}
-                className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
-              >
-                {sendingForgot ? "Mengirim…" : "Kirim Tautan Atur Ulang"}
-              </button>
-            </>
-          )
-        ) : regSuccess ? (
-          <div className="w-full flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
-            <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
-            <p className="text-[13px] font-bold text-[#0F172A]">Akun berhasil dibuat</p>
-            <p className="text-[12px] text-[#6b6e72] leading-relaxed">
-              Menunggu Admin Regional menetapkan lokasi &amp; peran Anda sebelum bisa mengakses data. Mengalihkan…
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="w-full flex flex-col gap-3 mb-2">
-              <div className="relative group">
-                <FieldIcon>
-                  <User className="w-4 h-4" />
-                </FieldIcon>
-                <input
-                  placeholder="Nama Lengkap"
-                  type="text"
-                  value={regName}
-                  className={inputClass}
-                  onChange={(e) => {
-                    setRegName(e.target.value);
-                    setRegError("");
-                  }}
-                />
-              </div>
-              <div className="relative group">
-                <FieldIcon>
-                  <Mail className="w-4 h-4" />
-                </FieldIcon>
-                <input
-                  placeholder="Email (mis. nama@gmail.com)"
-                  type="email"
-                  value={regEmail}
-                  className={inputClass}
-                  onChange={(e) => {
-                    setRegEmail(e.target.value);
-                    setRegError("");
-                  }}
-                />
-              </div>
-              <div className="relative group">
-                <FieldIcon>
-                  <Lock className="w-4 h-4" />
-                </FieldIcon>
-                <input
-                  placeholder="Kata Sandi"
-                  type={showRegPassword ? "text" : "password"}
-                  value={regPassword}
-                  className={`${inputClass} pr-10`}
-                  onChange={(e) => {
-                    setRegPassword(e.target.value);
-                    setRegError("");
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowRegPassword((v) => !v)}
-                  aria-label={showRegPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9a9da0] hover:text-[#0F172A] transition-colors"
-                >
-                  {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <PasswordChecklist password={regPassword} />
-              {regError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{regError}</div>}
-            </div>
 
+                <button onClick={handleRegister} disabled={registering} className={`${primaryBtn} mt-1`}>
+                  {registering ? "Memproses…" : "DAFTAR"}
+                </button>
+
+                <p className="md:hidden text-center text-[12.5px] text-[#4b5560] mt-6">
+                  Sudah punya akun?{" "}
+                  <button type="button" onClick={() => goMode("signin")} className="font-bold text-[#0F3B59] hover:underline">Masuk</button>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ---------- Panel geser (hanya layar lebar) ---------- */}
+        <div
+          className="hidden md:block absolute top-0 left-1/2 w-1/2 h-full z-20 text-white overflow-hidden transition-transform duration-[700ms] ease-[cubic-bezier(.65,0,.35,1)]"
+          style={{ transform: isSignin ? "translateX(0)" : "translateX(-100%)", background: "linear-gradient(160deg, #124969 0%, #0F3B59 45%, #0B2C43 100%)" }}
+        >
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 translate-x-10 pointer-events-none"}`} aria-hidden={!isSignin}>
+            <h2 className="font-heading text-[30px] font-bold leading-tight">Belum punya akun?</h2>
+            <p className="text-[13.5px] text-white/80 mt-3 max-w-[260px] leading-relaxed">Daftar sekarang. Akun diaktifkan Admin Regional sebelum dipakai.</p>
             <button
-              onClick={handleRegister}
-              disabled={registering}
-              className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[14.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 ease-out-expo mt-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              type="button"
+              tabIndex={isSignin ? 0 : -1}
+              onClick={() => goMode("register")}
+              className="mt-7 px-9 py-2.5 rounded-[8px] border border-white/70 text-[12.5px] font-bold tracking-[.1em] hover:bg-white hover:text-[#0F3B59] active:scale-[0.97] transition-all duration-200"
             >
-              {registering ? "Memproses…" : "Daftar"}
+              DAFTAR
             </button>
-          </>
-        )}
+          </div>
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${!isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 -translate-x-10 pointer-events-none"}`} aria-hidden={isSignin}>
+            <h2 className="font-heading text-[30px] font-bold leading-tight">Sudah punya akun?</h2>
+            <p className="text-[13.5px] text-white/80 mt-3 max-w-[260px] leading-relaxed">Masuk dengan email atau username Anda.</p>
+            <button
+              type="button"
+              tabIndex={!isSignin ? 0 : -1}
+              onClick={() => goMode("signin")}
+              className="mt-7 px-9 py-2.5 rounded-[8px] border border-white/70 text-[12.5px] font-bold tracking-[.1em] hover:bg-white hover:text-[#0F3B59] active:scale-[0.97] transition-all duration-200"
+            >
+              MASUK
+            </button>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   );

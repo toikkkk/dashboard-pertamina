@@ -6,6 +6,7 @@
 // /api/auth/register) — it still lands in the existing "pending Admin Regional
 // activation" state, nothing about that flow is bypassed just because sign-in was
 // via Google.
+import { uniqueUsername } from "@/lib/auth/username";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest) {
         .values({
           name: googleUser.name || googleUser.email,
           email: normalizedEmail,
+          username: await uniqueUsername(normalizedEmail),
           passwordHash,
           role: "Penanggung Jawab PSI (Initiator)",
           location: null,

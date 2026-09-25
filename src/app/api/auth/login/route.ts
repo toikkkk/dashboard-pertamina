@@ -12,18 +12,25 @@ import { verifyPassword } from "@/lib/auth/password";
 import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 
-const bodySchema = z.object({
-  email: z.string().trim().email().max(255),
-  password: z.string().min(1).max(200),
-});
+// `identifier` = email ATAU username. `email` tetap diterima agar klien lama tidak rusak.
+const bodySchema = z
+  .object({
+    identifier: z.string().trim().min(1).max(255).optional(),
+    email: z.string().trim().min(1).max(255).optional(),
+    password: z.string().min(1).max(200),
+  })
+  .refine((b) => !!(b.identifier ?? b.email), { message: "Email atau username wajib diisi." });
 
 const RATE_LIMIT_WINDOW_MINUTES = 15;
 const RATE_LIMIT_MAX_FAILURES = 5;
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
-    const { email, password } = bodySchema.parse(await req.json());
-    const normalizedEmail = email.toLowerCase();
+    const body = bodySchema.parse(await req.json());
+    const password = body.password;
+    // Kunci pembatasan percobaan memakai pengenal yang diketik (email atau username).
+    const normalizedEmail = (body.identifier ?? body.email ?? "").toLowerCase();
+    const byEmail = normalizedEmail.includes("@");
     const ipAddress = req.headers.get("x-forwarded-for");
 
     const recordAttempt = (success: boolean) =>
@@ -50,12 +57,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(byEmail ? eq(users.email, normalizedEmail) : sql`lower(${users.username}) = ${normalizedEmail}`)
+      .limit(1);
     // Same generic message whether the email doesn't exist or the password is
     // wrong — don't leak which case it was.
     const invalid = async () => {
       await recordAttempt(false);
-      return NextResponse.json({ error: "Email atau kata sandi salah." }, { status: 401 });
+      return NextResponse.json({ error: "Email/username atau kata sandi salah." }, { status: 401 });
     };
 
     if (!user) return invalid();
@@ -69,6 +80,7 @@ export async function POST(req: NextRequest) {
       id: user.id,
       name: user.name,
       email: user.email,
+      username: user.username,
       role: user.role,
       location: user.location,
       isRegionalAdmin: user.isRegionalAdmin,

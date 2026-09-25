@@ -14,12 +14,16 @@ import { hashPassword } from "@/lib/auth/password";
 import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 import { passwordPolicyIssues } from "@/lib/domain/rules";
+import { USERNAME_MESSAGE, USERNAME_RE, normalizeUsername, uniqueUsername } from "@/lib/auth/username";
+import { sql } from "drizzle-orm";
 
 const ROLES = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"] as const;
 
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().trim().email().max(255),
+  // Opsional: bila kosong diturunkan dari email.
+  username: z.string().trim().max(60).optional(),
   password: z.string().max(200),
   // Optional — pre-selected preferences only, never an authorization grant.
   role: z.enum(ROLES).optional(),
@@ -28,7 +32,7 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
-    const { name, email, password, role, location } = bodySchema.parse(await req.json());
+    const { name, email, username: usernameInput, password, role, location } = bodySchema.parse(await req.json());
 
     // Applied after the base zod shape rather than as a `.refine()` on it — keeps
     // the multi-requirement message list simple instead of fighting zod's
@@ -48,6 +52,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email ini sudah terdaftar. Silakan masuk." }, { status: 409 });
     }
 
+    let username: string;
+    if (usernameInput) {
+      username = normalizeUsername(usernameInput);
+      if (!USERNAME_RE.test(username)) {
+        return NextResponse.json({ error: USERNAME_MESSAGE }, { status: 400 });
+      }
+      const [taken] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.username}) = ${username}`).limit(1);
+      if (taken) return NextResponse.json({ error: "Username ini sudah dipakai." }, { status: 409 });
+    } else {
+      username = await uniqueUsername(email);
+    }
+
     // Validate the requested location against the real curated terminals if provided —
     // reject a bogus string rather than silently storing a foreign-key-orphan value.
     let requestedLocation: string | null = null;
@@ -65,6 +81,7 @@ export async function POST(req: NextRequest) {
       .values({
         name,
         email: email.toLowerCase(),
+        username,
         passwordHash,
         role: "Penanggung Jawab PSI (Initiator)",
         location: null,
@@ -80,6 +97,7 @@ export async function POST(req: NextRequest) {
       id: created.id,
       name: created.name,
       email: created.email,
+      username: created.username,
       role: created.role,
       location: created.location,
       isRegionalAdmin: created.isRegionalAdmin,

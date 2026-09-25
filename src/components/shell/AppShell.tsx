@@ -3,7 +3,8 @@
 // Bungkus utama: sidebar + topbar, porting visual dari "ui terbaru dari manus" (lihat
 // src/styles/shell.css). Menggantikan Navbar.tsx horizontal lama. Tidak menyentuh
 // AuthGuard/routing — hanya kerangka tampilan seputar {children}.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { usePathname } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { useMocList } from "@/lib/useMoc";
@@ -11,7 +12,7 @@ import { isDocOverdue } from "@/lib/mockData";
 import { mocPendingActions } from "@/lib/domain/moc";
 import Sidebar, { buildNavItems } from "@/components/shell/Sidebar";
 import Topbar from "@/components/shell/Topbar";
-import { readPref, writePref } from "@/lib/localPref";
+import { readPref, takeEnterFlag, writePref } from "@/lib/localPref";
 
 const COLLAPSE_KEY = "shell.sidebarCollapsed";
 
@@ -37,9 +38,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  // Gerak masuk setelah login: seluruh kerangka naik dari bawah (kartu login keluar ke
+  // atas, lihat clean-minimal-sign-in.tsx). Hanya sekali, dan tidak untuk reduced-motion.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const showChrome = isAuthLoaded && isLoggedIn && pathname !== "/login";
+  useEffect(() => {
+    if (!showChrome || !takeEnterFlag()) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = rootRef.current?.querySelector(".app-shell");
+    if (!el) return;
+    gsap.fromTo(el, { y: "14vh", opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", clearProps: "transform,opacity" });
+  }, [showChrome]);
+
   // Sama seperti Navbar lama: /login (dan sebelum sesi selesai diperiksa) tidak
   // memakai kerangka ini sama sekali — AuthGuard yang menangani redirect/spinner-nya.
-  if (!isAuthLoaded || !isLoggedIn || pathname === "/login") return <>{children}</>;
+  if (!showChrome) return <>{children}</>;
 
   const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
   const overdueCount = documents.filter(isDocOverdue).length;
@@ -56,7 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <div className="hsse-shell">
+    <div className="hsse-shell" ref={rootRef}>
       <a className="skip-link" href="#main-content">Lewati ke konten utama</a>
       <div className="app-shell">
         <Sidebar
