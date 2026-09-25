@@ -227,7 +227,7 @@ function SignIn2Content() {
       dir === "r" ? "md:col-start-2" : ""
     } ${
       active
-        ? "opacity-100 translate-x-0 z-[2] delay-150"
+        ? `opacity-100 translate-x-0 z-[2] delay-150 ${successMsg ? "md:opacity-0 md:delay-0" : ""}`
         : `opacity-0 pointer-events-none invisible ${dir === "l" ? "md:-translate-x-6" : "md:translate-x-6"} z-[1]`
     }`;
 
@@ -246,12 +246,13 @@ function SignIn2Content() {
               <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">{forgot ? "Atur Ulang Sandi" : "Masuk"}</h1>
             </div>
 
-            {signInSuccess ? (
-              <div className="flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
+            {signInSuccess && (
+              <div className="md:hidden flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
                 <CheckCircle2 className="w-10 h-10 text-[#15803D] animate-popIn" strokeWidth={1.7} />
-                <p className="text-[13.5px] font-bold text-[#0F172A]">Berhasil masuk</p>
+                <p className="text-[13.5px] font-bold text-[#0F172A]">Login berhasil</p>
               </div>
-            ) : forgot ? (
+            )}
+            {forgot ? (
               forgotSent ? (
                 <div className="flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
                   <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
@@ -286,6 +287,7 @@ function SignIn2Content() {
                 </>
               )
             ) : (
+              <div className={signInSuccess ? "hidden md:block" : ""}>
               <>
                 <div className="flex flex-col gap-3 mb-2">
                   <div className="relative group">
@@ -348,6 +350,7 @@ function SignIn2Content() {
                   <button type="button" onClick={() => goMode("register")} className="font-bold text-[#0F3B59] hover:underline">Daftar</button>
                 </p>
               </>
+              </div>
             )}
           </div>
         </div>
@@ -360,13 +363,14 @@ function SignIn2Content() {
               <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">Buat Akun</h1>
             </div>
 
-            {regSuccess ? (
-              <div className="flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
+            {regSuccess && (
+              <div className="md:hidden flex flex-col items-center text-center gap-2.5 py-8 animate-fadeInUp">
                 <CheckCircle2 className="w-10 h-10 text-[#15803D] animate-popIn" strokeWidth={1.7} />
                 <p className="text-[13.5px] font-bold text-[#0F172A]">Akun berhasil dibuat</p>
                 <p className="text-[12px] text-[#4b5560] leading-relaxed">Menunggu Admin Regional menetapkan lokasi &amp; peran Anda.</p>
               </div>
-            ) : (
+            )}
+            <div className={regSuccess ? "hidden md:block" : ""}>
               <>
                 <div className="flex flex-col gap-3 mb-2">
                   <div className="relative group">
@@ -414,7 +418,7 @@ function SignIn2Content() {
                   <button type="button" onClick={() => goMode("signin")} className="font-bold text-[#0F3B59] hover:underline">Masuk</button>
                 </p>
               </>
-            )}
+            </div>
           </div>
         </div>
 
