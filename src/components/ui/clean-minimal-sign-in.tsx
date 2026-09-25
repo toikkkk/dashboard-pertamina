@@ -138,7 +138,12 @@ function SignIn2Content() {
           const c = card.getBoundingClientRect();
           const o = overlay.getBoundingClientRect();
           // Lepas transform/transisi CSS supaya GSAP memegang posisi sepenuhnya.
-          gsap.set(overlay, { transition: "none", transform: "none", left: o.left - c.left, width: o.width });
+          // Ditulis langsung ke style (bukan lewat GSAP): GSAP memecah `transform` menjadi
+          // xPercent sendiri, sehingga translateX(-100%) mode Daftar bisa ikut menggeser panel.
+          overlay.style.transition = "none";
+          overlay.style.transform = "none";
+          overlay.style.left = `${o.left - c.left}px`;
+          overlay.style.width = `${o.width}px`;
           tl.to(overlay, { left: 0, width: c.width, duration: 0.85, ease: "power3.inOut" });
           tl.fromTo(".login-ok", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, "-=0.4");
           tl.fromTo(".login-ok-ring", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.6, ease: "power2.inOut" }, "<");
