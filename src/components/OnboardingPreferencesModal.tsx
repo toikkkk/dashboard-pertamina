@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { X, CheckCircle2, UserCog } from "lucide-react";
 
@@ -26,6 +27,26 @@ export default function OnboardingPreferencesModal() {
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
+  // Animasi login (panel biru → "Login berhasil" → kartu naik → dashboard naik dari bawah)
+  // harus selesai dulu. Sesi sudah aktif selama animasi masih di /login, jadi popup ditahan
+  // di /login dan, setelah pindah ke dashboard, ditunda sampai gerak masuk dashboard selesai.
+  const pathname = usePathname();
+  const cameFromLogin = useRef(false);
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (pathname === "/login") {
+      cameFromLogin.current = true;
+      setSettled(false);
+      return;
+    }
+    if (!cameFromLogin.current) {
+      setSettled(true);
+      return;
+    }
+    const t = window.setTimeout(() => setSettled(true), 1000);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
+
   // Only render for a LOGGED-IN pending user who hasn't picked preferences yet. The
   // isLoggedIn check matters: while logged out, `activeUser` is the PENDING_USER
   // placeholder (location=null, not admin), which would otherwise satisfy `isPending`
@@ -33,7 +54,7 @@ export default function OnboardingPreferencesModal() {
   // (requestedRole/requestedLocation set) or dismissed, hide the popup.
   const isPending = isLoggedIn && !activeUser.isRegionalAdmin && !activeUser.location;
   const hasPreferences = Boolean(activeUser.requestedRole || activeUser.requestedLocation);
-  if (!isPending || hasPreferences || dismissed) return null;
+  if (!isPending || hasPreferences || dismissed || !settled) return null;
 
   const handleSave = async () => {
     setError(null);
