@@ -87,6 +87,9 @@ function SignIn2Content() {
   const [regSuccess, setRegSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // Pesan sukses yang ditampilkan panel biru setelah melebar ke seluruh kartu.
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const handleSignIn = async () => {
     const issue = identifierIssue(identifier);
@@ -103,6 +106,7 @@ function SignIn2Content() {
     try {
       await login(identifier.trim(), password);
       setSignInSuccess(true);
+      setSuccessMsg("Login berhasil");
       setLeaving(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal masuk.");
@@ -110,9 +114,11 @@ function SignIn2Content() {
     }
   };
 
-  // Keluar: centang sebentar, lalu seluruh kartu meluncur ke ATAS dan pudar; dashboard
-  // masuk dari bawah (lihat AppShell). Navigasi baru terjadi sesudah gerak selesai.
-  // Reduced-motion: jeda singkat tanpa gerak.
+  // Urutan sesudah berhasil (layar lebar): panel biru meluas ke tengah menutup seluruh
+  // kartu, centang + pesan sukses muncul di dalamnya, jeda sebentar, lalu kartu meluncur
+  // ke ATAS dan pudar; dashboard masuk dari bawah (lihat AppShell). Navigasi baru terjadi
+  // sesudah gerak selesai. Ponsel (tanpa panel geser): centang di dalam panel form lalu
+  // meluncur. Reduced-motion: jeda singkat tanpa gerak.
   useGSAP(
     () => {
       if (!leaving) return;
@@ -123,8 +129,22 @@ function SignIn2Content() {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         const tl = gsap.timeline({ onComplete: go });
-        tl.to({}, { duration: 0.6 });
-        tl.to(cardRef.current, { yPercent: -125, opacity: 0, duration: 0.7, ease: "power3.in" });
+        const overlay = overlayRef.current;
+        const card = cardRef.current;
+        if (overlay && card && window.matchMedia("(min-width: 768px)").matches) {
+          const c = card.getBoundingClientRect();
+          const o = overlay.getBoundingClientRect();
+          // Lepas transform/transisi CSS supaya GSAP memegang posisi sepenuhnya.
+          gsap.set(overlay, { transition: "none", transform: "none", left: o.left - c.left, width: o.width });
+          tl.to(overlay, { left: 0, width: c.width, duration: 0.85, ease: "power3.inOut" });
+          tl.fromTo(".login-ok", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, "-=0.4");
+          tl.fromTo(".login-ok-ring", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.6, ease: "power2.inOut" }, "<");
+          tl.fromTo(".login-ok-check", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, "-=0.2");
+          tl.to({}, { duration: 0.75 });
+        } else {
+          tl.to({}, { duration: 0.6 });
+        }
+        tl.to(card, { yPercent: -125, opacity: 0, duration: 0.7, ease: "power3.in" });
       });
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.delayedCall(0.7, go);
@@ -157,7 +177,8 @@ function SignIn2Content() {
     try {
       await register(regName.trim(), regEmail, regPassword, regUsername.trim().toLowerCase());
       setRegSuccess(true);
-      setTimeout(() => setLeaving(true), 900);
+      setSuccessMsg("Akun berhasil dibuat");
+      setLeaving(true);
     } catch (err) {
       setRegError(err instanceof Error ? err.message : "Gagal mendaftar.");
     } finally {
@@ -399,12 +420,12 @@ function SignIn2Content() {
 
         {/* ---------- Panel geser (hanya layar lebar) ---------- */}
         <div
+          ref={overlayRef}
           className="hidden md:block absolute top-0 left-1/2 w-1/2 h-full z-20 text-white overflow-hidden transition-transform duration-[700ms] ease-[cubic-bezier(.65,0,.35,1)]"
           style={{ transform: isSignin ? "translateX(0)" : "translateX(-100%)", background: "linear-gradient(160deg, #124969 0%, #0F3B59 45%, #0B2C43 100%)" }}
         >
-          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 translate-x-10 pointer-events-none"}`} aria-hidden={!isSignin}>
-            <div className="text-[11px] font-semibold uppercase tracking-[.22em] text-white/60">Regional Jatimbalinus</div>
-            <h2 className="font-heading mt-5 leading-[.95] tracking-[-0.035em]">
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${isSignin && !successMsg ? "opacity-100 translate-x-0 delay-200" : "opacity-0 translate-x-10 pointer-events-none"}`} aria-hidden={!isSignin}>
+            <h2 className="font-heading leading-[.95] tracking-[-0.035em]">
               <span className="block text-[34px] font-light text-white/90">Belum punya</span>
               <span className="block text-[56px] font-extrabold">akun?</span>
             </h2>
@@ -419,9 +440,8 @@ function SignIn2Content() {
               DAFTAR
             </button>
           </div>
-          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${!isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 -translate-x-10 pointer-events-none"}`} aria-hidden={isSignin}>
-            <div className="text-[11px] font-semibold uppercase tracking-[.22em] text-white/60">Portal PSI &amp; MOC</div>
-            <h2 className="font-heading mt-5 leading-[.95] tracking-[-0.035em]">
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${!isSignin && !successMsg ? "opacity-100 translate-x-0 delay-200" : "opacity-0 -translate-x-10 pointer-events-none"}`} aria-hidden={isSignin}>
+            <h2 className="font-heading leading-[.95] tracking-[-0.035em]">
               <span className="block text-[34px] font-light text-white/90">Sudah punya</span>
               <span className="block text-[56px] font-extrabold">akun?</span>
             </h2>
@@ -436,6 +456,15 @@ function SignIn2Content() {
               MASUK
             </button>
           </div>
+          {successMsg && (
+            <div className="login-ok absolute inset-0 flex flex-col items-center justify-center text-center px-10" role="status" style={{ opacity: 0 }}>
+              <svg width="84" height="84" viewBox="0 0 76 76" aria-hidden>
+                <circle className="login-ok-ring" cx="38" cy="38" r="31" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1} transform="rotate(-90 38 38)" />
+                <path className="login-ok-check" d="M24 39.5 L34 49 L53 28" fill="none" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1} />
+              </svg>
+              <h2 className="font-heading text-[40px] font-extrabold tracking-[-0.03em] leading-tight mt-6">{successMsg}</h2>
+            </div>
+          )}
         </div>
       </div>
       </div>
