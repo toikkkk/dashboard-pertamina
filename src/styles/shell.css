@@ -738,3 +738,10 @@
 @media (max-width: 900px) {
   .hsse-shell .content-grid-moc .span-6 { grid-column: span 12; }
 }
+
+/* --- Tambahan proyek: pemilih terminal untuk Admin Regional (select bergaya .scope-switcher)
+   dan merek sidebar yang menjadi tautan ke dashboard. */
+.hsse-shell .scope-select { min-height: 28px; padding: 0 26px 0 10px; border: 0; border-radius: 5px; background-color: #FFFFFF; box-shadow: 0 0 0 1px #C5CED3; color: #0F3B59; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.hsse-shell .scope-select:focus-visible { outline: 2px solid #0F3B59; outline-offset: 2px; }
+.hsse-shell .brand-link { display: block; text-decoration: none; color: #0F172A; border-radius: 6px; transition: color 160ms ease-out; }
+.hsse-shell .brand-link:hover { color: #0F3B59; }

@@ -16,7 +16,7 @@ const VIEW_KEY = "dashboard.view";
 const SCOPE_KEY = "dashboard.scope";
 
 function Dashboard() {
-  const { activeUser, documents, allDocuments, locations, effectiveLocationFilter, getComplianceMetrics, setViewAll: setStoreViewAll } = usePsi();
+  const { activeUser, documents, locations, effectiveLocationFilter, selectedLocationFilter, setSelectedLocationFilter, getComplianceMetrics, setViewAll: setStoreViewAll } = usePsi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -92,6 +92,23 @@ function Dashboard() {
 
       <Greeting name={activeUser.name} view={view} onView={chooseView} parts={parts} fallback={fallback} />
 
+      {activeUser.isRegionalAdmin && (
+        <div className="scope-switcher dashboard-scope-switcher" role="group" aria-label="Cakupan lokasi">
+          <label className="sr-only" htmlFor="scope-terminal">Pilih terminal</label>
+          <select
+            id="scope-terminal"
+            className="scope-select"
+            value={selectedLocationFilter}
+            onChange={(e) => setSelectedLocationFilter(e.target.value)}
+          >
+            <option value="ALL">Semua terminal</option>
+            {locations.map((l) => (
+              <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {canPickScope && !isPending && (
         <div className="scope-switcher dashboard-scope-switcher" role="group" aria-label="Cakupan lokasi">
           <button aria-pressed={!viewAll} className={!viewAll ? "scope-active" : ""} onClick={() => { setViewAll(false); writePref(SCOPE_KEY, "own"); }}>
@@ -107,10 +124,9 @@ function Dashboard() {
         {view === "psi" ? (
           <PsiDashboardManus
             insights={psi}
-            documents={allScope ? allDocuments : documents}
+            documents={documents}
             complianceMetrics={getComplianceMetrics()}
             locations={locations}
-            isAdmin={!!activeUser.isRegionalAdmin}
             scope={allScope ? "location" : "type"}
           />
         ) : (

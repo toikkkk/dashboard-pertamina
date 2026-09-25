@@ -233,7 +233,10 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Location/type dropdown filters (ComplianceChart's selectors) applied on top of
   // the server's already-RBAC-scoped list — same two-layer filtering the client-only
   // prototype did, just with the RBAC layer now enforced server-side instead.
-  const documents = payload.documents.filter((doc) => {
+  // Mode lihat-saja (viewAll) melebarkan DAFTAR: server hanya mengirim dokumen lokasi
+  // sendiri di `documents` untuk non-admin, sedangkan allDocuments memuat semua lokasi.
+  const baseDocuments = viewAll ? payload.allDocuments : payload.documents;
+  const documents = baseDocuments.filter((doc) => {
     if (effectiveLocationFilter !== "ALL" && doc.location !== effectiveLocationFilter) return false;
     if (selectedTypeFilter !== "ALL" && doc.psiType !== selectedTypeFilter) return false;
     return true;

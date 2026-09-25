@@ -211,11 +211,11 @@ function SignIn2Content() {
     }`;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#CAD4DA] p-4 sm:p-6 overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-white p-4 sm:p-6 overflow-hidden">
       <div className="w-full max-w-[920px] animate-fadeInUp">
       <div
         ref={cardRef}
-        className="relative w-full min-h-[600px] bg-white rounded-[18px] shadow-[0_7px_24px_rgba(15,23,42,.09)] border border-[#C5CED3] overflow-hidden grid grid-cols-1 md:grid-cols-2"
+        className="relative w-full min-h-[600px] bg-white rounded-[20px] shadow-[0_40px_80px_-24px_rgba(15,59,89,.38),0_16px_32px_-16px_rgba(15,23,42,.22),0_0_0_1px_rgba(15,23,42,.05)] overflow-hidden grid grid-cols-1 md:grid-cols-2"
       >
         {/* ---------- Masuk ---------- */}
         <div className={panel(isSignin, "l")} aria-hidden={!isSignin}>
@@ -403,25 +403,35 @@ function SignIn2Content() {
           style={{ transform: isSignin ? "translateX(0)" : "translateX(-100%)", background: "linear-gradient(160deg, #124969 0%, #0F3B59 45%, #0B2C43 100%)" }}
         >
           <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 translate-x-10 pointer-events-none"}`} aria-hidden={!isSignin}>
-            <h2 className="font-heading text-[30px] font-bold leading-tight">Belum punya akun?</h2>
-            <p className="text-[13.5px] text-white/80 mt-3 max-w-[260px] leading-relaxed">Daftar sekarang. Akun diaktifkan Admin Regional sebelum dipakai.</p>
+            <div className="text-[11px] font-semibold uppercase tracking-[.22em] text-white/60">Regional Jatimbalinus</div>
+            <h2 className="font-heading mt-5 leading-[.95] tracking-[-0.035em]">
+              <span className="block text-[34px] font-light text-white/90">Belum punya</span>
+              <span className="block text-[56px] font-extrabold">akun?</span>
+            </h2>
+            <span className="block w-10 h-[3px] rounded-full bg-white/70 mt-6" aria-hidden />
+            <p className="text-[14px] text-white/75 mt-5 max-w-[250px] leading-[1.65]">Daftar dalam satu menit. Admin Regional akan mengaktifkan akun Anda.</p>
             <button
               type="button"
               tabIndex={isSignin ? 0 : -1}
               onClick={() => goMode("register")}
-              className="mt-7 px-9 py-2.5 rounded-[8px] border border-white/70 text-[12.5px] font-bold tracking-[.1em] hover:bg-white hover:text-[#0F3B59] active:scale-[0.97] transition-all duration-200"
+              className="mt-8 px-10 py-3 rounded-full bg-white text-[#0F3B59] text-[12.5px] font-extrabold tracking-[.14em] shadow-[0_8px_20px_-6px_rgba(0,0,0,.4)] hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-6px_rgba(0,0,0,.45)] active:translate-y-0 active:scale-[0.97] transition-all duration-200"
             >
               DAFTAR
             </button>
           </div>
           <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-10 transition-all duration-500 ease-out-expo ${!isSignin ? "opacity-100 translate-x-0 delay-200" : "opacity-0 -translate-x-10 pointer-events-none"}`} aria-hidden={isSignin}>
-            <h2 className="font-heading text-[30px] font-bold leading-tight">Sudah punya akun?</h2>
-            <p className="text-[13.5px] text-white/80 mt-3 max-w-[260px] leading-relaxed">Masuk dengan email atau username Anda.</p>
+            <div className="text-[11px] font-semibold uppercase tracking-[.22em] text-white/60">Portal PSI &amp; MOC</div>
+            <h2 className="font-heading mt-5 leading-[.95] tracking-[-0.035em]">
+              <span className="block text-[34px] font-light text-white/90">Sudah punya</span>
+              <span className="block text-[56px] font-extrabold">akun?</span>
+            </h2>
+            <span className="block w-10 h-[3px] rounded-full bg-white/70 mt-6" aria-hidden />
+            <p className="text-[14px] text-white/75 mt-5 max-w-[250px] leading-[1.65]">Masuk dengan email atau username Anda.</p>
             <button
               type="button"
               tabIndex={!isSignin ? 0 : -1}
               onClick={() => goMode("signin")}
-              className="mt-7 px-9 py-2.5 rounded-[8px] border border-white/70 text-[12.5px] font-bold tracking-[.1em] hover:bg-white hover:text-[#0F3B59] active:scale-[0.97] transition-all duration-200"
+              className="mt-8 px-10 py-3 rounded-full bg-white text-[#0F3B59] text-[12.5px] font-extrabold tracking-[.14em] shadow-[0_8px_20px_-6px_rgba(0,0,0,.4)] hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-6px_rgba(0,0,0,.45)] active:translate-y-0 active:scale-[0.97] transition-all duration-200"
             >
               MASUK
             </button>
@@ -435,7 +445,7 @@ function SignIn2Content() {
 
 function SignIn2() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#CAD4DA]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <SignIn2Content />
     </Suspense>
   );

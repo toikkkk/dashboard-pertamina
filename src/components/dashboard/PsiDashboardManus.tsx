@@ -179,16 +179,18 @@ function ComplianceTable({
   metrics,
   documents,
   locations,
-  isAdmin,
   scope,
 }: {
   metrics: ComplianceMetrics;
   documents: DocumentItem[];
   locations: { locationName: string; targets: Record<string, number> }[];
-  isAdmin: boolean;
   scope: "type" | "location";
 }) {
-  const [detail, setDetail] = useState<"location" | "type">(scope === "location" ? "location" : "type");
+  // Satu terminal: hanya rincian per jenis PSI. Banyak terminal: pilihan per lokasi / per
+  // jenis (default per lokasi). `pref` diingat agar tidak reset saat berpindah cakupan.
+  const [pref, setPref] = useState<"location" | "type">("location");
+  const detail: "location" | "type" = scope === "location" ? pref : "type";
+  const setDetail = setPref;
 
   const byType = PSI_TYPES.map((type) => {
     const d = metrics.byType[type];
@@ -208,7 +210,7 @@ function ComplianceTable({
     <SectionCard
       title="Kepatuhan dokumen"
       action={
-        isAdmin ? (
+        scope === "location" ? (
           <div className="segmented-control">
             <button className={detail === "location" ? "segmented-active" : ""} onClick={() => setDetail("location")}>Per lokasi</button>
             <button className={detail === "type" ? "segmented-active" : ""} onClick={() => setDetail("type")}>Per jenis PSI</button>
@@ -263,14 +265,12 @@ export default function PsiDashboardManus({
   documents,
   complianceMetrics,
   locations,
-  isAdmin,
   scope,
 }: {
   insights: Insights;
   documents: DocumentItem[];
   complianceMetrics: ComplianceMetrics;
   locations: { locationName: string; targets: Record<string, number> }[];
-  isAdmin: boolean;
   scope: "type" | "location";
 }) {
   return (
@@ -281,7 +281,7 @@ export default function PsiDashboardManus({
         <StaleList items={insights.stale} />
         <RecentUpdates items={insights.recent} />
         <DistributionChart documents={documents} scope={scope} />
-        <ComplianceTable metrics={complianceMetrics} documents={documents} locations={locations} isAdmin={isAdmin} scope={scope} />
+        <ComplianceTable metrics={complianceMetrics} documents={documents} locations={locations} scope={scope} />
       </div>
     </div>
   );
