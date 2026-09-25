@@ -8,7 +8,7 @@ import { usePsi } from "@/lib/psiStore";
 import { passwordPolicyIssues } from "@/lib/mockData";
 import { Mail, Lock, User, AtSign, Eye, EyeOff, CheckCircle2, ArrowLeft } from "lucide-react";
 import PasswordChecklist from "@/components/PasswordChecklist";
-import { ENTER_FLAG } from "@/lib/localPref";
+import { ENTER_FLAG, setAuthTransition } from "@/lib/localPref";
 
 gsap.registerPlugin(useGSAP);
 
@@ -103,12 +103,14 @@ function SignIn2Content() {
     }
     setError("");
     setSigningIn(true);
+    setAuthTransition(true); // cegah redirect otomatis LoginPage memotong animasi
     try {
       await login(identifier.trim(), password);
       setSignInSuccess(true);
       setSuccessMsg("Login berhasil");
       setLeaving(true);
     } catch (err) {
+      setAuthTransition(false);
       setError(err instanceof Error ? err.message : "Gagal masuk.");
       setSigningIn(false);
     }
@@ -124,6 +126,7 @@ function SignIn2Content() {
       if (!leaving) return;
       const go = () => {
         try { window.sessionStorage.setItem(ENTER_FLAG, "1"); } catch { /* tidak masalah */ }
+        setAuthTransition(false);
         router.push("/");
       };
       const mm = gsap.matchMedia();
@@ -174,12 +177,14 @@ function SignIn2Content() {
     }
     setRegError("");
     setRegistering(true);
+    setAuthTransition(true);
     try {
       await register(regName.trim(), regEmail, regPassword, regUsername.trim().toLowerCase());
       setRegSuccess(true);
       setSuccessMsg("Akun berhasil dibuat");
       setLeaving(true);
     } catch (err) {
+      setAuthTransition(false);
       setRegError(err instanceof Error ? err.message : "Gagal mendaftar.");
     } finally {
       setRegistering(false);

@@ -29,3 +29,10 @@ export function takeEnterFlag(): boolean {
     return false;
   }
 }
+
+// Penanda "animasi login sedang berjalan": tanpa sakelar simulasi (produksi), LoginPage
+// langsung mengarahkan sesi yang sudah masuk ke dashboard, dan itu memotong animasi
+// keluar kartu login. Selama penanda ini true, redirect otomatis itu ditunda.
+let authTransition = false;
+export const setAuthTransition = (v: boolean) => { authTransition = v; };
+export const isAuthTransition = () => authTransition;
