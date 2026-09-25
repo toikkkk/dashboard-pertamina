@@ -5,29 +5,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { useMocList } from "@/lib/useMoc";
-import { mocInsights, psiInsights } from "@/lib/domain/dashboard";
-import DashboardHeader, { type DashboardView } from "@/components/dashboard/DashboardHeader";
-import MocDashboard from "@/components/dashboard/MocDashboard";
-import { PsiRecentUpdates, PsiStaleList } from "@/components/dashboard/PsiFreshness";
-import KpiSummaryCards from "@/components/KpiSummaryCards";
-import DocsByLocationChart from "@/components/DocsByLocationChart";
-import DocsByPsiTypeChart from "@/components/DocsByPsiTypeChart";
-import UpcomingExpiryList from "@/components/UpcomingExpiryList";
-import ComplianceChart from "@/components/ComplianceChart";
+import { EXPIRING_WITHIN_DAYS, mocInsights, psiInsights } from "@/lib/domain/dashboard";
+import Greeting from "@/components/dashboard/Greeting";
+import type { DashboardView, SummaryPart } from "@/components/dashboard/types";
+import PsiDashboardManus from "@/components/dashboard/PsiDashboardManus";
+import MocDashboardManus from "@/components/dashboard/MocDashboardManus";
+import { readPref, writePref } from "@/lib/localPref";
 
 const VIEW_KEY = "dashboard.view";
 const SCOPE_KEY = "dashboard.scope";
 
-// localStorage bisa melempar galat (mode privat, data situs diblokir): halaman tetap harus tampil.
-const readStore = (key: string): string | null => {
-  try { return window.localStorage.getItem(key); } catch { return null; }
-};
-const writeStore = (key: string, value: string) => {
-  try { window.localStorage.setItem(key, value); } catch { /* preferensi tidak tersimpan, tidak masalah */ }
-};
-
 function Dashboard() {
-  const { activeUser, documents, effectiveLocationFilter, setViewAll: setStoreViewAll } = usePsi();
+  const { activeUser, documents, allDocuments, locations, effectiveLocationFilter, getComplianceMetrics, setViewAll: setStoreViewAll } = usePsi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -38,27 +27,26 @@ function Dashboard() {
   // Pilihan dashboard: URL (?d=moc) menang, lalu pilihan terakhir, lalu PSI.
   const urlView = params.get("d");
   const [storedView, setStoredView] = useState<DashboardView>("psi");
-  useEffect(() => { if (readStore(VIEW_KEY) === "moc") setStoredView("moc"); }, []);
+  useEffect(() => { if (readPref(VIEW_KEY) === "moc") setStoredView("moc"); }, []);
   const view: DashboardView = isPending ? "psi" : urlView === "moc" ? "moc" : urlView === "psi" ? "psi" : storedView;
   const chooseView = (v: DashboardView) => {
     setStoredView(v);
-    writeStore(VIEW_KEY, v);
+    writePref(VIEW_KEY, v);
     router.replace(v === "moc" ? `${pathname}?d=moc` : pathname, { scroll: false });
   };
 
   // Mode lihat-saja untuk non-admin: menampilkan semua lokasi. Hanya berlaku di halaman
-  // ini (dilepas saat pindah halaman) supaya lencana Navbar dan halaman lain tetap
-  // memakai lokasi user; hak ubah tidak berubah sama sekali.
+  // ini (dilepas saat pindah halaman) supaya sisa aplikasi tetap memakai lokasi user;
+  // hak ubah tidak berubah sama sekali. Diletakkan di kartu ringkasan (bukan topbar
+  // global) karena hanya dashboard yang tahu apa artinya "lihat semua lokasi".
   const [viewAll, setViewAll] = useState(false);
-  useEffect(() => { if (canPickScope && readStore(SCOPE_KEY) === "all") setViewAll(true); }, [canPickScope]);
+  useEffect(() => { if (canPickScope && readPref(SCOPE_KEY) === "all") setViewAll(true); }, [canPickScope]);
   useEffect(() => {
     setStoreViewAll(canPickScope && viewAll);
     return () => setStoreViewAll(false);
   }, [canPickScope, viewAll, setStoreViewAll]);
-  const chooseScope = (all: boolean) => { setViewAll(all); writeStore(SCOPE_KEY, all ? "all" : "own"); };
 
   const allScope = activeUser.isRegionalAdmin ? effectiveLocationFilter === "ALL" : canPickScope && viewAll;
-  const scopeLabel = effectiveLocationFilter !== "ALL" ? effectiveLocationFilter : allScope ? "Semua lokasi" : activeUser.location ?? "Regional Jatimbalinus";
 
   const now = Date.now();
   const psi = useMemo(() => psiInsights(documents, now), [documents]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -73,6 +61,24 @@ function Dashboard() {
   );
   const moc = useMemo(() => mocInsights(scopedMocs, actor, now), [scopedMocs, actor]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const psiParts: (SummaryPart | false)[] = [
+    psi.overdue.length > 0 && { text: `${psi.overdue.length} dokumen kedaluwarsa`, tone: "bad" },
+    psi.expiring.length > 0 && { text: `${psi.expiring.length} berakhir dalam ${EXPIRING_WITHIN_DAYS} hari`, tone: "warn" },
+  ];
+  const mocParts: (SummaryPart | false)[] = [
+    moc.mineCount > 0 && { text: `${moc.mineCount} MOC menunggu Anda`, tone: "warn" },
+    moc.slaCount > 0 && { text: `${moc.slaCount} lewat batas waktu`, tone: "bad" },
+  ];
+  const parts: SummaryPart[] = (view === "psi" ? psiParts : mocParts).filter((x): x is SummaryPart => Boolean(x));
+  const fallback: SummaryPart =
+    view === "psi"
+      ? psi.total === 0
+        ? { text: "belum ada dokumen PSI", tone: "plain" }
+        : { text: "semua dokumen PSI masih berlaku", tone: "good" }
+      : moc.active > 0
+        ? { text: `${moc.active} MOC sedang berjalan`, tone: "plain" }
+        : { text: "belum ada MOC berjalan", tone: "plain" };
+
   return (
     <div>
       {isPending && (
@@ -84,50 +90,42 @@ function Dashboard() {
         </div>
       )}
 
-      <DashboardHeader
-        scopeLabel={scopeLabel.startsWith("Semua") ? "Semua Lokasi" : scopeLabel}
-        view={view}
-        onView={chooseView}
-        hideViewSwitch={isPending}
-        canPickScope={canPickScope}
-        viewAll={viewAll}
-        onViewAll={chooseScope}
-      />
+      <Greeting name={activeUser.name} view={view} onView={chooseView} parts={parts} fallback={fallback} />
 
-      <div key={view} className="animate-fadeIn">
+      {canPickScope && !isPending && (
+        <div className="scope-switcher dashboard-scope-switcher" role="group" aria-label="Cakupan lokasi">
+          <button aria-pressed={!viewAll} className={!viewAll ? "scope-active" : ""} onClick={() => { setViewAll(false); writePref(SCOPE_KEY, "own"); }}>
+            {activeUser.location}
+          </button>
+          <button aria-pressed={viewAll} className={viewAll ? "scope-active" : ""} onClick={() => { setViewAll(true); writePref(SCOPE_KEY, "all"); }}>
+            Semua lokasi <span className="view-only">lihat saja</span>
+          </button>
+        </div>
+      )}
+
+      <div id="dashboard-panel" role="tabpanel" aria-label={view === "psi" ? "Dashboard PSI" : "Dashboard MOC"} key={view}>
         {view === "psi" ? (
-          <>
-            <KpiSummaryCards insights={psi} />
-            {/* "Segera Kedaluwarsa" hanya muncul bila ada isinya (kartu KPI sudah memuat
-                angka 0); tanpa itu, dua daftar terisi berdampingan dan grafik sebaran
-                memakai lebar penuh, jadi tidak ada kartu kosong yang memakan ruang. */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-3.5">
-              {psi.expiring.length > 0 ? (
-                <>
-                  <UpcomingExpiryList items={psi.expiring} />
-                  <PsiStaleList items={psi.stale} />
-                  {allScope ? <DocsByLocationChart /> : <DocsByPsiTypeChart />}
-                  <PsiRecentUpdates items={psi.recent} />
-                </>
-              ) : (
-                <>
-                  <PsiStaleList items={psi.stale} />
-                  <PsiRecentUpdates items={psi.recent} />
-                  <div className="lg:col-span-2">{allScope ? <DocsByLocationChart /> : <DocsByPsiTypeChart />}</div>
-                </>
-              )}
-            </div>
-            <ComplianceChart />
-          </>
-        ) : (
-          <MocDashboard
-            data={moc}
-            state={mocError ? "error" : mocLoading ? "loading" : "ready"}
-            onRetry={() => void mutateMoc()}
-            showLocations={effectiveLocationFilter === "ALL"}
+          <PsiDashboardManus
+            insights={psi}
+            documents={allScope ? allDocuments : documents}
+            complianceMetrics={getComplianceMetrics()}
+            locations={locations}
+            isAdmin={!!activeUser.isRegionalAdmin}
+            scope={allScope ? "location" : "type"}
           />
+        ) : (
+          <MocDashboardManus insights={moc} nowMs={now} showLocations={effectiveLocationFilter === "ALL"} />
         )}
       </div>
+      {view === "moc" && mocError && (
+        <p role="alert" className="mt-3 text-[12.5px] font-semibold text-[#DC2626]">
+          Data MOC belum bisa dimuat.{" "}
+          <button type="button" onClick={() => void mutateMoc()} className="underline">Coba lagi</button>
+        </p>
+      )}
+      {view === "moc" && mocLoading && !mocError && (
+        <p className="mt-3 text-[12px] text-[#6B6E72]" role="status">Memuat data MOC…</p>
+      )}
     </div>
   );
 }

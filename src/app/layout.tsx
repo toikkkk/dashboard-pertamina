@@ -1,9 +1,10 @@
 import "./globals.css";
+import "@/styles/shell.css";
 import React from "react";
 import { Archivo, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import ClientProvider from "@/components/ClientProvider";
 import AuthGuard from "@/components/AuthGuard";
-import Navbar from "@/components/Navbar";
+import AppShell from "@/components/shell/AppShell";
 import OnboardingPreferencesModal from "@/components/OnboardingPreferencesModal";
 
 const archivo = Archivo({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
@@ -26,16 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${archivo.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}>
-      <body className="min-h-screen flex flex-col antialiased" style={{ background: "#CAD4DA" }}>
+      <body className="min-h-screen antialiased" style={{ background: "#CAD4DA" }}>
         <ClientProvider>
           <AuthGuard>
-            <Navbar />
-            <div className="flex flex-col min-w-0">
-              <main className="w-full px-3.5 lg:px-6 pt-4 lg:pt-5 pb-10 lg:pb-12 relative">{children}</main>
-              <footer className="text-slate-400 text-[10px] py-4 border-t border-[#C5CED3] text-center font-medium">
-                &copy; 2026 PT Pertamina (Persero) — Direktorat Logistik & Infrastruktur.
-              </footer>
-            </div>
+            <AppShell>{children}</AppShell>
             <OnboardingPreferencesModal />
           </AuthGuard>
         </ClientProvider>

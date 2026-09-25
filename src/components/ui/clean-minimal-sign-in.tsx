@@ -180,7 +180,7 @@ function SignIn2Content() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#CAD4DA] p-6">
-      <div ref={cardRef} className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_20px_60px_rgba(15,23,42,.12)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
+      <div ref={cardRef} className="w-full max-w-sm bg-white rounded-[14px] shadow-[0_7px_24px_rgba(15,23,42,.09)] p-8 flex flex-col items-center border border-[#C5CED3] animate-fadeInUp">
         <div
           className="flex items-center justify-center w-14 h-14 rounded-[14px] bg-[#0F3B59] mb-6 animate-popIn"
           style={{ animationDelay: "80ms" }}
