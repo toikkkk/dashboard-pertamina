@@ -28,11 +28,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthLoaded, isLoggedIn, isPublicPath, router]);
 
+  // /login (halaman publik) dikecualikan: akun baru/belum aktif yang baru saja masuk
+  // masih berada di /login selama animasi keluar kartu berjalan. Mengalihkan atau
+  // mengganti layar di sini memotong animasi itu (penyebab animasi "kadang ada, kadang
+  // tidak": hanya akun belum aktif yang terpotong). LoginPage sendiri yang mengarahkan
+  // sesi aktif ke dashboard setelah animasi selesai.
   useEffect(() => {
-    if (isAuthLoaded && isPending && pathname !== "/") {
+    if (isAuthLoaded && isPending && pathname !== "/" && !isPublicPath) {
       router.replace("/");
     }
-  }, [isAuthLoaded, isPending, pathname, router]);
+  }, [isAuthLoaded, isPending, isPublicPath, pathname, router]);
 
   if (!isAuthLoaded) {
     return (
@@ -51,7 +56,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isPending && pathname !== "/") {
+  if (isPending && pathname !== "/" && !isPublicPath) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center">
         <p className="text-xs font-bold text-slate-500">Mengalihkan ke Dashboard...</p>
