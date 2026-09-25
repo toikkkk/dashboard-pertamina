@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
+import { userRoleLabel } from "@/lib/domain/roleLabel";
 
 interface NavItem {
   name: string;
@@ -138,7 +139,8 @@ export default function Sidebar({
           <div className="avatar avatar-small">{activeUser.name.charAt(0)}</div>
           <div className="min-w-0">
             <div className="sidebar-user-name">{activeUser.name}</div>
-            <div className="sidebar-user-role">{isPending ? "Menunggu Aktivasi" : `${activeUser.role} · ${activeUser.location ?? "Semua Lokasi"}`}</div>
+            <div className="sidebar-user-role">{isPending ? "Menunggu Aktivasi" : userRoleLabel(activeUser)}</div>
+            {!isPending && <div className="sidebar-user-role">{activeUser.location ?? "Semua Lokasi"}</div>}
           </div>
           <button aria-label="Menu pengguna" className="icon-button icon-button-dark" onClick={handleLogout} title="Keluar">
             <MoreHorizontal className="h-4 w-4" />
