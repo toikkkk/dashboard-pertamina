@@ -80,7 +80,7 @@ export default function UploadPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {saved && <SuccessPopup message="Dokumen tersimpan" onClose={() => router.push("/")} />}
-      <form onSubmit={handleSubmit} className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-6">
+      <form onSubmit={handleSubmit} className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Tanggal dan Waktu</label>

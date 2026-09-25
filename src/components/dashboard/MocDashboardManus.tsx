@@ -2,7 +2,9 @@
 
 // Konten Dashboard MOC, porting DOM/kelas dari desain Manus — data dari
 // mocInsights() (lib/domain/dashboard.ts), bukan data contoh.
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
+import { Flip } from "gsap/Flip";
 import Link from "next/link";
 import { ChevronRight, Timer } from "lucide-react";
 import { MOC_RISK_LEVEL_LABEL, type MocRequest } from "@/lib/domain/moc";
@@ -10,6 +12,8 @@ import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import { workingDaysBetween, type MocAttentionKind, type mocInsights } from "@/lib/domain/dashboard";
 import SectionCard from "@/components/dashboard/SectionCard";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
+
+gsap.registerPlugin(Flip);
 
 type Insights = ReturnType<typeof mocInsights>;
 
@@ -99,7 +103,7 @@ function RecentMocActivity({ items }: { items: MocRequest[] }) {
 
 const DONUT_COLOR = ["#0F3B59", "#60758A", "#AAB6BF"];
 
-function BreakdownCard({ title, items, total }: { title: string; items: { label: string; count: number }[]; total: number }) {
+function BreakdownCard({ title, items, total, span, flipId }: { title: string; items: { label: string; count: number }[]; total: number; span: string; flipId: string }) {
   let acc = 0;
   const stops = items
     .filter((i) => i.count > 0)
@@ -109,7 +113,7 @@ function BreakdownCard({ title, items, total }: { title: string; items: { label:
       return `${DONUT_COLOR[idx % DONUT_COLOR.length]} ${from}% ${acc}%`;
     });
   return (
-    <SectionCard title={title} className="span-4 moc-lower-card" state={total > 0 ? "ready" : "empty"} emptyLabel={title.toLowerCase()}>
+    <SectionCard title={title} className={`${span} moc-lower-card`} flipId={flipId} state={total > 0 ? "ready" : "empty"} emptyLabel={title.toLowerCase()}>
       <div className="donut-breakdown">
         <div className="donut" style={{ background: stops.length > 0 ? `conic-gradient(${stops.join(", ")})` : "#E9EEF0" }}>
           <div className="donut-hole"><strong>{total}</strong><span>berjalan</span></div>
@@ -131,7 +135,7 @@ function BreakdownCard({ title, items, total }: { title: string; items: { label:
 
 function LocationMoc({ items }: { items: Insights["byLocation"] }) {
   return (
-    <SectionCard title="MOC per lokasi" className="span-4 moc-lower-card" state={items.length > 0 ? "ready" : "empty"} emptyLabel="MOC per lokasi">
+    <SectionCard title="MOC per lokasi" className="span-4 moc-lower-card" flipId="lokasi" state={items.length > 0 ? "ready" : "empty"} emptyLabel="MOC per lokasi">
       <div className="location-legend">
         <span><i className="legend-running" /> Berjalan</span>
         <span><i className="legend-complete" /> Selesai</span>
@@ -167,21 +171,50 @@ export default function MocDashboardManus({
   nowMs: number;
   showLocations: boolean;
 }) {
+  // Satu lokasi: dua kartu bawah masing-masing setengah lebar (simetris). Semua lokasi:
+  // tiga kartu sepertiga. Perpindahan di antaranya dianimasikan dengan Flip (posisi dan
+  // ukuran kartu bergeser mulus; kartu "MOC per lokasi" masuk dengan fade).
+  const span = showLocations ? "span-4" : "span-6";
+  const gridRef = useRef<HTMLDivElement>(null);
+  const flipState = useRef<Flip.FlipState | null>(null);
+  const prevShow = useRef(showLocations);
+
+  useLayoutEffect(() => {
+    const els = Array.from(gridRef.current?.querySelectorAll<HTMLElement>("[data-flip-id]") ?? []);
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (flipState.current && prevShow.current !== showLocations && !reduce && els.length > 0) {
+      Flip.from(flipState.current, {
+        targets: els,
+        duration: 0.55,
+        ease: "power3.inOut",
+        absolute: false,
+        onEnter: (entering) => gsap.fromTo(entering, { opacity: 0, y: 14, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power2.out", delay: 0.1 }),
+        onLeave: (leaving) => gsap.to(leaving, { opacity: 0, duration: 0.2 }),
+      });
+    }
+    prevShow.current = showLocations;
+    flipState.current = Flip.getState(els);
+  });
+
   return (
     <div className="dashboard-content page-enter">
       <StageRail stages={insights.stageCounts} active={insights.active} closed={insights.closed} />
-      <div className="content-grid content-grid-moc">
+      <div className="content-grid content-grid-moc" ref={gridRef}>
         <AttentionList items={insights.attention} nowMs={nowMs} />
         <RecentMocActivity items={insights.recent} />
         <BreakdownCard
           title="Sifat perubahan"
           items={insights.bySifat.map((s) => ({ label: s.label, count: s.count }))}
           total={insights.active}
+          span={span}
+          flipId="sifat"
         />
         <BreakdownCard
           title="Tingkat risiko"
           items={insights.byRisk.map((r) => ({ label: MOC_RISK_LEVEL_LABEL[r.level], count: r.count }))}
           total={insights.active}
+          span={span}
+          flipId="risiko"
         />
         {showLocations && <LocationMoc items={insights.byLocation} />}
       </div>

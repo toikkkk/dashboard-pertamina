@@ -13,6 +13,7 @@ export default function SectionCard({
   state = "ready",
   emptyLabel,
   onRetry,
+  flipId,
 }: {
   title: string;
   action?: ReactNode;
@@ -21,9 +22,10 @@ export default function SectionCard({
   state?: SectionState;
   emptyLabel?: string;
   onRetry?: () => void;
+  flipId?: string;
 }) {
   return (
-    <section className={`section-card ${className}`} aria-label={title}>
+    <section className={`section-card ${className}`} aria-label={title} data-flip-id={flipId}>
       {title && (
         <div className="section-heading">
           <h2>{title}</h2>

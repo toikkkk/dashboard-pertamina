@@ -63,7 +63,7 @@ export function pickMocForm(src: MocFormContent): MocFormContent {
 }
 
 const CARD =
-  "bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)]";
+  "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
 const INPUT = "w-full min-h-[36px] px-2.5 py-1.5 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white";
 const LABEL = "block text-[11.5px] font-bold text-[#0F172A] mb-1";
 

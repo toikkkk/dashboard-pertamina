@@ -14,7 +14,7 @@ import SuccessPopup from "@/components/SuccessPopup";
 import MocAttachments from "@/components/MocAttachments";
 
 const CARD =
-  "bg-white border border-[#C5CED3] rounded-[14px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)]";
+  "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
 const OUTCOME_COLOR: Record<string, string> = { Pending: "#B45309", Sesuai: "#15803D", "Perlu Perubahan": "#6D28D9" };
 const TABS = [
   { key: "ikhtisar", label: "Ikhtisar" },

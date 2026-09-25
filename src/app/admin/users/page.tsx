@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
 
   if (!activeUser.isRegionalAdmin) {
     return (
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] py-[60px] px-5 text-center">
+      <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] py-[60px] px-5 text-center">
         <ShieldAlert className="w-8 h-8 text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.5} />
         <p className="text-sm font-bold text-[#3a3d40] mb-1">Halaman khusus Admin Regional</p>
         <p className="text-[12.5px] text-[#9a9da0]">Anda tidak memiliki wewenang untuk mengelola akses user.</p>
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+      <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 bg-[#fafafb] border-b border-[#f0f0f1]">
           <UserCog className="w-[15px] h-[15px] text-[#0F3B59]" strokeWidth={1.8} />
           <span className="text-[12.5px] font-bold text-[#3a3d40]">Semua User Aktif ({activeUsers.length})</span>

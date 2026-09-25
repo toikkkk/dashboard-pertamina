@@ -39,7 +39,7 @@ export default function MocAttachments({ moc, canAttach }: { moc: MocRequest; ca
   };
 
   return (
-    <div className="bg-white border border-[#C5CED3] rounded-[14px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-5">
+    <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] p-5">
       <h2 className="text-[13.5px] font-bold text-[#0F172A] mb-3">Lampiran</h2>
       {items.length > 0 && (
         <ul className="flex flex-col gap-1.5 mb-3">

@@ -212,7 +212,7 @@ export default function ExpiringDocsTable() {
   }
 
   return (
-    <div className="bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] overflow-hidden">
+    <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] overflow-hidden">
       {actionSuccessMsg && (
         <div
           className={`px-4 py-2.5 bg-[#DCFCE7] border-b border-[#BBF7D0] text-[12.5px] font-semibold text-[#15803D] flex items-center gap-2 ${

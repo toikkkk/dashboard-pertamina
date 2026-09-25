@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Bell, CheckCircle2, ChevronDown, ClipboardList, LogOut, Menu, Search } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, ClipboardList, Menu, Search } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { mocPendingActions, type MocAction, type MocRequest } from "@/lib/domain/moc";
 
@@ -29,24 +29,44 @@ export default function Topbar({
   mocNotifs: { m: MocRequest; acts: MocAction[] }[];
   isPending: boolean;
 }) {
-  const { activeUser, allDocuments, logout } = usePsi();
+  const { allDocuments } = usePsi();
   const router = useRouter();
 
   const [notifOpen, setNotifOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState(false);
+  // Pencarian: ikon dulu; klik memperluas kolom input dengan transisi lebar (seperti
+  // navbar lama). Menutup lagi saat klik di luar atau Escape, selama input kosong.
+  const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const userRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLFormElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
-      if (userRef.current && !userRef.current.contains(e.target as Node)) setUserMenuOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node) && !query) setSearchOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setNotifOpen(false);
+        setSearchOpen(false);
+        setQuery("");
+        setError(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [query]);
+
+  const openSearch = () => {
+    setSearchOpen(true);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
 
   const totalNotifications = overdueCount + mocNotifs.length;
 
@@ -58,15 +78,11 @@ export default function Topbar({
     if (found) {
       setError(false);
       setQuery("");
+      setSearchOpen(false);
       router.push(`/document/${found.id}`);
       return;
     }
     setError(true);
-  };
-
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
   };
 
   return (
@@ -76,19 +92,27 @@ export default function Topbar({
       </button>
 
       {!isPending ? (
-        <form onSubmit={handleSearch} className="topbar-search" role="search">
+        <form ref={searchRef} onSubmit={handleSearch} className={`topbar-search ${searchOpen ? "topbar-search-open" : ""}`} role="search">
+          <button
+            type="button"
+            aria-label={searchOpen ? "Cari nomor dokumen" : "Buka pencarian nomor dokumen"}
+            aria-expanded={searchOpen}
+            className="header-icon-button"
+            onClick={() => (searchOpen && query ? handleSearch({ preventDefault() {} } as React.FormEvent) : searchOpen ? setSearchOpen(false) : openSearch())}
+          >
+            <Search className="h-[18px] w-[18px]" />
+          </button>
           <label className="sr-only" htmlFor="doc-search">Cari nomor dokumen</label>
           <input
             id="doc-search"
+            ref={searchInputRef}
             type="text"
             value={query}
+            tabIndex={searchOpen ? 0 : -1}
             onChange={(e) => { setQuery(e.target.value); setError(false); }}
             placeholder="Cari nomor dokumen…"
             className="topbar-search-input"
           />
-          <button type="submit" aria-label="Cari" className="header-icon-button">
-            <Search className="h-[18px] w-[18px]" />
-          </button>
           {error && <p className="topbar-search-error" role="alert">Nomor dokumen tidak ditemukan</p>}
         </form>
       ) : (
@@ -137,27 +161,6 @@ export default function Topbar({
             )}
           </div>
         )}
-
-        <div className="header-divider" />
-
-        <div className="relative" ref={userRef}>
-          <button className="profile-menu" onClick={() => setUserMenuOpen((v) => !v)} aria-label="Menu pengguna">
-            <div className="avatar avatar-top">{activeUser.name.charAt(0)}</div>
-            <div className="profile-copy">
-              <strong>{activeUser.name}</strong>
-              <span>{isPending ? "Menunggu Aktivasi" : activeUser.role}</span>
-            </div>
-            <ChevronDown className="profile-chevron h-3.5 w-3.5" strokeWidth={2} />
-          </button>
-          {userMenuOpen && (
-            <div className="topbar-panel topbar-panel-narrow">
-              <button className="topbar-panel-action" onClick={handleLogout}>
-                <LogOut className="h-[15px] w-[15px] text-[#0F3B59]" strokeWidth={1.7} />
-                <span>Keluar Sesi</span>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );

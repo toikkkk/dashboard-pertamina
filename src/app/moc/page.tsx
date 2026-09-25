@@ -19,7 +19,7 @@ import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import StatusTag from "@/components/StatusTag";
 
 const CARD =
-  "bg-white border border-[#C5CED3] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)]";
+  "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
 const SELECT = "text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold";
 
 function fmtDate(ts?: string | null) {
