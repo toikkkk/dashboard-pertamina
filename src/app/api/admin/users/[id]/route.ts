@@ -13,12 +13,45 @@ import { db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertRegionalAdmin, ForbiddenError } from "@/lib/auth/rbac";
-import { withErrorHandling } from "@/lib/api/respond";
+import { withErrorHandling, HttpError } from "@/lib/api/respond";
 
 const bodySchema = z.object({
   role: z.enum(["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"]),
   location: z.string().trim().min(1),
 });
+
+// Menghapus akun. Hanya Admin Regional; tidak boleh menghapus akun sendiri. Akun yang
+// sudah tercatat di dokumen/MOC/riwayat/unggahan TIDAK dihapus (jejak audit harus tetap
+// menunjuk ke orangnya) — Postgres menolaknya lewat foreign key (23503) dan kita
+// jawab 409 dengan pesan yang jelas. Sesi & token atur-ulang sandi ikut terhapus (cascade).
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  return withErrorHandling(async () => {
+    const admin = await requireSessionUser();
+    assertRegionalAdmin(admin);
+
+    if (params.id === admin.id) {
+      throw new ForbiddenError("Anda tidak dapat menghapus akun Anda sendiri.");
+    }
+
+    try {
+      const deleted = await db.delete(users).where(eq(users.id, params.id)).returning({ id: users.id });
+      if (deleted.length === 0) {
+        return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
+      }
+    } catch (err) {
+      const code = (err as { code?: string; cause?: { code?: string } })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
+      if (code === "23503") {
+        throw new HttpError(
+          409,
+          "User ini sudah tercatat pada dokumen, MOC, atau riwayat sehingga tidak dapat dihapus. Ubah lokasi/perannya bila aksesnya perlu dicabut."
+        );
+      }
+      throw err;
+    }
+
+    return NextResponse.json({ ok: true });
+  });
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {

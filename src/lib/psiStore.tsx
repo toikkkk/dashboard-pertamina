@@ -76,6 +76,9 @@ interface PsiContextType {
   resetPassword: (token: string, password: string) => Promise<{ message: string }>;
   /** PATCHes /api/admin/users/:id — server re-derives isRegionalAdmin from role. */
   assignUserAccess: (userId: string, role: SimulatedUser["role"], location: string) => Promise<void>;
+  /** DELETEs /api/admin/users/:id. Throws with the server's message (e.g. 409 when the
+   * user is already referenced by documents/MOC, or when deleting one's own account). */
+  deleteUser: (userId: string) => Promise<void>;
   isAuthLoaded: boolean;
 }
 
@@ -192,6 +195,11 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const assignUserAccess = async (userId: string, role: SimulatedUser["role"], location: string): Promise<void> => {
     await fetchJson(`/api/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role, location }) });
+    await mutate();
+  };
+
+  const deleteUser = async (userId: string): Promise<void> => {
+    await fetchJson(`/api/admin/users/${userId}`, { method: "DELETE" });
     await mutate();
   };
 
@@ -323,6 +331,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         forgotPassword,
         resetPassword,
         assignUserAccess,
+        deleteUser,
         saveOnboardingPreferences,
         isAuthLoaded,
       }}

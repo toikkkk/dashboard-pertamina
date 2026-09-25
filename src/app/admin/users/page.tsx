@@ -3,13 +3,14 @@
 import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { deriveDemoEmail, SimulatedUser } from "@/lib/mockData";
-import { ShieldAlert, Hourglass, CheckCircle2, UserCog, Pencil, X, Search } from "lucide-react";
+import { ShieldAlert, Hourglass, CheckCircle2, UserCog, Pencil, X, Search, Trash2 } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import MocRoleEditor from "@/components/MocRoleEditor";
 
 const ROLES: SimulatedUser["role"][] = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"];
 
 export default function AdminUsersPage() {
-  const { activeUser, users, locations, assignUserAccess } = usePsi();
+  const { activeUser, users, locations, assignUserAccess, deleteUser } = usePsi();
 
   const [draftRole, setDraftRole] = useState<Record<string, SimulatedUser["role"]>>({});
   const [draftLocation, setDraftLocation] = useState<Record<string, string>>({});
@@ -18,6 +19,9 @@ export default function AdminUsersPage() {
   const [justUpdated, setJustUpdated] = useState<string | null>(null);
   const [lockoutWarningId, setLockoutWarningId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleting, setDeleting] = useState<SimulatedUser | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!activeUser.isRegionalAdmin) {
     return (
@@ -46,6 +50,25 @@ export default function AdminUsersPage() {
     assignUserAccess(u.id, role, location);
     setJustActivated(u.id);
     setTimeout(() => setJustActivated(null), 3000);
+  };
+
+  const askDelete = (u: SimulatedUser) => {
+    setDeleteError(null);
+    setDeleting(u);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await deleteUser(deleting.id);
+      setDeleting(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Gagal menghapus user.");
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const startEdit = (u: SimulatedUser) => {
@@ -143,6 +166,13 @@ export default function AdminUsersPage() {
                     >
                       Aktifkan
                     </button>
+                    <button
+                      onClick={() => askDelete(u)}
+                      aria-label={`Hapus ${u.name}`}
+                      className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                    </button>
                   </>
                 )}
               </div>
@@ -231,13 +261,24 @@ export default function AdminUsersPage() {
                       Tersimpan
                     </span>
                   ) : (
-                    <button
-                      onClick={() => startEdit(u)}
-                      className="inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] text-[#0F3B59] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
-                    >
-                      <Pencil className="w-3 h-3" strokeWidth={2} />
-                      Ubah
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => startEdit(u)}
+                        className="inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] text-[#0F3B59] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                      >
+                        <Pencil className="w-3 h-3" strokeWidth={2} />
+                        Ubah
+                      </button>
+                      {u.id !== activeUser.id && (
+                        <button
+                          onClick={() => askDelete(u)}
+                          aria-label={`Hapus ${u.name}`}
+                          className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="mt-2.5 pt-2.5 border-t border-[#f5f5f6]">
@@ -329,13 +370,24 @@ export default function AdminUsersPage() {
                           Tersimpan
                         </span>
                       ) : (
-                        <button
-                          onClick={() => startEdit(u)}
-                          className="inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] text-[#0F3B59] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
-                        >
-                          <Pencil className="w-3 h-3" strokeWidth={2} />
-                          Ubah
-                        </button>
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => startEdit(u)}
+                            className="inline-flex items-center gap-1.5 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] text-[#0F3B59] hover:bg-[#F5F7F9] active:scale-[0.97] transition-all duration-200"
+                          >
+                            <Pencil className="w-3 h-3" strokeWidth={2} />
+                            Ubah
+                          </button>
+                          {u.id !== activeUser.id && (
+                            <button
+                              onClick={() => askDelete(u)}
+                              aria-label={`Hapus ${u.name}`}
+                              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-[8px] border border-[#C5CED3] text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition-all duration-200"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </>
@@ -356,6 +408,16 @@ export default function AdminUsersPage() {
         </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title={deleting ? `Hapus ${deleting.name}?` : ""}
+        confirmLabel="Ya, hapus"
+        busy={deleteBusy}
+        error={deleteError}
+        onCancel={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
