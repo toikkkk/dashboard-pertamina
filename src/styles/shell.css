@@ -754,3 +754,46 @@
   .hsse-shell .topbar-panel-body { max-height: calc(100vh - 150px); }
   .hsse-shell .topbar-search-error { position: fixed; top: 72px; left: 10px; }
 }
+
+/* --- Tambahan proyek: sidebar mengecil/melebar lebih halus. Bawaan Manus menukar
+   display:none/revert dan justify-content SEKETIKA meski lebar .sidebar sendiri
+   bertransisi 220ms — label menghilang/muncul dan ikon "melompat" ke tengah sebelum
+   lebar selesai berubah. Di sini: (1) ikon TIDAK direposisi lagi (justify-content
+   tetap flex-start) — padding/gap ikut bertransisi sehingga ikon terlihat menetap
+   sementara ruang di sekitarnya menyempit/melebar; (2) setiap label memudar+
+   menyempit (opacity + max-width/max-height) selaras waktu dengan lebar sidebar,
+   bukan hilang seketika. Aturan display di sini menimpa display:none Manus di atas
+   (selektor sama, urutan lebih akhir menang) supaya transisi opacity-nya benar-benar
+   berjalan alih-alih terpotong oleh display:none.
+   Lebar sidebar sendiri (220ms) dinaikkan sedikit agar sebanding dengan durasi
+   memudarnya label (240ms), jadi keduanya selesai berbarengan, bukan salah satunya
+   menggantung setelah yang lain berhenti. */
+.hsse-shell .sidebar { transition: width 260ms cubic-bezier(.23,1,.32,1), flex-basis 260ms cubic-bezier(.23,1,.32,1), box-shadow 180ms ease-out; }
+.hsse-shell .nav-item { transition: background 160ms ease-out, color 160ms ease-out, transform 160ms ease-out, gap 240ms cubic-bezier(.23,1,.32,1), padding 240ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .nav-item span { display: inline-block; overflow: hidden; white-space: nowrap; max-width: 160px; opacity: 1; transition: opacity 130ms ease-out, max-width 240ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .nav-item { justify-content: flex-start; gap: 0; padding: 0 19px; }
+.hsse-shell .sidebar-collapsed .nav-item span { display: inline-block; opacity: 0; max-width: 0; transition: opacity 90ms ease-out, max-width 240ms cubic-bezier(.23,1,.32,1); }
+
+.hsse-shell .new-document-button { transition: width 240ms cubic-bezier(.23,1,.32,1), padding 240ms cubic-bezier(.23,1,.32,1), border-radius 200ms ease-out, background 160ms ease-out, box-shadow 160ms ease-out, transform 160ms ease-out; }
+.hsse-shell .new-document-label { display: inline-block; overflow: hidden; white-space: nowrap; max-width: 120px; opacity: 1; transition: opacity 130ms ease-out, max-width 240ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .new-document-label { display: inline-block; opacity: 0; max-width: 0; transition: opacity 90ms ease-out, max-width 240ms cubic-bezier(.23,1,.32,1); }
+
+.hsse-shell .sidebar-label { overflow: hidden; max-height: 32px; opacity: 1; transition: opacity 120ms ease-out, max-height 220ms cubic-bezier(.23,1,.32,1), padding-bottom 220ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .sidebar-label { display: block; opacity: 0; max-height: 0; padding-bottom: 0; transition: opacity 90ms ease-out, max-height 220ms cubic-bezier(.23,1,.32,1), padding-bottom 220ms cubic-bezier(.23,1,.32,1); }
+
+.hsse-shell .sidebar-user { transition: gap 240ms cubic-bezier(.23,1,.32,1), padding 240ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .sidebar-user { justify-content: flex-start; gap: 0; padding-left: 13px; padding-right: 0; }
+.hsse-shell .sidebar-user-name, .hsse-shell .sidebar-user-role { overflow: hidden; max-height: 20px; opacity: 1; transition: opacity 120ms ease-out, max-height 220ms cubic-bezier(.23,1,.32,1), margin-top 220ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .sidebar-user-name, .hsse-shell .sidebar-collapsed .sidebar-user-role { display: block; opacity: 0; max-height: 0; margin-top: 0; transition: opacity 90ms ease-out, max-height 220ms cubic-bezier(.23,1,.32,1), margin-top 220ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-user .icon-button { opacity: 1; transition: opacity 130ms ease-out, width 220ms cubic-bezier(.23,1,.32,1), margin 220ms cubic-bezier(.23,1,.32,1); }
+.hsse-shell .sidebar-collapsed .sidebar-user .icon-button { display: grid; opacity: 0; width: 0; margin-left: 0; pointer-events: none; transition: opacity 90ms ease-out, width 220ms cubic-bezier(.23,1,.32,1), margin 220ms cubic-bezier(.23,1,.32,1); }
+@media (prefers-reduced-motion: reduce) {
+  .hsse-shell .nav-item span, .hsse-shell .new-document-label, .hsse-shell .sidebar-label, .hsse-shell .sidebar-user-name, .hsse-shell .sidebar-user-role, .hsse-shell .sidebar-user .icon-button { transition: none; }
+}
+/* Judul "Portal PSI & MOC" ditampilkan/disembunyikan seketika (display:revert/none,
+   bukan bagian dari perbaikan di atas — pertukarannya dengan monogram "P" tidak
+   disentuh, sudah cukup rumit lapisannya). Tanpa nowrap, teks itu sempat tampil
+   penuh sebelum sidebar selesai melebar dan melipat jadi 3 baris sesaat. Dengan
+   nowrap ia hanya terpotong oleh overflow:hidden sidebar, lalu tersingkap normal
+   begitu lebar sidebar selesai bertambah — tidak pernah terlihat melipat. */
+.hsse-shell .brand-title { white-space: nowrap; overflow: hidden; }
