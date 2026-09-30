@@ -3,13 +3,36 @@
 // (lib/security/fileScan.ts). Berkas yang gagal DIHAPUS dari bucket dan barisnya
 // ditandai 'failed', jadi tidak pernah bisa diunduh/dilampirkan.
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { createHash } from "crypto";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { fileRegistry } from "@/lib/db/schema";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { FULL_SCAN_MAX_BYTES, SCAN_EDGE_BYTES, kindOfFilename, scanContent } from "@/lib/security/fileScan";
 
 type FileRow = typeof fileRegistry.$inferSelect;
+
+// Isi berkas (bukan nama) yang menentukan duplikat — dipakai kedua jalur unggah
+// (langsung ke R2 dan proxy server) supaya berkas yang sudah ada di arsip (migrasi
+// ATAU unggahan sebelumnya) tidak pernah tersalin ulang tanpa disadari pengunggah.
+export async function findDuplicateFile(checksumSha256: string, excludeId?: string) {
+  const [dup] = await db
+    .select({ id: fileRegistry.id, originalFilename: fileRegistry.originalFilename, category: fileRegistry.category })
+    .from(fileRegistry)
+    .where(
+      and(
+        eq(fileRegistry.checksumSha256, checksumSha256),
+        eq(fileRegistry.uploadStatus, "uploaded"),
+        excludeId ? ne(fileRegistry.id, excludeId) : undefined
+      )
+    )
+    .limit(1);
+  return dup ?? null;
+}
+
+export function duplicateMessage(dup: { originalFilename: string }): string {
+  return `Berkas ini isinya sama persis dengan berkas yang sudah ada di arsip ("${dup.originalFilename}"). Gunakan Arsip Registry untuk menautkan berkas yang sudah ada, bukan mengunggah salinan baru.`;
+}
 
 async function readRange(key: string, range?: string): Promise<Buffer> {
   const res = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key, Range: range }));
@@ -40,13 +63,25 @@ export async function verifyUploadedObject(file: FileRow): Promise<string | null
   }
 
   let problem: string | null;
+  let fullBuf: Buffer | null = null;
   if (actual <= FULL_SCAN_MAX_BYTES) {
-    const buf = await readRange(file.r2ObjectKey);
-    problem = scanContent(kind, buf, buf);
+    fullBuf = await readRange(file.r2ObjectKey);
+    problem = scanContent(kind, fullBuf, fullBuf);
   } else {
     const head = await readRange(file.r2ObjectKey, `bytes=0-${SCAN_EDGE_BYTES - 1}`);
     const tail = await readRange(file.r2ObjectKey, `bytes=${actual - SCAN_EDGE_BYTES}-${actual - 1}`);
     problem = scanContent(kind, head, tail);
   }
-  return problem ? reject(file, problem) : null;
+  if (problem) return reject(file, problem);
+
+  // Deteksi duplikat isi berkas. Hanya untuk berkas yang seluruh isinya sudah dibaca
+  // di atas (fullBuf) — berkas besar (hanya kepala/ekor dipindai) dilewati agar tidak
+  // perlu baca ulang seluruh isi cuma untuk hash.
+  if (fullBuf) {
+    const checksumSha256 = createHash("sha256").update(fullBuf).digest("hex");
+    const dup = await findDuplicateFile(checksumSha256, file.id);
+    if (dup) return reject(file, duplicateMessage(dup));
+    await db.update(fileRegistry).set({ checksumSha256 }).where(eq(fileRegistry.id, file.id));
+  }
+  return null;
 }

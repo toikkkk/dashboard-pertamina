@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
 import type { AnyColumn, SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { fileRegistry } from "@/lib/db/schema";
+import { documents, fileRegistry } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
@@ -47,7 +47,13 @@ export async function GET(req: NextRequest) {
     const sortColumn = SORT_COLUMNS[searchParams.get("sortBy") ?? ""] ?? fileRegistry.originalFilename;
     const sortDir = searchParams.get("sortDir") === "desc" ? desc : asc;
 
-    const conditions = [eq(fileRegistry.uploadStatus, "uploaded")];
+    // Berkas yang sudah ditautkan ke sebuah dokumen (sudah tampil di Direktori)
+    // disembunyikan dari daftar ini — supaya arsip mentah dan Direktori tidak pernah
+    // terlihat menampilkan dokumen yang sama dua kali di dua tempat berbeda.
+    const conditions = [
+      eq(fileRegistry.uploadStatus, "uploaded"),
+      sql`${fileRegistry.id} not in (select ${documents.primaryFileId} from ${documents})`,
+    ];
     if (category) conditions.push(eq(fileRegistry.category, category));
     if (subcategory === NO_SUBCATEGORY) {
       conditions.push(sql`${fileRegistry.pathSegments}->>1 IS NULL`);
@@ -60,7 +66,13 @@ export async function GET(req: NextRequest) {
       ? db
           .select({ sub: sql<string>`${fileRegistry.pathSegments}->>1`, count: sql<number>`count(*)::int` })
           .from(fileRegistry)
-          .where(and(eq(fileRegistry.uploadStatus, "uploaded"), eq(fileRegistry.category, category)))
+          .where(
+            and(
+              eq(fileRegistry.uploadStatus, "uploaded"),
+              eq(fileRegistry.category, category),
+              sql`${fileRegistry.id} not in (select ${documents.primaryFileId} from ${documents})`
+            )
+          )
           .groupBy(sql`${fileRegistry.pathSegments}->>1`)
           .orderBy(sql`count(*) desc`)
       : null;

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { documents, historyItems, approvalRoutes, fileRegistry } from "@/lib/db/schema";
+import { documents, historyItems, approvalRoutes, fileRegistry, documentCategories } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationWrite, assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
@@ -26,7 +26,6 @@ const bodySchema = z.object({
   documentNumber: z.string().trim().min(1),
   title: z.string().trim().min(1),
   psiType: z.enum(["Informasi Bahan Berbahaya", "Informasi Teknologi Proses", "Informasi Peralatan", "Sistem Tata Kerja"]),
-  auditType: z.string().optional(),
   location: z.string().trim().min(1),
   lifecyclePhase: z.enum(["Proyek", "Operasi", "Decommissioning"]),
   isCircular: z.boolean(),
@@ -41,6 +40,9 @@ const bodySchema = z.object({
     .default([]),
   fileId: z.string().uuid(),
   expiryDate: z.string(),
+  // Sub-kategori grid Direktori (2026-09-28) — opsional untuk kompatibilitas mundur
+  // (halaman /upload lama belum kirim ini).
+  categoryId: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -60,6 +62,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Berkas belum selesai diunggah atau tidak ditemukan." }, { status: 404 });
     }
 
+    if (body.categoryId) {
+      const [cat] = await db.select({ id: documentCategories.id }).from(documentCategories).where(eq(documentCategories.id, body.categoryId)).limit(1);
+      if (!cat) return NextResponse.json({ error: "Sub-kategori tidak ditemukan." }, { status: 404 });
+    }
+
     const initialStatus = body.isCircular ? "In Routing" : "Approved";
     const issueDate = new Date().toISOString().split("T")[0];
 
@@ -69,7 +76,6 @@ export async function POST(req: NextRequest) {
         documentNumber: body.documentNumber,
         title: body.title,
         psiType: body.psiType,
-        auditType: body.auditType,
         lifecyclePhase: body.lifecyclePhase,
         location: body.location,
         currentVersion: "1.0",
@@ -77,6 +83,7 @@ export async function POST(req: NextRequest) {
         issueDate,
         expiryDate: body.expiryDate,
         primaryFileId: body.fileId,
+        categoryId: body.categoryId,
         isCircular: body.isCircular,
         createdBy: user.id,
       })

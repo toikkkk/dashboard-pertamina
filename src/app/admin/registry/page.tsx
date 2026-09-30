@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import type { PSIType, LifecyclePhase } from "@/lib/mockData";
 import RegistryPreviewModal from "@/components/RegistryPreviewModal";
+import CategoryPickerField from "@/components/CategoryPickerField";
+import LocationPickerField from "@/components/LocationPickerField";
+import { useDocumentCategories } from "@/lib/useDocumentCategories";
 
 interface RegistryFile {
   id: string;
@@ -124,6 +127,13 @@ function LinkDocumentForm({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const { categories: availableCategories } = useDocumentCategories(form.location);
+  // Kategori sebelumnya bisa jadi milik lokasi lain kalau admin ganti Lokasi di form ini.
+  React.useEffect(() => {
+    if (form.categoryId) setForm({ ...form, categoryId: "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.location]);
+
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-3">
@@ -147,24 +157,11 @@ function LinkDocumentForm({
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Jenis PSI</label>
-          <select
-            value={form.psiType}
-            onChange={(e) => setForm({ ...form, psiType: e.target.value as PSIType })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px] bg-white"
-          >
-            {PSI_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Lokasi</label>
-          <select
+          <LocationPickerField
+            locations={locations}
             value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px] bg-white"
-          >
-            {locations.map((l) => <option key={l.locationName} value={l.locationName}>{l.locationName}</option>)}
-          </select>
+            onChange={(name) => setForm({ ...form, location: name })}
+          />
         </div>
         <div>
           <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Fase</label>
@@ -192,6 +189,13 @@ function LinkDocumentForm({
             value={form.expiryDate}
             onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
             className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px]"
+          />
+        </div>
+        <div className="sm:col-span-3 sm:w-1/3">
+          <CategoryPickerField
+            categories={availableCategories}
+            value={form.categoryId}
+            onChange={(id) => setForm({ ...form, categoryId: id })}
           />
         </div>
       </div>
@@ -261,6 +265,9 @@ interface LinkForm {
   lifecyclePhase: LifecyclePhase;
   issueDate: string;
   expiryDate: string;
+  // Sub-kategori grid Direktori (2026-09-28) — tanpa ini dokumen tetap tertaut
+  // tapi tidak muncul di kartu kategori manapun. Opsional, sama seperti di /upload.
+  categoryId: string;
 }
 
 export default function AdminRegistryPage() {
@@ -343,6 +350,7 @@ export default function AdminRegistryPage() {
       lifecyclePhase: "Operasi",
       issueDate: today.toISOString().slice(0, 10),
       expiryDate: expiry.toISOString().slice(0, 10),
+      categoryId: "",
     });
   };
 
@@ -358,7 +366,7 @@ export default function AdminRegistryPage() {
       const res = await fetch(`/api/registry/${fileId}/link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, categoryId: form.categoryId || undefined }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

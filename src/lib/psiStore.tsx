@@ -21,6 +21,9 @@ import {
 type NewDocumentInput = Omit<DocumentItem, "id" | "history" | "currentVersion" | "status" | "issueDate" | "fileUrl" | "routes"> & {
   fileId: string;
   routes: ApprovalRouteItem[];
+  // Sub-kategori grid Direktori (2026-09-28, lihat useDocumentCategories.ts) — opsional,
+  // dipakai saat dokumen diunggah dari dalam satu ubin kategori.
+  categoryId?: string;
 };
 
 interface PsiContextType {

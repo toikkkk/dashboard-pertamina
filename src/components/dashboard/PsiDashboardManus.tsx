@@ -5,26 +5,14 @@
 // getComplianceMetrics(), bukan data contoh.
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, FileClock, ArrowDownRight } from "lucide-react";
-import type { DocumentItem, PSIType } from "@/lib/domain/types";
+import { ArrowUpRight, ChevronRight, ChevronDown, FileClock, ArrowDownRight, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import type { DocumentItem } from "@/lib/domain/types";
 import { EXPIRING_WITHIN_DAYS, psiInsights } from "@/lib/domain/dashboard";
+import { useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
 
 type Insights = ReturnType<typeof psiInsights>;
-type ComplianceMetrics = {
-  totalApproved: number;
-  totalTarget: number;
-  percentage: number;
-  byType: Record<PSIType, { approved: number; target: number; pct: number }>;
-};
-
-const PSI_TYPES: PSIType[] = [
-  "Informasi Bahan Berbahaya",
-  "Informasi Teknologi Proses",
-  "Informasi Peralatan",
-  "Sistem Tata Kerja",
-];
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso + "T00:00:00");
@@ -126,46 +114,6 @@ function RecentUpdates({ items }: { items: Insights["recent"] }) {
   );
 }
 
-// ------------------------------------------------------------------ distribution
-
-const BAR_TONE = ["bar-navy", "bar-slate", "bar-steel", "bar-muted"];
-
-function DistributionChart({ documents, scope }: { documents: DocumentItem[]; scope: "type" | "location" }) {
-  const groups = new Map<string, number>();
-  if (scope === "type") {
-    for (const t of PSI_TYPES) groups.set(t, 0);
-    for (const d of documents) groups.set(d.psiType, (groups.get(d.psiType) ?? 0) + 1);
-  } else {
-    for (const d of documents) groups.set(d.location, (groups.get(d.location) ?? 0) + 1);
-  }
-  const items = Array.from(groups.entries())
-    .map(([label, value]) => ({ label, value }))
-    .filter((g) => g.value > 0)
-    .sort((a, b) => b.value - a.value);
-  const total = documents.length;
-
-  return (
-    <SectionCard title="Distribusi dokumen" className="span-5" state={total > 0 ? "ready" : "empty"} emptyLabel="distribusi dokumen">
-      <div className="chart-caption">
-        <span>{scope === "location" ? "Dokumen per terminal" : "Dokumen per jenis PSI"}</span>
-        <strong>{total} <small>total dokumen</small></strong>
-      </div>
-      <div className="bar-chart">
-        {items.map((item, i) => {
-          const width = Math.max(5, (item.value / Math.max(1, items[0]?.value ?? 1)) * 100);
-          return (
-            <div className="bar-row" key={item.label}>
-              <span className="bar-label">{item.label}</span>
-              <div className="bar-track"><span className={`bar-fill ${BAR_TONE[Math.min(i, 3)]}`} style={{ width: `${width}%` }} /></div>
-              <strong>{item.value}</strong>
-            </div>
-          );
-        })}
-      </div>
-    </SectionCard>
-  );
-}
-
 // ------------------------------------------------------------------ compliance
 
 function barColor(pct: number) {
@@ -176,14 +124,12 @@ function barColor(pct: number) {
 }
 
 function ComplianceTable({
-  metrics,
   documents,
   locations,
   scope,
 }: {
-  metrics: ComplianceMetrics;
   documents: DocumentItem[];
-  locations: { locationName: string; targets: Record<string, number> }[];
+  locations: { locationName: string; locationType: string; targets: Record<string, number> }[];
   scope: "type" | "location";
 }) {
   // Satu terminal: hanya rincian per jenis PSI. Banyak terminal: pilihan per lokasi / per
@@ -191,69 +137,182 @@ function ComplianceTable({
   const [pref, setPref] = useState<"location" | "type">("location");
   const detail: "location" | "type" = scope === "location" ? pref : "type";
   const setDetail = setPref;
+  // Baris per lokasi dikelompokkan per tipe (AFT/FT/IT/Plant) dan disembunyikan
+  // secara default — daftar lokasi sudah 29 baris (dari 5), tabel jadi sangat
+  // panjang kalau semua langsung tampil. Klik judul kelompok untuk membuka isinya.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleGroup = (type: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
 
-  const byType = PSI_TYPES.map((type) => {
-    const d = metrics.byType[type];
-    return { label: type, sublabel: "Jenis PSI", approved: d.approved, target: d.target, gap: Math.max(0, d.target - d.approved), pct: d.pct };
-  });
+  // Kolom Approved/Target/Kepatuhan bisa diurutkan — klik judul kolom untuk
+  // mengurutkan, klik lagi untuk membalik arah. Default sama seperti sebelumnya:
+  // kepatuhan menaik (paling butuh perhatian dulu). "Kekurangan" (gap) dihapus
+  // 2026-09-29 — dihitung dari `target`, yang cuma diisi untuk 5 dari 29 lokasi
+  // (lihat location_targets); tanpa maksimal dokumen yang jelas untuk 24 lokasi
+  // lainnya, angka kekurangannya tidak bermakna/menyesatkan.
+  type SortCol = "approved" | "target" | "pct";
+  const [sortCol, setSortCol] = useState<SortCol>("pct");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+  function bySort<T extends { approved: number; target: number; pct: number }>(rows: T[]): T[] {
+    return [...rows].sort((a, b) => (sortDir === "asc" ? a[sortCol] - b[sortCol] : b[sortCol] - a[sortCol]));
+  }
+  const SortHeader = ({ col, label }: { col: SortCol; label: string }) => (
+    <th>
+      <button type="button" onClick={() => toggleSort(col)} className="compliance-sort-btn">
+        {label}
+        {sortCol === col ? (
+          sortDir === "asc" ? <ArrowUp className="w-3 h-3" strokeWidth={2.2} /> : <ArrowDown className="w-3 h-3" strokeWidth={2.2} />
+        ) : (
+          <ChevronsUpDown className="w-3 h-3" strokeWidth={2} />
+        )}
+      </button>
+    </th>
+  );
+
+  // "Per jenis PSI" sekarang berbasis 33 sub-kategori PSI First Column (lihat
+  // document_categories) — bukan lagi 4 psi_type lama dengan target manual yang
+  // cuma pernah diisi untuk 5 lokasi asli. target = jumlah lokasi yang punya
+  // kategori itu, approved = jumlah lokasi yang kategorinya ✅ (lihat
+  // api/document-categories/summary). Bisa 33 baris — sama seperti "Per lokasi",
+  // cuma tampilkan yang paling butuh perhatian dulu, sisanya di balik "Tampilkan semua".
+  const { categories: categorySummary } = useDocumentCategorySummary(detail === "type");
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  const byTypeAll = bySort(
+    categorySummary.map((c) => ({ label: c.name, sublabel: "Sub-kategori PSI", approved: c.approved, target: c.target, pct: c.pct }))
+  );
+  const byType = showAllTypes ? byTypeAll : byTypeAll.slice(0, 8);
+
   const byLocation = locations.map((loc) => {
     const approved = documents.filter((d) => d.location === loc.locationName && d.status === "Approved").length;
     const target = Object.values(loc.targets).reduce((s, t) => s + t, 0);
     const pct = target > 0 ? Math.min(100, Math.round((approved / target) * 100)) : 0;
-    return { label: loc.locationName, sublabel: "Lokasi", approved, target, gap: Math.max(0, target - approved), pct };
+    return { label: loc.locationName, sublabel: "Lokasi", approved, target, pct, locationType: loc.locationType };
   });
-  const rows = (detail === "location" ? byLocation : byType).sort((a, b) => a.pct - b.pct);
-  const totals = rows.reduce((acc, r) => ({ approved: acc.approved + r.approved, target: acc.target + r.target, gap: acc.gap + r.gap }), { approved: 0, target: 0, gap: 0 });
+  const typeOrder = ["AFT", "FT", "IT", "Plant"];
+  const byLocationGroups = bySort(
+    Array.from(new Set(locations.map((l) => l.locationType)))
+      .sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
+      .map((type) => {
+        const children = bySort(byLocation.filter((r) => r.locationType === type));
+        const approved = children.reduce((s, r) => s + r.approved, 0);
+        const target = children.reduce((s, r) => s + r.target, 0);
+        const pct = target > 0 ? Math.min(100, Math.round((approved / target) * 100)) : 0;
+        return { label: type, sublabel: `${children.length} lokasi`, approved, target, pct, children };
+      })
+  );
+
+  const rows = byType;
+  // Total/persentase di header selalu dari SELURUH baris (bukan cuma yang sedang
+  // ditampilkan) — supaya angka "Kepatuhan keseluruhan" tidak berubah saat daftar
+  // dibuka/ditutup atau "Tampilkan semua" belum diklik.
+  const totals = (detail === "location" ? byLocationGroups : byTypeAll).reduce(
+    (acc, r) => ({ approved: acc.approved + r.approved, target: acc.target + r.target }),
+    { approved: 0, target: 0 }
+  );
   const overallPct = totals.target > 0 ? Math.round((totals.approved / totals.target) * 100) : 0;
 
   return (
     <SectionCard
       title="Kepatuhan dokumen"
-      action={
-        scope === "location" ? (
-          <div className="segmented-control">
-            <button className={detail === "location" ? "segmented-active" : ""} onClick={() => setDetail("location")}>Per lokasi</button>
-            <button className={detail === "type" ? "segmented-active" : ""} onClick={() => setDetail("type")}>Per jenis PSI</button>
-          </div>
-        ) : undefined
-      }
-      className="span-7"
-      state={rows.length > 0 ? "ready" : "empty"}
+      className="span-12"
+      state={(detail === "location" ? byLocationGroups.length : byTypeAll.length) > 0 ? "ready" : "empty"}
       emptyLabel="target kepatuhan dokumen"
     >
+      {/* Dulu ditempel kecil (9,5px) di pojok judul kartu, gampang kelewat dan di
+          ponsel jadi berdesakan dengan judul sampai tabel di bawahnya terpotong.
+          Sekarang baris sendiri, ukuran wajar, selebar yang dibutuhkan — sama
+          bahasa visual dengan "Per Lokasi / Semua Dokumen" di Direktori. */}
+      {scope === "location" && (
+        <div className="compliance-detail-switcher">
+          <button type="button" className={detail === "location" ? "is-active" : ""} onClick={() => setDetail("location")}>Per Lokasi</button>
+          <button type="button" className={detail === "type" ? "is-active" : ""} onClick={() => setDetail("type")}>Per Jenis PSI</button>
+        </div>
+      )}
       <div className="compliance-summary">
         <div><span>Kepatuhan keseluruhan</span><strong>{overallPct}<small>%</small></strong></div>
         <div className="summary-divider" />
         <div><span>Approved / Target</span><strong className="mono-summary">{totals.approved} <small>/ {totals.target}</small></strong></div>
-        <div className="summary-gap"><span>Kekurangan</span><strong>{totals.gap}</strong></div>
       </div>
       <div className="compliance-table-wrap">
         <table>
           <thead>
             <tr>
               <th>{detail === "location" ? "Lokasi" : "Jenis PSI"}</th>
-              <th>Approved</th>
-              <th>Target</th>
-              <th>Kekurangan</th>
-              <th>Kepatuhan</th>
+              <SortHeader col="approved" label="Approved" />
+              {/* Target dihilangkan di "Per Jenis PSI" — di sana angkanya cuma
+                  jumlah lokasi yang punya kategori itu (bukan target dari client
+                  seperti di "Per Lokasi"), jadi hampir selalu 29 dan tidak
+                  informatif. */}
+              {detail === "location" && <SortHeader col="target" label="Target" />}
+              <SortHeader col="pct" label="Kepatuhan" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
-                <td><strong>{row.label}</strong><span>{row.sublabel}</span></td>
-                <td className="mono">{row.approved}</td>
-                <td className="mono">{row.target}</td>
-                <td className={`mono ${row.gap > 0 ? "text-critical" : ""}`}>{row.gap > 0 ? row.gap : "—"}</td>
-                <td>
-                  <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
-                  <b>{row.pct}%</b>
-                </td>
-              </tr>
-            ))}
+            {detail === "type"
+              ? rows.map((row) => (
+                  <tr key={row.label}>
+                    <td><strong>{row.label}</strong><span>{row.sublabel}</span></td>
+                    <td className="mono">{row.approved}</td>
+                    <td>
+                      <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
+                      <b>{row.pct}%</b>
+                    </td>
+                  </tr>
+                ))
+              : byLocationGroups.map((group) => {
+                  const isOpen = expanded.has(group.label);
+                  return (
+                    <React.Fragment key={group.label}>
+                      <tr className="compliance-group-row" onClick={() => toggleGroup(group.label)}>
+                        <td>
+                          <span className="compliance-group-toggle">
+                            {isOpen ? <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.2} /> : <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.2} />}
+                            <strong>{group.label}</strong>
+                          </span>
+                          <span>{group.sublabel}</span>
+                        </td>
+                        <td className="mono">{group.approved}</td>
+                        <td className="mono">{group.target}</td>
+                        <td>
+                          <div className="table-progress"><span style={{ width: `${group.pct}%`, background: barColor(group.pct) }} /></div>
+                          <b>{group.pct}%</b>
+                        </td>
+                      </tr>
+                      {isOpen &&
+                        group.children.map((row) => (
+                          <tr key={row.label} className="compliance-child-row">
+                            <td><strong>{row.label}</strong><span>{row.sublabel}</span></td>
+                            <td className="mono">{row.approved}</td>
+                            <td className="mono">{row.target}</td>
+                            <td>
+                              <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
+                              <b>{row.pct}%</b>
+                            </td>
+                          </tr>
+                        ))}
+                    </React.Fragment>
+                  );
+                })}
           </tbody>
         </table>
       </div>
+      {detail === "type" && byTypeAll.length > byType.length && (
+        <button type="button" className="compliance-show-all" onClick={() => setShowAllTypes(true)}>
+          Tampilkan semua ({byTypeAll.length})
+        </button>
+      )}
     </SectionCard>
   );
 }
@@ -263,14 +322,12 @@ function ComplianceTable({
 export default function PsiDashboardManus({
   insights,
   documents,
-  complianceMetrics,
   locations,
   scope,
 }: {
   insights: Insights;
   documents: DocumentItem[];
-  complianceMetrics: ComplianceMetrics;
-  locations: { locationName: string; targets: Record<string, number> }[];
+  locations: { locationName: string; locationType: string; targets: Record<string, number> }[];
   scope: "type" | "location";
 }) {
   return (
@@ -280,8 +337,7 @@ export default function PsiDashboardManus({
         <ExpiringList items={insights.expiring} />
         <StaleList items={insights.stale} />
         <RecentUpdates items={insights.recent} />
-        <DistributionChart documents={documents} scope={scope} />
-        <ComplianceTable metrics={complianceMetrics} documents={documents} locations={locations} scope={scope} />
+        <ComplianceTable documents={documents} locations={locations} scope={scope} />
       </div>
     </div>
   );

@@ -7,15 +7,14 @@
 // PSI (Initiator)' and location=NULL until that approval happens.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, gt, like, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { users, locations } from "@/lib/db/schema";
+import { users, locations, loginAttempts } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 import { passwordPolicyIssues } from "@/lib/domain/rules";
 import { USERNAME_MESSAGE, USERNAME_RE, normalizeUsername, uniqueUsername } from "@/lib/auth/username";
-import { sql } from "drizzle-orm";
 
 const ROLES = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"] as const;
 
@@ -30,9 +29,50 @@ const bodySchema = z.object({
   location: z.string().trim().min(1).max(200).optional(),
 });
 
+// Register memakai tabel `loginAttempts` yang sama (kolomnya cukup generik untuk
+// dipakai bersama, menghindari migrasi tabel baru), tapi dibatasi per ALAMAT IP,
+// bukan per email seperti login: penyalahgunaan register itu bikin akun massal
+// dengan email BEDA-BEDA tiap kali, jadi pembatasan per-email tidak menangkapnya.
+// Baris pelacakannya ditandai dengan prefix "register-attempt:" pada kolom email
+// supaya TIDAK PERNAH tercampur dengan baris percobaan login asli (kalau ikut
+// terhitung, seseorang yang sering login sukses dari IP yang sama—mis. kantor
+// bersama—bisa salah kena batas saat mencoba daftar). Sebelumnya register sama
+// sekali tidak dibatasi (audit keamanan 2026-09-30).
+const REGISTER_RATE_LIMIT_WINDOW_MINUTES = 60;
+const REGISTER_RATE_LIMIT_MAX_ATTEMPTS = 5;
+const REGISTER_TRACKING_PREFIX = "register-attempt:";
+
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
+    const ipAddress = req.headers.get("x-forwarded-for");
+    if (ipAddress) {
+      const windowStart = new Date(Date.now() - REGISTER_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
+      const [{ count: recentAttempts }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(loginAttempts)
+        .where(
+          and(
+            eq(loginAttempts.ipAddress, ipAddress),
+            like(loginAttempts.email, `${REGISTER_TRACKING_PREFIX}%`),
+            gt(loginAttempts.createdAt, windowStart)
+          )
+        );
+      if (recentAttempts >= REGISTER_RATE_LIMIT_MAX_ATTEMPTS) {
+        return NextResponse.json(
+          { error: `Terlalu banyak percobaan pendaftaran dari jaringan ini. Coba lagi setelah ${REGISTER_RATE_LIMIT_WINDOW_MINUTES} menit.` },
+          { status: 429 }
+        );
+      }
+    }
+
     const { name, email, username: usernameInput, password, role, location } = bodySchema.parse(await req.json());
+
+    // Dicatat SEBELUM validasi lain (email dobel, password lemah, dst.) supaya
+    // percobaan yang gagal pun tetap terhitung ke batas — itu justru pola yang
+    // paling perlu ditangkap (mis. mengecek banyak email satu-satu).
+    if (ipAddress) {
+      await db.insert(loginAttempts).values({ email: `${REGISTER_TRACKING_PREFIX}${email.toLowerCase()}`, success: false, ipAddress });
+    }
 
     // Applied after the base zod shape rather than as a `.refine()` on it — keeps
     // the multi-requirement message list simple instead of fighting zod's

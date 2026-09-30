@@ -125,7 +125,6 @@ async function seedDocuments(userIdByName: Map<string, string>) {
         documentNumber: doc.documentNumber,
         title: doc.title,
         psiType: doc.psiType,
-        auditType: doc.auditType,
         lifecyclePhase: doc.lifecyclePhase,
         location: doc.location,
         currentVersion: doc.currentVersion,

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { DocumentItem, HistoryItem, getPendingApprovalStepOrder, canUserApproveDoc } from "@/lib/mockData";
 import { usePsi } from "@/lib/psiStore";
-import { Download, Info } from "lucide-react";
+import { Download } from "lucide-react";
 import RoutingStatusPanel from "@/components/RoutingStatusPanel";
 import DocumentContentPreview, { getFileKind } from "@/components/DocumentContentPreview";
 import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
@@ -40,8 +40,6 @@ const ACTION_COLOR: Record<HistoryItem["action"], string> = {
 const TABS = [
   { key: "detail", label: "Detail Dokumen" },
   { key: "history", label: "Riwayat Proses" },
-  { key: "attachments", label: "Lampiran Berkas", comingSoon: true },
-  { key: "signature", label: "Tanda Tangan PKI", comingSoon: true },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -115,9 +113,6 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
               <span className="text-[11.5px] font-semibold px-2.5 py-[3px] rounded-[8px] bg-[#eceded] text-[#3a3d40]">{doc.location}</span>
               <span className="text-[11.5px] font-semibold px-2.5 py-[3px] rounded-[8px] bg-[#eceded] text-[#3a3d40]">{doc.psiType}</span>
               <span className="text-[11.5px] font-semibold px-2.5 py-[3px] rounded-[8px] bg-[#eceded] text-[#3a3d40]">{doc.lifecyclePhase}</span>
-              {doc.auditType && (
-                <span className="text-[11.5px] font-semibold px-2.5 py-[3px] rounded-[8px] bg-[#EDE9FE] text-[#6D28D9]">{doc.auditType}</span>
-              )}
             </div>
             <button onClick={() => setTab("history")} className="cursor-pointer text-xs font-semibold text-[#0F3B59] hover:text-[#0B2C43]">
               Lihat riwayat proses →
@@ -164,9 +159,6 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                 <span>{t.label}</span>
                 {t.key === "history" && (
                   <span className="text-[10px] font-bold bg-[#eceded] text-[#3a3d40] px-1.5 py-0.5 rounded-full">{doc.history.length}</span>
-                )}
-                {"comingSoon" in t && t.comingSoon && (
-                  <span className="text-[9px] font-bold text-[#9a9da0] uppercase tracking-[.04em]">Segera</span>
                 )}
               </button>
             );
@@ -284,16 +276,6 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
             </div>
           )}
 
-          {(tab === "attachments" || tab === "signature") && (
-            <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] p-7 flex gap-3 items-start animate-fadeIn">
-              <Info className="w-4 h-4 text-[#0F3B59] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
-              <p className="text-[13px] text-[#3a3d40]">
-                {tab === "attachments"
-                  ? "Lampiran tambahan akan tersedia pada iterasi berikutnya."
-                  : "Verifikasi tanda tangan digital PKI akan diintegrasikan pada tahap selanjutnya."}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 

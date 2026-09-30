@@ -127,7 +127,6 @@ async function main() {
         documentNumber: d.documentNumber,
         title: d.title,
         psiType: d.psiType,
-        auditType: null,
         lifecyclePhase: "Operasi",
         location: d.location,
         currentVersion: d.currentVersion,

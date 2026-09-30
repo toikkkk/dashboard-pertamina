@@ -64,6 +64,13 @@
       "when": 1790345428838,
       "tag": "0008_requested_moc_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790593287903,
+      "tag": "0009_document_categories",
+      "breakpoints": true
     }
   ]
 }

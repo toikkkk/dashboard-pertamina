@@ -4,9 +4,10 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import { Search, ArrowUp, ArrowDown, ChevronsUpDown, Eye, CheckCircle2 } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, ChevronsUpDown, Eye, CheckCircle2, LayoutGrid, List, ChevronLeft } from "lucide-react";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import DocumentPreviewModal from "@/components/DocumentPreviewModal";
+import DirectoryCategoryGrid from "@/components/DirectoryCategoryGrid";
 import StatusTag from "@/components/StatusTag";
 import { DocumentItem } from "@/lib/mockData";
 import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
@@ -18,6 +19,108 @@ function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Ubin satu lokasi — bahasa visual sama persis dengan CategoryTileCard di
+// DirectoryCategoryGrid (satu level lebih dalam): kartu putih rounded-[14px],
+// garis aksen kiri 3px (hijau = punya dokumen, abu netral = belum), hover naik +
+// bayangan. Dipakai supaya "masuk ke satu lokasi" terasa seperti langkah yang
+// konsisten, bukan dua bahasa desain berbeda di dua level Direktori.
+function LocationTile({ name, count, onSelect }: { name: string; count: number; onSelect: () => void }) {
+  const active = count > 0;
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="relative overflow-hidden text-left p-3.5 pl-[18px] rounded-[14px] border border-[#D8E1E4] bg-white hover:border-[#0F3B59] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,59,89,.08)] transition-all duration-200 flex flex-col gap-2 min-h-[76px]"
+    >
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: active ? "#15803D" : "#E2E8EB" }} aria-hidden />
+      <span className={`text-[13px] leading-snug ${active ? "font-bold text-[#0F172A]" : "font-semibold text-[#6b6e72]"}`}>{name}</span>
+      <span className={`mt-auto text-[10.5px] font-mono tabular-nums ${active ? "font-bold text-[#15803D]" : "text-[#9a9da0]"}`}>{count} dokumen</span>
+    </button>
+  );
+}
+
+// Level 1 (tanpa ?location=): daftar lokasi. Non-admin yang terkunci ke satu lokasi
+// (scopeAll mati) langsung ke Level 2 lokasinya sendiri — daftar berisi satu baris
+// saja tidak berguna. Dulu dirender sebagai daftar baris (satu kolom) — 29 baris
+// jadi sangat panjang; menutupnya jadi grup collapsed lalu terasa "kosong dan
+// kurang menarik" karena satu kartu sempit dikelilingi banyak ruang putih kosong
+// di layar lebar. Sekarang ubin grid multi-kolom (sama seperti ubin sub-kategori
+// satu level lebih dalam) — 29 lokasi cukup ~6 baris ubin, memakai lebar layar
+// dengan baik, dan tidak perlu collapse sama sekali karena sudah cukup padat.
+function LocationGrid({ onSelect }: { onSelect: (loc: string) => void }) {
+  const { locations, allDocuments } = usePsi();
+  const [search, setSearch] = useState("");
+
+  const countFor = (name: string) => allDocuments.filter((d) => d.location === name).length;
+
+  const filtered = locations.filter((loc) => loc.locationName.toLowerCase().includes(search.trim().toLowerCase()));
+  const groups = new Map<string, typeof filtered>();
+  for (const loc of filtered) {
+    const key = loc.locationType;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(loc);
+  }
+  const typeOrder = ["AFT", "FT", "IT", "Plant"];
+  const orderedGroups = Array.from(groups.entries()).sort((a, b) => typeOrder.indexOf(a[0]) - typeOrder.indexOf(b[0]));
+  for (const [, list] of orderedGroups) {
+    list.sort((a, b) => {
+      const ca = countFor(a.locationName);
+      const cb = countFor(b.locationName);
+      if ((ca > 0) !== (cb > 0)) return ca > 0 ? -1 : 1;
+      return a.locationName.localeCompare(b.locationName);
+    });
+  }
+
+  return (
+    <div>
+      <div className="relative mb-4 max-w-[320px]">
+        <Search className="w-3.5 h-3.5 text-[#9a9da0] absolute left-[11px] top-1/2 -translate-y-1/2" strokeWidth={1.8} />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cari lokasi..."
+          className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#C5CED3] rounded-[8px]"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="py-14 px-5 text-center">
+          <Search className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />
+          <p className="text-[13px] text-[#9a9da0]">Tidak ada lokasi yang cocok dengan pencarian Anda.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {orderedGroups.map(([type, list]) => {
+            const activeCount = list.filter((loc) => countFor(loc.locationName) > 0).length;
+            return (
+              <div key={type}>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[11px] font-bold tracking-[.05em] text-[#3a3d40] uppercase">{type}</span>
+                  <span className="text-[10.5px] font-mono text-[#9a9da0]">· {list.length} lokasi</span>
+                  {activeCount > 0 && (
+                    <span className="text-[10.5px] font-mono font-bold text-[#15803D] tabular-nums">· {activeCount} aktif</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {list.map((loc) => (
+                    <LocationTile
+                      key={loc.locationName}
+                      name={loc.locationName}
+                      count={countFor(loc.locationName)}
+                      onSelect={() => onSelect(loc.locationName)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DirectoryContent() {
@@ -35,6 +138,21 @@ function DirectoryContent() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
+
+  // view=grid (default, baru) menampilkan lokasi -> sub-kategori; view=list adalah
+  // tabel/pencarian lama, tetap dipertahankan untuk mencari lintas lokasi & jenis.
+  const view = searchParams.get("view") === "list" ? "list" : "grid";
+  const selectedLocation = searchParams.get("location");
+  const canBrowseMultipleLocations = activeUser.isRegionalAdmin || (canPeekOtherLocations && scopeAll);
+
+  const setParam = (updates: Record<string, string | null>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null) next.delete(k);
+      else next.set(k, v);
+    }
+    router.push(`/directory?${next.toString()}`);
+  };
 
   const handleDownload = (doc: DocumentItem) => {
     setDownloadToast(`Mengunduh berkas v${doc.currentVersion} (${doc.fileName ?? "berkas"}) — simulasi.`);
@@ -103,6 +221,74 @@ function DirectoryContent() {
 
   const sortableHeaderClass = "flex items-center gap-1 hover:text-[#0F172A] transition-colors duration-150";
 
+  // Lokasi efektif untuk Level 2 grid: dari URL kalau admin/scopeAll (boleh pilih
+  // bebas), selalu lokasi sendiri kalau non-admin scopeAll mati (tidak ada Level 1
+  // untuk dia — grid satu kartu tidak berguna).
+  const gridLocation = canBrowseMultipleLocations ? selectedLocation : activeUser.location;
+
+  const viewSwitcher = (
+    <div className="flex items-center gap-1.5 p-0.5 rounded-[8px] bg-[#F0F2F3] border border-[#E2E8EB] w-fit">
+      <button
+        type="button"
+        onClick={() => setParam({ view: null, location: null })}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[11.5px] font-bold transition-colors duration-150 ${view === "grid" ? "bg-white text-[#0F3B59] shadow-[0_1px_2px_rgba(15,23,42,.08)]" : "text-[#6b6e72] hover:text-[#0F172A]"}`}
+      >
+        <LayoutGrid className="w-3.5 h-3.5" strokeWidth={2} /> Per Lokasi
+      </button>
+      <button
+        type="button"
+        onClick={() => setParam({ view: "list" })}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[11.5px] font-bold transition-colors duration-150 ${view === "list" ? "bg-white text-[#0F3B59] shadow-[0_1px_2px_rgba(15,23,42,.08)]" : "text-[#6b6e72] hover:text-[#0F172A]"}`}
+      >
+        <List className="w-3.5 h-3.5" strokeWidth={2} /> Semua Dokumen
+      </button>
+    </div>
+  );
+
+  const scopeSwitcher = canPeekOtherLocations && (
+    <select
+      value={scopeAll ? "ALL" : "OWN"}
+      onChange={(e) => { setScopeAll(e.target.value === "ALL"); setParam({ location: null }); }}
+      aria-label="Cakupan lokasi"
+      className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
+    >
+      <option value="OWN">Lokasi saya ({activeUser.location})</option>
+      <option value="ALL">Semua lokasi (lihat saja)</option>
+    </select>
+  );
+
+  if (view === "grid") {
+    return (
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          {viewSwitcher}
+          {scopeSwitcher}
+        </div>
+
+        {gridLocation ? (
+          <>
+            {canBrowseMultipleLocations && (
+              <button
+                type="button"
+                onClick={() => setParam({ location: null })}
+                className="flex items-center gap-1 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] mb-4 transition-colors duration-200"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.2} /> Semua Lokasi
+              </button>
+            )}
+            <h2 className="font-heading text-[17px] font-bold text-[#0F172A] mb-3.5">{gridLocation}</h2>
+            <DirectoryCategoryGrid
+              location={gridLocation}
+              canWrite={activeUser.isRegionalAdmin || activeUser.location === gridLocation}
+            />
+          </>
+        ) : (
+          <LocationGrid onSelect={(loc) => setParam({ location: loc })} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       {downloadToast && (
@@ -119,6 +305,10 @@ function DirectoryContent() {
           onDownload={() => handleDownload(previewDoc)}
         />
       )}
+
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        {viewSwitcher}
+      </div>
 
       <div className="flex gap-2.5 mb-[18px] flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
@@ -146,17 +336,7 @@ function DirectoryContent() {
           <option value="Approved">Approved</option>
           <option value="Expired">Expired</option>
         </select>
-        {canPeekOtherLocations && (
-          <select
-            value={scopeAll ? "ALL" : "OWN"}
-            onChange={(e) => setScopeAll(e.target.value === "ALL")}
-            aria-label="Cakupan lokasi"
-            className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
-          >
-            <option value="OWN">Lokasi saya ({activeUser.location})</option>
-            <option value="ALL">Semua lokasi (lihat saja)</option>
-          </select>
-        )}
+        {scopeSwitcher}
       </div>
 
       <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] overflow-hidden">

@@ -65,38 +65,47 @@ function toHistoryItem(
   };
 }
 
-// Assembles one full DocumentItem from its document/routes/history rows — the
-// N+1-per-document query pattern here is fine at this app's scale (tens, not
-// thousands, of curated documents); the raw 2,970-file archive lives in
-// file_registry and is never assembled into this shape (see /api/registry).
-export async function loadDocumentItem(documentId: string): Promise<DocumentItem | null> {
-  const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
-  if (!doc) return null;
+// Assembles DocumentItems for a whole batch of document rows in a FIXED number of
+// queries (4, regardless of how many documents) — replaces the old per-document
+// N+1 loop (one loadDocumentItem() call per row via Promise.all), which was fine
+// at this app's original scale but proved to genuinely fall over under concurrent
+// load: a stress test with 120 simultaneous users hitting /api/bootstrap (36
+// documents x ~5 queries each = ~180 queries PER request) drove Neon connection
+// timeouts and a 98% failure rate (audit 2026-09-30). Mirrors the batched pattern
+// loadMocList() in lib/api/moc.ts already used correctly.
+async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[]): Promise<DocumentItem[]> {
+  if (docRows.length === 0) return [];
+  const docIds = docRows.map((d) => d.id);
+  const primaryFileIds = docRows.map((d) => d.primaryFileId);
 
-  const [routeRows, historyRows, [primaryFile]] = await Promise.all([
-    db.select().from(approvalRoutes).where(eq(approvalRoutes.documentId, documentId)),
-    db.select().from(historyItems).where(eq(historyItems.documentId, documentId)),
-    db.select({ originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(eq(fileRegistry.id, doc.primaryFileId)).limit(1),
+  const [routeRows, historyRows] = await Promise.all([
+    db.select().from(approvalRoutes).where(inArray(approvalRoutes.documentId, docIds)),
+    db.select().from(historyItems).where(inArray(historyItems.documentId, docIds)),
   ]);
 
   const historyIds = historyRows.map((h) => h.id);
-  const historyFileIds = Array.from(new Set(historyRows.map((h) => h.fileId)));
-  const [diffRows, historyFileRows] = await Promise.all([
-    historyIds.length
-      ? db.select().from(historyDiffs).where(inArray(historyDiffs.historyItemId, historyIds))
-      : Promise.resolve([]),
-    historyFileIds.length
-      ? db.select({ id: fileRegistry.id, originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(inArray(fileRegistry.id, historyFileIds))
+  const allFileIds = Array.from(new Set([...primaryFileIds, ...historyRows.map((h) => h.fileId)]));
+
+  const [diffRows, fileRows] = await Promise.all([
+    historyIds.length ? db.select().from(historyDiffs).where(inArray(historyDiffs.historyItemId, historyIds)) : Promise.resolve([]),
+    allFileIds.length
+      ? db.select({ id: fileRegistry.id, originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(inArray(fileRegistry.id, allFileIds))
       : Promise.resolve([]),
   ]);
-  const fileNameById = new Map(historyFileRows.map((f) => [f.id, f.originalFilename]));
 
-  return {
+  const fileNameById = new Map(fileRows.map((f) => [f.id, f.originalFilename]));
+  const routesByDoc = new Map<string, typeof routeRows>();
+  for (const r of routeRows) routesByDoc.set(r.documentId, [...(routesByDoc.get(r.documentId) ?? []), r]);
+  const historyByDoc = new Map<string, typeof historyRows>();
+  for (const h of historyRows) historyByDoc.set(h.documentId, [...(historyByDoc.get(h.documentId) ?? []), h]);
+  const diffsByHistory = new Map<string, typeof diffRows>();
+  for (const d of diffRows) diffsByHistory.set(d.historyItemId, [...(diffsByHistory.get(d.historyItemId) ?? []), d]);
+
+  return docRows.map((doc) => ({
     id: doc.id,
     documentNumber: doc.documentNumber,
     title: doc.title,
     psiType: doc.psiType as DocumentItem["psiType"],
-    auditType: doc.auditType as DocumentItem["auditType"],
     lifecyclePhase: doc.lifecyclePhase as DocumentItem["lifecyclePhase"],
     location: doc.location,
     currentVersion: doc.currentVersion,
@@ -104,15 +113,24 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
     issueDate: doc.issueDate,
     expiryDate: doc.expiryDate,
     fileUrl: fileDownloadUrl(doc.primaryFileId),
-    fileName: primaryFile?.originalFilename,
+    fileName: fileNameById.get(doc.primaryFileId),
     isCircular: doc.isCircular,
-    routes: routeRows
+    routes: (routesByDoc.get(doc.id) ?? [])
+      .slice()
       .sort((a, b) => a.stepOrder - b.stepOrder)
       .map(toRouteItem),
-    history: historyRows
+    history: (historyByDoc.get(doc.id) ?? [])
+      .slice()
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-      .map((h) => toHistoryItem(h, diffRows.filter((d) => d.historyItemId === h.id), fileNameById.get(h.fileId))),
-  };
+      .map((h) => toHistoryItem(h, diffsByHistory.get(h.id) ?? [], fileNameById.get(h.fileId))),
+  }));
+}
+
+export async function loadDocumentItem(documentId: string): Promise<DocumentItem | null> {
+  const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  if (!doc) return null;
+  const [item] = await assembleDocumentItems([doc]);
+  return item ?? null;
 }
 
 // RBAC-scoped list: non-admins only ever see documents at their own location —
@@ -121,17 +139,14 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
 // never sufficient once a real server existed to call directly).
 export async function loadDocumentsForUser(user: SessionUser): Promise<DocumentItem[]> {
   const rows = user.isRegionalAdmin
-    ? await db.select({ id: documents.id }).from(documents)
-    : await db.select({ id: documents.id }).from(documents).where(eq(documents.location, user.location ?? ""));
-
-  const items = await Promise.all(rows.map((r) => loadDocumentItem(r.id)));
-  return items.filter((d): d is DocumentItem => d !== null);
+    ? await db.select().from(documents)
+    : await db.select().from(documents).where(eq(documents.location, user.location ?? ""));
+  return assembleDocumentItems(rows);
 }
 
 export async function loadAllDocuments(): Promise<DocumentItem[]> {
-  const rows = await db.select({ id: documents.id }).from(documents);
-  const items = await Promise.all(rows.map((r) => loadDocumentItem(r.id)));
-  return items.filter((d): d is DocumentItem => d !== null);
+  const rows = await db.select().from(documents);
+  return assembleDocumentItems(rows);
 }
 
 export async function getDocumentLocation(documentId: string): Promise<string | null> {

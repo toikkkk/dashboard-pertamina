@@ -21,7 +21,7 @@
 // Caveat kept deliberately visible: bytes pass through the serverless function here,
 // so this path is subject to the platform's request-body ceiling (~4.5MB on Vercel).
 // That is exactly why the direct-PUT path remains primary rather than being deleted.
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "@/lib/db/client";
@@ -32,6 +32,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { scanWholeBuffer, validateUploadMeta } from "@/lib/security/fileScan";
+import { duplicateMessage, findDuplicateFile } from "@/lib/api/fileVerify";
 
 const MAX_PROXY_BYTES = 500 * 1024 * 1024;
 
@@ -66,6 +67,12 @@ export async function POST(req: NextRequest) {
     const problem = scanWholeBuffer(meta.kind, bytes);
     if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
+    // Duplikat ISI (bukan nama) dengan berkas yang sudah ada di arsip/unggahan lain —
+    // dicek sebelum upload supaya tidak buang bandwidth kalau memang sudah ada.
+    const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
+    const dup = await findDuplicateFile(checksumSha256);
+    if (dup) return NextResponse.json({ error: duplicateMessage(dup) }, { status: 409 });
+
     // Upload to R2 BEFORE inserting the row: a failed PutObject must not leave an
     // orphan 'pending' registry row behind (the direct-PUT flow can strand those,
     // which is why 4 already exist in file_registry).
@@ -87,6 +94,7 @@ export async function POST(req: NextRequest) {
       pathSegments: [],
       sizeBytes,
       mimeType: meta.kind.mime,
+      checksumSha256,
       // Already in the bucket by this point — no separate confirm step needed, so
       // this row is never left dangling in 'pending'.
       uploadStatus: "uploaded",

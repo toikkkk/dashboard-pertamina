@@ -16,7 +16,7 @@ const VIEW_KEY = "dashboard.view";
 const SCOPE_KEY = "dashboard.scope";
 
 function Dashboard() {
-  const { activeUser, documents, locations, effectiveLocationFilter, selectedLocationFilter, setSelectedLocationFilter, getComplianceMetrics, setViewAll: setStoreViewAll } = usePsi();
+  const { activeUser, documents, locations, effectiveLocationFilter, selectedLocationFilter, setSelectedLocationFilter, setViewAll: setStoreViewAll } = usePsi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -125,7 +125,6 @@ function Dashboard() {
           <PsiDashboardManus
             insights={psi}
             documents={documents}
-            complianceMetrics={getComplianceMetrics()}
             locations={locations}
             scope={allScope ? "location" : "type"}
           />

@@ -32,8 +32,12 @@ if (!SOURCE_ROOT) {
 }
 
 // Real top-level folder names confirmed via a fresh directory scan this session —
-// anything else found at the top level (there's one known stray file) falls back
+// anything else found at the top level (there's a few stray root files) falls back
 // to 'uncategorized' rather than crashing the walk.
+// 2026-09-28: 6 new top-level categories arrived with the client's new data drop
+// (merged into MIGRATION_SOURCE_ROOT by hand, see conversation — "06. On Site
+// Clinic", "09. FERA", "11. HAC", "12. CIP", "13. Grounding", "14. Campaign PS",
+// "SDS") — added below so they get their own category instead of falling back.
 const CATEGORY_SLUGS: Record<string, string> = {
   "00. PSI": "00-psi",
   "01. Downgrade Situation": "01-downgrade-situation",
@@ -41,9 +45,16 @@ const CATEGORY_SLUGS: Record<string, string> = {
   "03. LPS": "03-lps",
   "04. MAH - SECE": "04-mah-sece",
   "05. MOC": "05-moc",
+  "06. On Site Clinic": "06-on-site-clinic",
   "07. FGDS": "07-fgds",
   "08. QRA": "08-qra",
+  "09. FERA": "09-fera",
   "10. Audit PSAIMS": "10-audit-psaims",
+  "11. HAC": "11-hac",
+  "12. CIP": "12-cip",
+  "13. Grounding": "13-grounding",
+  "14. Campaign PS": "14-campaign-ps",
+  SDS: "sds",
 };
 
 function categoryFor(topLevelSegment: string | undefined): string {

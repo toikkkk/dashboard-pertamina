@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { useRouter } from "next/navigation";
 import SuccessPopup from "@/components/SuccessPopup";
-import { PSIType, LifecyclePhase, AuditType, AUDIT_TYPES } from "@/lib/mockData";
+import { PSIType, LifecyclePhase } from "@/lib/mockData";
 import { uploadFileToR2 } from "@/lib/uploadFile";
+import { useDocumentCategories } from "@/lib/useDocumentCategories";
+import CategoryPickerField from "@/components/CategoryPickerField";
+import LocationPickerField from "@/components/LocationPickerField";
 import { Upload as UploadIcon, ChevronDown, X } from "lucide-react";
 
 const PSI_TYPES: PSIType[] = [
@@ -28,7 +31,16 @@ export default function UploadPage() {
   const [title, setTitle] = useState("");
   const [locationDescription, setLocationDescription] = useState("");
   const [psiType, setPsiType] = useState<PSIType | null>(null);
-  const [auditType, setAuditType] = useState<AuditType | "">("");
+  // Sub-kategori grid Direktori (2026-09-28) — kalau tidak dipilih di sini, dokumen
+  // tetap tersimpan seperti biasa tapi TIDAK akan muncul di kartu kategori manapun
+  // di Direktori lokasi itu (celah yang sempat ditemukan, sekarang ditutup di sini
+  // dan di Arsip Registry → Tautkan). Dibuat opsional karena tidak semua dokumen
+  // (mis. "Informasi Peralatan"/"Sistem Tata Kerja") punya sub-kategori yang cocok.
+  const [categoryId, setCategoryId] = useState("");
+  const { categories: availableCategories } = useDocumentCategories(location);
+  // Kategori sebelumnya bisa jadi milik lokasi lain — reset saat lokasi berganti
+  // (relevan terutama untuk Admin Regional, yang boleh pilih lokasi mana pun).
+  useEffect(() => { setCategoryId(""); }, [location]);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [lifecyclePhase] = useState<LifecyclePhase>("Operasi");
   const [file, setFile] = useState<File | null>(null);
@@ -58,7 +70,6 @@ export default function UploadPage() {
         documentNumber,
         title,
         psiType: psiType ?? PSI_TYPES[0],
-        auditType: auditType || undefined,
         location,
         lifecyclePhase,
         // PSI bersifat kustodial (Controller saja, tanpa persetujuan) — sesuai rapat klien;
@@ -67,6 +78,7 @@ export default function UploadPage() {
         routes: [],
         fileId,
         expiryDate,
+        categoryId: categoryId || undefined,
       });
 
       setSaved(true);
@@ -92,18 +104,13 @@ export default function UploadPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Lokasi Operasional</label>
-            <select
+            <LocationPickerField
+              label="Lokasi Operasional"
+              locations={locations}
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
               disabled={!activeUser.isRegionalAdmin}
-              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#C5CED3] rounded-[8px]"
-              style={{ background: activeUser.isRegionalAdmin ? "#fff" : "#F8FAFC" }}
-            >
-              {(activeUser.isRegionalAdmin ? locations.map((l) => l.locationName) : [activeUser.location ?? locations[0].locationName]).map((loc) => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
@@ -141,31 +148,25 @@ export default function UploadPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Jenis PSI <span className="text-[#DC2626]">*</span></label>
-            <button
-              type="button"
-              onClick={() => setShowTypeModal(true)}
-              className="w-full min-h-[36px] px-3 py-1 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0]"
-            >
-              <span style={{ color: psiType ? "#0F172A" : "#9a9da0" }}>{psiType ?? "Pilih jenis PSI..."}</span>
-              <ChevronDown className="w-[13px] h-[13px] text-[#9a9da0]" strokeWidth={2} />
-            </button>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Tipe Audit</label>
-            <select
-              value={auditType}
-              onChange={(e) => setAuditType(e.target.value as AuditType | "")}
-              className="w-full min-h-[36px] px-2.5 py-1 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white"
-            >
-              <option value="">Tidak ditentukan</option>
-              {AUDIT_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">Jenis PSI <span className="text-[#DC2626]">*</span></label>
+          <button
+            type="button"
+            onClick={() => setShowTypeModal(true)}
+            className="w-full min-h-[36px] px-3 py-1 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0]"
+          >
+            <span style={{ color: psiType ? "#0F172A" : "#9a9da0" }}>{psiType ?? "Pilih jenis PSI..."}</span>
+            <ChevronDown className="w-[13px] h-[13px] text-[#9a9da0]" strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <CategoryPickerField
+            categories={availableCategories}
+            value={categoryId}
+            onChange={setCategoryId}
+            helperText="Menentukan kartu mana di grid Direktori lokasi ini yang akan menampilkan dokumen ini."
+          />
         </div>
 
         <div className="mb-5">

@@ -152,6 +152,34 @@ export const fileRegistry = pgTable(
 // ApprovalRouteItem TS types from mockData.ts.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Sub-kategori dokumen Direktori (2026-09-28) — per lokasi, bukan enum tetap: client
+// minta admin bisa membuat sub baru sendiri (lihat percakapan/memory
+// project_directory_redesign_sub_categories), jadi ini tabel data, bukan union TS
+// seperti PSIType. Diseed dengan 33 item Lampiran 3 PSI yang dikonfirmasi
+// (project_psi_document_scope) untuk tiap lokasi; admin bisa tambah lagi per lokasi
+// lewat tombol "+" di grid Direktori.
+export const documentCategories = pgTable(
+  "document_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    location: text("location").notNull().references(() => locations.name),
+    name: text("name").notNull(),
+    // Siklus tinjau ulang dalam bulan — 60 (5 tahun) untuk PSI pada umumnya, 24 (2
+    // tahun) untuk OSCP sesuai catatan TKO. Data-driven (bukan dihardcode per nama
+    // kategori) supaya kategori kustom bisa punya siklusnya sendiri kalau nanti perlu.
+    reviewCycleMonths: integer("review_cycle_months").notNull().default(60),
+    // OSCP: lewat siklus BUKAN "kedaluwarsa" seperti dokumen lain — cuma peringatan
+    // "perlu ditinjau ulang" (permintaan client eksplisit, jangan disamakan dengan 🟡
+    // biasa). true hanya untuk kategori itu di data seed.
+    treatExpiryAsReviewOnly: boolean("treat_expiry_as_review_only").notNull().default(false),
+    isCustom: boolean("is_custom").notNull().default(false),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("document_categories_location_name_idx").on(t.location, t.name)]
+);
+
 export const documents = pgTable(
   "documents",
   {
@@ -159,9 +187,12 @@ export const documents = pgTable(
     documentNumber: text("document_number").notNull().unique(),
     title: text("title").notNull(),
     psiType: text("psi_type").notNull(),
-    auditType: text("audit_type"),
     lifecyclePhase: text("lifecycle_phase").notNull(),
     location: text("location").notNull().references(() => locations.name),
+    // Sub-kategori Direktori (lihat documentCategories) — nullable: dokumen lama
+    // (sebelum fitur ini) belum dipetakan, tampil sebagai "belum dikategorikan"
+    // sampai ditautkan manual, tidak dihitung di grid status kategori mana pun.
+    categoryId: uuid("category_id").references(() => documentCategories.id),
     currentVersion: text("current_version").notNull(),
     status: text("status").notNull(),
     issueDate: date("issue_date").notNull(),

@@ -14,23 +14,6 @@ export type PSIType =
 
 export type LifecyclePhase = 'Proyek' | 'Operasi' | 'Decommissioning';
 
-// Poin klien: klasifikasi "Tipe Audit" terpisah dari Jenis PSI — tidak dipakai untuk
-// perhitungan kepatuhan, murni tag tambahan mengikuti daftar prosedur yang dikirim client.
-export type AuditType =
-  | 'AUDIT K3'
-  | 'CSMS'
-  | 'Fit to Work'
-  | 'IHSB'
-  | 'PCT berbasis SPT dan SBT'
-  | 'PROPER'
-  | 'PSAIMS'
-  | 'SMP'
-  | 'SUPREME';
-
-export const AUDIT_TYPES: AuditType[] = [
-  'AUDIT K3', 'CSMS', 'Fit to Work', 'IHSB', 'PCT berbasis SPT dan SBT', 'PROPER', 'PSAIMS', 'SMP', 'SUPREME',
-];
-
 export interface ApprovalRouteItem {
   approverRole: string;
   approverName: string;
@@ -73,7 +56,6 @@ export interface DocumentItem {
   documentNumber: string;
   title: string;
   psiType: PSIType;
-  auditType?: AuditType;
   lifecyclePhase: LifecyclePhase;
   location: string;
   currentVersion: string;
@@ -92,7 +74,9 @@ export interface DocumentItem {
 
 export interface LocationTarget {
   locationName: string;
-  locationType: 'IT' | 'FT' | 'AFT';
+  // 'Plant' ditambahkan 2026-09-28 untuk "Bitumen Plant Gresik" — satu-satunya lokasi
+  // yang tidak mengikuti pola nama IT/FT/AFT (lihat 28-daftar lokasi real dari client).
+  locationType: 'IT' | 'FT' | 'AFT' | 'Plant';
   region: string;
   targets: Record<PSIType, number>;
 }

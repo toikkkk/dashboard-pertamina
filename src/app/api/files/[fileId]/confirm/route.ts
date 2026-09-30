@@ -11,12 +11,10 @@ import { ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { verifyUploadedObject } from "@/lib/api/fileVerify";
 
-const bodySchema = z.object({ checksumSha256: z.string().optional() });
-
 export async function POST(req: NextRequest, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
-    const { checksumSha256 } = bodySchema.parse(await req.json().catch(() => ({})));
+    await req.json().catch(() => ({})); // body kosong dari uploadFile.ts, tidak dipakai
 
     const [file] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, params.fileId)).limit(1);
     if (!file) return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
@@ -28,14 +26,16 @@ export async function POST(req: NextRequest, { params }: { params: { fileId: str
       return NextResponse.json({ error: "Berkas ini sebelumnya ditolak pemeriksaan keamanan. Unggah ulang berkas yang berbeda." }, { status: 400 });
     }
     if (file.uploadStatus === "pending") {
-      // Periksa isi nyata di bucket (ukuran + tanda-byte + pola berbahaya) sebelum dianggap sah.
+      // Periksa isi nyata di bucket (ukuran + tanda-byte + pola berbahaya + duplikat
+      // isi dengan berkas lain yang sudah ada — lihat fileVerify.ts) sebelum dianggap
+      // sah. Sudah menulis checksum_sha256 sendiri kalau lolos, jangan ditimpa di sini.
       const problem = await verifyUploadedObject(file);
       if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 
     const [updated] = await db
       .update(fileRegistry)
-      .set({ uploadStatus: "uploaded", uploadedAt: new Date(), checksumSha256: checksumSha256 ?? file.checksumSha256 })
+      .set({ uploadStatus: "uploaded", uploadedAt: new Date() })
       .where(eq(fileRegistry.id, params.fileId))
       .returning();
 

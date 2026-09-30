@@ -445,7 +445,6 @@ export const INITIAL_DOCUMENTS: DocumentItem[] = [
     documentNumber: 'PSI-SURABAYA-2025-022',
     title: 'Tindak Lanjut Rekomendasi Audit PSAIMS - IT Surabaya',
     psiType: 'Sistem Tata Kerja',
-    auditType: 'PSAIMS',
     lifecyclePhase: 'Operasi',
     location: 'IT Surabaya',
     currentVersion: '1.0',
