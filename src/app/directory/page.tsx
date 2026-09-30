@@ -131,7 +131,14 @@ function DirectoryContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   // Non-admin: default ke lokasi sendiri; "Semua lokasi" = lihat-saja (allDocuments).
-  const [scopeAll, setScopeAll] = useState(false);
+  // Inisialisasi dari URL (bukan selalu false) — kalau tidak, membuka link langsung
+  // ke lokasi lain (mis. refresh, bookmark, atau kembali dari halaman dokumen) selalu
+  // dipaksa balik ke lokasi sendiri karena scopeAll cuma hidup di memori komponen,
+  // hilang tiap kali halaman dimuat ulang (bug nyata yang dilaporkan user).
+  const [scopeAll, setScopeAll] = useState(() => {
+    const urlLocation = searchParams.get("location");
+    return !!urlLocation && urlLocation !== activeUser.location;
+  });
   const canPeekOtherLocations = !activeUser.isRegionalAdmin && !!activeUser.location;
   const sourceDocs = canPeekOtherLocations && scopeAll ? allDocuments : documents;
   const [sortBy, setSortBy] = useState<SortKey>("issueDate");
