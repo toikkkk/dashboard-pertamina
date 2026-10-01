@@ -1,7 +1,9 @@
 import React from "react";
+import { MOC_LOGO_DATA_URI } from "@/lib/mocLogo";
 import {
   MOC_CHANGE_CATEGORIES,
   MOC_RISK_IMPACTS,
+  MOC_RISK_LEVEL_COLOR,
   MOC_SIFAT_PERUBAHAN,
   riskValue,
   reviewsOfCurrentRound,
@@ -18,37 +20,76 @@ import {
 // (Tinjauan Akhir & Penutupan) baru terisi bagian informasi MoC-nya; tabel kegiatan /
 // tindak lanjut / tanggapan dibiarkan kosong untuk diisi di luar web karena alur tahap
 // Pemantauan dan seterusnya belum ditetapkan.
+// Font & border diaudit LANGSUNG dari Form MoC 2025.xlsx (openpyxl, per-sel, 2026-09-30)
+// dan berlaku seragam di ketiga sheet formulir (Pengusulan&Validasi/Pemantauan/
+// Tinjauan Akhir): font Calibri di semua sel berisi teks — bukan Arial; ukuran
+// hampir seluruhnya 9pt (label, nilai, band judul tahap, header abu-abu, grid
+// checkbox kategori — SEMUA 9pt, tidak ada yang lebih kecil/besar kecuali judul
+// luar 16pt bold). Border 100% "thin" + warna indexed:64 (hitam Excel default) di
+// SEMUA sel berbatas pada keempat sheet, tidak ada yang medium/thick — jadi warna
+// border web ini harus hitam pekat (#000), bukan abu-abu kebiruan seperti
+// sebelumnya. Satuan pt dipakai (bukan px) karena Word membaca ukuran font native
+// dalam pt — px sempat menimbulkan mismatch di ekspor Word pada elemen lain
+// (lihat riwayat perbaikan logo), jadi pt lebih aman & lebih literal di sini juga.
+// PENTING: font-family/font-size diulang eksplisit di SETIAP selector td, bukan
+// cuma sekali di .moc-sheet lalu diharapkan diwariskan (inherit) ke <td>-nya.
+// Terbukti Word TIDAK mewariskan font dari <table> ke <td> di dalamnya secara
+// konsisten (persis kelas bug yang sama dengan float/position/ukuran gambar yang
+// sudah ditemukan sebelumnya di lembar ini) — judul luar (elemen <div> sendiri,
+// font langsung di elemennya) sudah benar tampil Calibri di Word, tapi isi tabel
+// (font cuma diwariskan dari <table class="moc-sheet">) tetap jatuh ke font
+// default Word. Ditemukan dari screenshot toolbar font Word pengguna langsung,
+// 2026-09-30. JANGAN hapus pengulangan font-family/font-size di tiap rule di
+// bawah walau kelihatan redundan — itu justru intinya.
+// Lebar border 0.75pt (BUKAN 1px) — "thin" di Excel/OOXML adalah bobot garis
+// baku 0.75pt; 1px web/Word terasa lebih tebal dari garis tipis asli file Excel,
+// ini akar dari keluhan "ukuran border beda banget" (dikonfirmasi lewat
+// screenshot Excel asli pengguna, 2026-09-30 — garisnya jelas tipis/hairline,
+// bukan tebal seperti hasil kita sebelumnya).
+const SHEET_BORDER = `0.75pt solid #000`;
+const SHEET_FONT = `font-family:Calibri,Arial,sans-serif;font-size:9pt`;
 export const SHEET_CSS = `
-.moc-sheet{width:100%;border-collapse:collapse;table-layout:fixed;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.35;color:#000;background:#fff}
-.moc-sheet td{border:1px solid #1f2937;padding:3px 6px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere}
+.moc-sheet{width:100%;border-collapse:collapse;table-layout:fixed;${SHEET_FONT};line-height:1.35;color:#000;background:#fff}
+.moc-sheet td{border:${SHEET_BORDER};padding:3px 6px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere;${SHEET_FONT};color:#000}
 .moc-sheet td.nb{border:0}
 .moc-sheet .band{background:#9CC2E5;text-align:center;font-weight:700}
 .moc-sheet .gray{background:#D9D9D9;text-align:center;font-weight:700}
 .moc-sheet .fill{background:#BFBFBF}
 .moc-sheet .ctr{text-align:center}
 .moc-sheet .box{white-space:pre-wrap}
-.moc-sheet .foot{font-style:italic;font-size:10px}
+.moc-sheet .foot{font-style:italic;${SHEET_FONT}}
 .moc-sheet .cats{width:100%;border-collapse:collapse;table-layout:fixed;margin:-3px -6px;width:calc(100% + 12px)}
-.moc-sheet .cats td{border-top:0;border-left:0;border-right:1px solid #1f2937;border-bottom:1px solid #1f2937;padding:3px 5px;height:32px;font-size:10.5px}
+.moc-sheet .cats td{border-top:0;border-left:0;border-right:${SHEET_BORDER};border-bottom:${SHEET_BORDER};padding:3px 5px;height:32px;${SHEET_FONT};color:#000}
 .moc-sheet .cats tr:last-child td{border-bottom:0}
 .moc-sheet .cats td:last-child{border-right:0}
-.moc-form-title{font-family:Arial,Helvetica,sans-serif;text-align:center;font-weight:700;font-size:15px;margin:2px 0 10px;color:#000}
-.moc-form-ref{font-family:Arial,Helvetica,sans-serif;font-size:13px;margin:0 0 12px;color:#000;display:flex;justify-content:space-between}
+.moc-form-title{font-family:Calibri,Arial,sans-serif;text-align:center;font-weight:700;font-size:16pt;padding:10px 0;margin:2px 0 10px;color:#000}
+.moc-sheet-banner{height:42px;padding:0}
+.moc-sheet-banner-inner{width:100%;height:42px;border-collapse:collapse}
+.moc-sheet-banner-inner td{border:0;padding:3px 6px;font-weight:700;vertical-align:middle;${SHEET_FONT};color:#000}
+.moc-sheet-banner-inner .txt{text-align:center}
+.moc-sheet-banner-inner .logo{width:104px;text-align:right}
+.moc-sheet-info td{height:33px}
+.moc-form-ref{width:100%;font-family:Calibri,Arial,sans-serif;font-size:13px;margin:0 0 12px;color:#000;border-collapse:collapse}
+.moc-form-ref td{border:0;padding:0}
+.moc-form-ref .r{text-align:right}
 .moc-sheet-page-break{break-before:page;page-break-before:always}
 @media print{
   /* Di layar lembar dirancang minimal 860px; saat cetak lebar minimum dilepas (lihat
      .moc-min-w) agar tabel mengikuti lebar kertas A4 dan tidak terpotong. */
   .moc-min-w{min-width:0!important}
-  .moc-sheet{font-size:9px}
   .moc-sheet td{padding:2px 4px}
-  .moc-sheet .cats td{font-size:9px;padding:2px 4px;height:26px}
+  .moc-sheet .cats td{padding:2px 4px;height:26px}
   .moc-sheet tr{break-inside:avoid;page-break-inside:avoid}
 }
 `;
 
 const CHECK = "☑";
 const BOX = "☐";
-const TKO_REF = "Lampiran %N% – TKO No.    B13.3-07/PNA400000/2025-S9";
+// Nomor dokumen TKO yang jadi acuan lembar ini — satu sumber dipakai baik untuk
+// teks "Lampiran N – TKO No. ..." (RefLine) maupun nama file unduhan (MOC_FORMS
+// di bawah), supaya keduanya tidak pernah bisa saling tidak sinkron.
+export const TKO_DOC_NO = "B13.3-07/PNA400000/2025-S9";
+const TKO_REF = `Lampiran %N% – TKO No.    ${TKO_DOC_NO}`;
 
 function dmy(iso?: string | null): string {
   if (!iso) return "DD/MM/YYYY";
@@ -56,15 +97,82 @@ function dmy(iso?: string | null): string {
   return y && m && d ? `${d}/${m}/${y}` : iso;
 }
 
-const LEVEL_BG: Record<string, string> = { L: "#92D050", M: "#FFFF00", H: "#FF5050" };
+const LEVEL_BG = MOC_RISK_LEVEL_COLOR;
 const Cols12 = () => <colgroup>{Array.from({ length: 12 }, (_, i) => <col key={i} style={{ width: `${100 / 12}%` }} />)}</colgroup>;
 
+// Logo "PERTAMINA PATRA NIAGA" — diambil langsung dari Form MoC 2025.xlsx (tertanam
+// di 3 sheet formulirnya, bukan di sheet Register MOC). Data URI (lib/mocLogo.ts),
+// BUKAN path /public — lembar ini juga dipakai untuk unduhan Word/PDF yang jadi
+// berkas berdiri sendiri; path server relatif tidak lagi terhubung begitu file itu
+// dibuka di luar aplikasi (tampil sebagai gambar rusak sebelum ini).
+//
+// Riwayat perbaikan penempatan (2026-09-30, semua ditemukan lewat screenshot Word
+// ASLI dari pengguna — pratinjau browser tidak pernah menunjukkan masalah ini):
+// 1) posisi absolute+transform → Word tidak mendukung, posisi salah saat diunduh.
+// 2) diganti float:right + CSS height → Word mengabaikan CSS box-sizing untuk
+//    <img>, tetap pakai ukuran asli file PNG (219x78px) → logo tampil raksasa.
+// 3) ditambah atribut HTML width/height eksplisit → masih raksasa; ternyata file
+//    src/lib/mocLogo.ts memang di-resize persis ke 96x34px sebagai solusinya
+//    (lihat komentar di file itu) — supaya ukuran BENAR di Word apa pun mekanisme
+//    sizing yang ia pilih/abaikan.
+// 4) TAPI float:right di dalam <td> ternyata JUGA tidak direspons Word — teks
+//    ber-text-align:center di sel yang sama tidak reflow mengelilingi float,
+//    jadi logo tetap menimpa teks walau ukurannya sudah benar. Floats di dalam
+//    <td> memang terkenal tidak reliable di importer HTML lawas Word.
+// Solusi final: logo & judul dipisah ke DUA <td> berbeda pada baris banner (lihat
+// pemakaian <SheetLogo/> di bawah) — tabel adalah satu-satunya mekanisme layout
+// yang benar-benar reliable di Word, jadi hindari float/absolute/transform di
+// lembar ini sepenuhnya.
+function SheetLogo() {
+  return <img src={MOC_LOGO_DATA_URI} alt="Pertamina Patra Niaga" width={96} height={34} />;
+}
+
+// Baris banner (judul + logo). Logo & judul dipisah lewat TABEL BERSARANG dengan
+// lebar kolom logo tetap (104px), bukan colSpan atas 12-kolom grid utama — supaya
+// lebar kolom judul tidak ikut menyusut kalau grid 12-kolom di-render Word dengan
+// proporsi yang berbeda dari browser (sempat bikin judul yang panjang jadi wrap 2
+// baris saat colSpan grid utama yang dipecah 10/2, ditemukan 2026-09-30). Tabel
+// bersarang berdiri sendiri dari layout grid luar, jadi lebih bisa diprediksi.
+//
+// SEMPAT dicoba tambah kolom "spacer" kosong (104px) di kiri teks supaya judul
+// tampak center persis di tengah baris penuh (di xlsx asli logo adalah gambar
+// mengambang yang tidak memengaruhi layout sel, jadi teksnya center ke lebar
+// baris utuh). Dicabut lagi 2026-09-30: spacer 104px + kolom logo 104px bersama
+// "memakan" 208px dari lebar yang tersedia untuk teks — cukup untuk memaksa
+// judul yang panjang wrap jadi 2 baris di Word (lebar konten halaman Word
+// ternyata lebih sempit dari perkiraan), padahal tanpa spacer teksnya muat 1
+// baris. Judul geser dikit dari titik tengah jauh lebih baik daripada wrap 2
+// baris — jangan tambahkan spacer ini lagi tanpa memastikan dulu judul tetap
+// 1 baris di Word sungguhan.
+function BannerRow({ text }: { text: string }) {
+  return (
+    <tr>
+      <td colSpan={12} className="moc-sheet-banner">
+        <table className="moc-sheet-banner-inner">
+          <tbody>
+            <tr>
+              <td className="txt">{text}</td>
+              <td className="logo"><SheetLogo /></td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  );
+}
+
+// TABEL 2-kolom, BUKAN flexbox — display:flex terbukti tidak didukung sama
+// sekali oleh importer HTML Word (dua <span> yang seharusnya terpisah kiri/kanan
+// malah nempel jadi satu baris tanpa jarak di Word sungguhan, ditemukan lewat
+// screenshot pengguna langsung, 2026-09-30). Tabel adalah satu-satunya mekanisme
+// layout kiri/kanan yang reliable di Word di seluruh lembar ini — pola yang sama
+// dengan BannerRow.
 function RefLine({ n }: { n: number }) {
   return (
-    <div className="moc-form-ref">
-      <span>{TKO_REF.replace("%N%", String(n))}</span>
-      <span>Revisi Ke-1</span>
-    </div>
+    <table className="moc-form-ref"><tbody><tr>
+      <td className="l">{TKO_REF.replace("%N%", String(n))}</td>
+      <td className="r">Revisi Ke-1</td>
+    </tr></tbody></table>
   );
 }
 
@@ -116,24 +224,24 @@ function SifatMasaRows({ moc }: { moc: MocRequest }) {
 function InfoRows({ moc, withTanggal }: { moc: MocRequest; withTanggal: boolean }) {
   return (
     <>
-      <tr>
+      <tr className="moc-sheet-info">
         <td colSpan={6}>Nomor MoC: {moc.mocNumber ?? ""}</td>
         <td colSpan={3}>Fungsi: {moc.fungsi}</td>
         <td colSpan={3}>Anggaran: {moc.anggaranType || "(ABO/ABI/ABO Khusus/….)"}</td>
       </tr>
       {withTanggal ? (
         <>
-          <tr>
+          <tr className="moc-sheet-info">
             <td colSpan={6}>Tanggal: {dmy(moc.tanggal)}</td>
             <td colSpan={6}>Area / Lokasi: {moc.location}</td>
           </tr>
-          <tr>
+          <tr className="moc-sheet-info">
             <td colSpan={6}>Unit Operasi: {moc.unitOperasi}</td>
             <td colSpan={6}>Region : {moc.region}</td>
           </tr>
         </>
       ) : (
-        <tr>
+        <tr className="moc-sheet-info">
           <td colSpan={6}>Unit Operasi: {moc.unitOperasi}</td>
           <td colSpan={3}>Area / Lokasi: {moc.location}</td>
           <td colSpan={3}>Region : {moc.region}</td>
@@ -192,11 +300,12 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
   return (
     <div className="moc-sheet-wrap" data-sheet="lampiran-5">
       <style>{SHEET_CSS}</style>
+      <RefLine n={5} />
       <div className="moc-form-title">FORMULIR MOC – PENGUSULAN &amp; VALIDASI</div>
       <table className="moc-sheet">
         <Cols12 />
         <tbody>
-          <tr><td colSpan={12} className="ctr" style={{ fontWeight: 700 }}>FORMULIR PENGUSULAN DAN VALIDASI MANAGEMENT OF CHANGE (MoC)</td></tr>
+          <BannerRow text="FORMULIR PENGUSULAN DAN VALIDASI MANAGEMENT OF CHANGE (MoC)" />
           <InfoRows moc={moc} withTanggal />
           <tr><td colSpan={12} className="band">Tahap Inisiasi</td></tr>
           <tr><td colSpan={3}>Judul Perubahan</td><td colSpan={9} style={{ fontWeight: 700 }}>{moc.judul}</td></tr>
@@ -337,11 +446,12 @@ export function MocSheetPemantauan({ moc }: { moc: MocRequest }) {
   return (
     <div className="moc-sheet-wrap" data-sheet="lampiran-6">
       <style>{SHEET_CSS}</style>
+      <RefLine n={6} />
       <div className="moc-form-title">FORMULIR MOC – PEMANTAUAN</div>
       <table className="moc-sheet">
         <Cols12 />
         <tbody>
-          <tr><td colSpan={12} className="ctr" style={{ fontWeight: 700 }}>FORMULIR PEMANTAUAN MANAGEMENT OF CHANGE (MoC)</td></tr>
+          <BannerRow text="FORMULIR PEMANTAUAN MANAGEMENT OF CHANGE (MoC)" />
           <InfoRows moc={moc} withTanggal={false} />
           <tr><td colSpan={12} className="band">Informasi MoC</td></tr>
           <tr><td colSpan={3}>Judul Perubahan</td><td colSpan={9} style={{ fontWeight: 700 }}>{moc.judul}</td></tr>
@@ -389,11 +499,12 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
   return (
     <div className="moc-sheet-wrap" data-sheet="lampiran-7">
       <style>{SHEET_CSS}</style>
+      <RefLine n={7} />
       <div className="moc-form-title">FORMULIR MOC – TINJAUAN AKHIR &amp; PENUTUPAN</div>
       <table className="moc-sheet">
         <Cols12 />
         <tbody>
-          <tr><td colSpan={12} className="ctr" style={{ fontWeight: 700 }}>FORMULIR TINJAUAN AKHIR DAN PENUTUPAN MANAGEMENT OF CHANGE (MoC)</td></tr>
+          <BannerRow text="FORMULIR TINJAUAN AKHIR DAN PENUTUPAN MANAGEMENT OF CHANGE (MoC)" />
           <InfoRows moc={moc} withTanggal={false} />
           <tr><td colSpan={12} className="band">Informasi MoC</td></tr>
           <tr><td colSpan={3}>Judul Perubahan</td><td colSpan={9} style={{ fontWeight: 700 }}>{moc.judul}</td></tr>
@@ -441,10 +552,15 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
 }
 
 export type MocFormKey = "pengusulan" | "pemantauan" | "tinjauan";
+// Nama file unduhan mengikuti penamaan dokumen terkendali TKO: "Lampiran <N> - TKO
+// <nomor> - <judul formulir>" — bukan singkatan bebas seperti sebelumnya
+// ("Formulir-MoC-Pengusulan-Validasi") yang tidak menyebut Lampiran/nomor TKO sama
+// sekali. Karakter "/" pada nomor TKO otomatis diubah jadi "_" oleh sanitizer di
+// mocFilename() (lib/mocDownload.ts), tidak perlu ditangani manual di sini.
 export const MOC_FORMS: { key: MocFormKey; label: string; lampiran: string; filename: string }[] = [
-  { key: "pengusulan", label: "Pengusulan & Validasi", lampiran: "Lampiran 5", filename: "Formulir-MoC-Pengusulan-Validasi" },
-  { key: "pemantauan", label: "Pemantauan", lampiran: "Lampiran 6", filename: "Formulir-MoC-Pemantauan" },
-  { key: "tinjauan", label: "Tinjauan Akhir & Penutupan", lampiran: "Lampiran 7", filename: "Formulir-MoC-Tinjauan-Akhir-Penutupan" },
+  { key: "pengusulan", label: "Pengusulan & Validasi", lampiran: "Lampiran 5", filename: `Lampiran-5_TKO-${TKO_DOC_NO}_Formulir-Pengusulan-dan-Validasi-MoC` },
+  { key: "pemantauan", label: "Pemantauan", lampiran: "Lampiran 6", filename: `Lampiran-6_TKO-${TKO_DOC_NO}_Formulir-Pemantauan-MoC` },
+  { key: "tinjauan", label: "Tinjauan Akhir & Penutupan", lampiran: "Lampiran 7", filename: `Lampiran-7_TKO-${TKO_DOC_NO}_Formulir-Tinjauan-Akhir-dan-Penutupan-MoC` },
 ];
 
 export function MocFormSheet({ moc, form }: { moc: MocRequest; form: MocFormKey }) {

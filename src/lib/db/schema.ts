@@ -318,7 +318,7 @@ export const mocRequests = pgTable(
   },
   (t) => [
     check("moc_sifat_check", sql`${t.sifatPerubahan} IN ('Permanen','Sementara','Darurat')`),
-    check("moc_risk_level_check", sql`${t.riskLevel} IS NULL OR ${t.riskLevel} IN ('L','M','H')`),
+    check("moc_risk_level_check", sql`${t.riskLevel} IS NULL OR ${t.riskLevel} IN ('L','LTM','M','MTH','H')`),
     check("moc_severity_check", sql`${t.severity} IS NULL OR (${t.severity} BETWEEN 1 AND 5)`),
     check("moc_probability_check", sql`${t.probability} IS NULL OR (${t.probability} BETWEEN 1 AND 5)`),
     check(

@@ -23,11 +23,47 @@ function PrintContent({ id }: { id: string }) {
     <div>
       <style>{`
         @media print {
-          header, footer { display: none !important; }
-          body { background: #fff !important; }
+          /* header/footer menutup Topbar (<header className="topbar">) & footer
+             halaman, tapi Sidebar itu <aside className="sidebar"> — bukan <header> —
+             jadi harus ditutup terpisah, begitu juga overlay mobile-nya. Tanpa ini
+             sidebar app tetap ikut kecetak di sebelah kiri lembar (ditemukan lewat
+             screenshot pengguna langsung, 2026-09-30). Flex pada .app-shell membuat
+             .main-shell otomatis mengisi lebar penuh begitu .sidebar disembunyikan,
+             jadi tidak perlu mengubah display .app-shell itu sendiri. */
+          /* .skip-link (aksesibilitas keyboard, "Lewati ke konten utama") tersembunyi
+             secara visual lewat CSS khusus fokus, bukan display:none — jadi ikut
+             tercetak (ditemukan lewat perbandingan render nyata via LibreOffice,
+             2026-09-30). */
+          header, footer, .sidebar, .sidebar-overlay, .skip-link { display: none !important; }
+          /* Header/footer BAWAAN BROWSER (tanggal+judul di atas, URL+nomor halaman
+             di bawah) dari dialog "Simpan sebagai PDF" — bukan konten kita, tapi
+             tetap ikut tercetak selama @page punya margin fisik (ruang itulah yang
+             dipakai Chrome untuk header/footer-nya sendiri). Diperbaiki dengan
+             trik yang sudah dikenal luas: margin fisik @page dibuat 0 (jadi tidak
+             ada "ruang header/footer" bagi Chrome untuk diisi), lalu margin visual
+             yang kita mau (persis page setup asli xlsx, sama seperti versi Word)
+             dipindah jadi padding di body. Hasil akhirnya sama persis secara
+             visual, tapi header/footer bawaan browser tidak lagi punya tempat.
+             Ditemukan lewat screenshot pengguna langsung, 2026-10-01. */
+          body { background: #fff !important; padding: 0.75in 0.25in !important; }
           main { padding: 0 !important; }
           .no-print { display: none !important; }
-          @page { size: A4; margin: 10mm; }
+          /* Kerangka aplikasi (latar abu-abu, kartu bayangan, padding lebar) tidak
+             boleh ikut kecetak — hanya lembar formulirnya sendiri yang relevan. */
+          .app-shell, .main-shell, .main-inner {
+            background: #fff !important; box-shadow: none !important; border: 0 !important;
+            border-radius: 0 !important; margin: 0 !important; padding: 0 !important; max-width: none !important;
+          }
+          /* Browser default MEMBUANG semua warna latar saat cetak kecuali diminta
+             eksplisit — tanpa ini pita biru/abu-abu (.band/.gray/.fill) dan warna
+             Tingkat Risiko di lembar MoC ikut hilang jadi putih polos. */
+          .moc-sheet, .moc-sheet * {
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
+          }
+          /* Margin fisik @page SENGAJA 0 — lihat komentar body di atas. Margin
+             visual yang persis page setup asli Form MoC 2025.xlsx (0.75in/0.25in)
+             sekarang datang dari padding body, bukan dari sini. */
+          @page { size: A4; margin: 0; }
         }
       `}</style>
       <div className="no-print mb-3">

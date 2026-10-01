@@ -7,6 +7,9 @@
 // 13 kotak "Aktivitas / Ruang Lingkup Perubahan" pada Formulir Lampiran 5, urutan
 // sesuai formulir. (Sama dengan 13 baris Tabel 1 TKO; "Sistem/aplikasi teknologi"
 // adalah Scope 13 pada Tabel 3 — menambah Fungsi IT sebagai reviewer.)
+// Kata-kata & urutan dicocokkan persis ke "Form MoC 2025.xlsx" (Form Pengusulan
+// dan Validasi, baris 9-11) 2026-09-30 — sumber resmi yang sebelumnya cuma
+// direkonstruksi dari teks TKO, sekarang diverifikasi ke formulir asli.
 export const MOC_CHANGE_CATEGORIES = [
   "Penambahan Fasilitas Baru",
   "Akuisisi",
@@ -14,13 +17,13 @@ export const MOC_CHANGE_CATEGORIES = [
   "Perubahan diluar rancangan",
   "Downgrade situation",
   "Penggunaan B3 baru",
-  "Perubahan Instrumen / alarm",
-  "Kelebihan aset",
+  "Perubahan Instrumen / Alarm",
+  "Kelebihan Aset",
   "Perubahan peralatan instalasi",
   "Perubahan gedung / struktur",
-  "Sistem / aplikasi teknologi / metode kerja baru",
+  "Sistem / aplikasi / teknologi / metode kerja baru",
   "Perubahan sumber bahan baku / pemasok",
-  "Penggantian peralatan / komponen bukan in-kind replacement",
+  "Penggantian peralatan / komponen bukan inkind replacement",
 ] as const;
 export type MocChangeCategory = (typeof MOC_CHANGE_CATEGORIES)[number];
 
@@ -31,9 +34,27 @@ export type MocSifatPerubahan = (typeof MOC_SIFAT_PERUBAHAN)[number];
 export const MOC_RISK_IMPACTS = ["People", "Environment", "Asset", "Reputation", "Legal"] as const;
 export type MocRiskImpact = (typeof MOC_RISK_IMPACTS)[number];
 
-export const MOC_RISK_LEVELS = ["L", "M", "H"] as const;
+// 5 tingkat (bukan cuma L/M/H) — ambang nilai→tingkat ditemukan 2026-09-30 dari
+// rumus IFS tersembunyi di sel "Tingkat Risiko" Form MoC 2025.xlsx (sebelumnya
+// dicatat sebagai pertanyaan terbuka: "batas nilai→tingkat belum ditetapkan di
+// TKO" — ternyata ada, cuma di rumus formulir, bukan di teks TKO).
+export const MOC_RISK_LEVELS = ["L", "LTM", "M", "MTH", "H"] as const;
 export type MocRiskLevel = (typeof MOC_RISK_LEVELS)[number];
-export const MOC_RISK_LEVEL_LABEL: Record<MocRiskLevel, string> = { L: "Rendah", M: "Menengah", H: "Tinggi" };
+export const MOC_RISK_LEVEL_LABEL: Record<MocRiskLevel, string> = {
+  L: "Rendah",
+  LTM: "Rendah-Menengah",
+  M: "Menengah",
+  MTH: "Menengah-Tinggi",
+  H: "Tinggi",
+};
+// Warna persis dari format bersyarat sel "Tingkat Risiko" di Form MoC 2025.xlsx.
+export const MOC_RISK_LEVEL_COLOR: Record<MocRiskLevel, string> = {
+  L: "#00B050",
+  LTM: "#92D050",
+  M: "#FFFF00",
+  MTH: "#FFC000",
+  H: "#FF0000",
+};
 
 // Status pada Register MOC (Lampiran 8, keterangan status perubahan 1-5).
 export const MOC_REGISTER_STATUSES = [
@@ -112,8 +133,13 @@ export function hasMocRole(user: { mocRoles?: string[] | null }, flag: MocRoleFl
 export const MOC_EVIDENCE_SLOTS = ["initiator", "reviewer", "approver", "controller", "lampiran"] as const;
 export type MocEvidenceSlot = (typeof MOC_EVIDENCE_SLOTS)[number];
 
-// SLA (TKO Tabel 5): review 5/10/15 hari kerja menurut tingkat risiko; persetujuan 5 hari.
-export const MOC_REVIEW_SLA_DAYS: Record<MocRiskLevel, number> = { L: 5, M: 10, H: 15 };
+// SLA (TKO Tabel 5): review 5/10/15 hari kerja menurut tingkat risiko L/M/H;
+// persetujuan 5 hari. TKO Tabel 5 cuma punya 3 tingkat — tidak menyebut LTM/MTH
+// (baru ditemukan 2026-09-30 dari rumus formulir, lihat MOC_RISK_LEVELS). ASUMSI
+// belum dikonfirmasi: LTM dan MTH dibulatkan ke SLA yang lebih ketat/lebih lama
+// (LTM→SLA M, MTH→SLA H) — lebih aman daripada dibulatkan turun, tapi TKO tidak
+// menyebutkan ini secara eksplisit; tanyakan user kalau perlu presisi.
+export const MOC_REVIEW_SLA_DAYS: Record<MocRiskLevel, number> = { L: 5, LTM: 10, M: 10, MTH: 15, H: 15 };
 export const MOC_APPROVAL_SLA_DAYS = 5;
 
 // Tanda tangan dilakukan di luar web (keputusan user 2026-09-25): web hanya
@@ -237,6 +263,19 @@ export function riskValue(severity: number | null, probability: number | null): 
   return severity * probability;
 }
 
+// Sesuai rumus sel N34 Form MoC 2025.xlsx persis:
+// =IFS(J34<=3,"L", J34=4,"LTM", J34<=9,"M", J34<=12,"MTH", J34>=13,"H")
+// Dipakai untuk menurunkan Tingkat Risiko otomatis dari Nilai Risiko — bukan lagi
+// dipilih manual oleh Initiator (lihat catatan di MOC_RISK_LEVELS).
+export function riskLevel(value: number | null): MocRiskLevel | null {
+  if (value === null) return null;
+  if (value <= 3) return "L";
+  if (value === 4) return "LTM";
+  if (value <= 9) return "M";
+  if (value <= 12) return "MTH";
+  return "H";
+}
+
 export function reviewsOfCurrentRound(moc: Pick<MocRequest, "reviews" | "round">): MocReview[] {
   return moc.reviews.filter((r) => r.round === moc.round);
 }
@@ -341,7 +380,6 @@ export function mocSubmitIssues(form: MocFormContent): string[] {
     issues.push("Tanggal akhir masa berlaku tidak boleh sebelum tanggal awal.");
   }
   if (!form.severity || !form.probability) issues.push("Tingkat keparahan dan probabilitas risiko wajib diisi.");
-  if (!form.riskLevel) issues.push("Tingkat risiko (L/M/H) wajib dipilih.");
   return issues;
 }
 

@@ -5,9 +5,10 @@ import { Plus, X } from "lucide-react";
 import {
   MOC_CHANGE_CATEGORIES,
   MOC_RISK_IMPACTS,
-  MOC_RISK_LEVELS,
+  MOC_RISK_LEVEL_COLOR,
   MOC_RISK_LEVEL_LABEL,
   MOC_SIFAT_PERUBAHAN,
+  riskLevel,
   riskValue,
   type MocBarrier,
   type MocFormContent,
@@ -293,13 +294,29 @@ export default function MocFormFields({
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Field label="Tingkat Keparahan (1–5)">
-            <select className={INPUT} disabled={disabled} value={value.severity ?? ""} onChange={(e) => onChange({ severity: num(e.target.value) })}>
+            <select
+              className={INPUT}
+              disabled={disabled}
+              value={value.severity ?? ""}
+              onChange={(e) => {
+                const severity = num(e.target.value);
+                onChange({ severity, riskLevel: riskLevel(riskValue(severity, value.probability)) });
+              }}
+            >
               <option value="">—</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </Field>
           <Field label="Probabilitas (1–5)">
-            <select className={INPUT} disabled={disabled} value={value.probability ?? ""} onChange={(e) => onChange({ probability: num(e.target.value) })}>
+            <select
+              className={INPUT}
+              disabled={disabled}
+              value={value.probability ?? ""}
+              onChange={(e) => {
+                const probability = num(e.target.value);
+                onChange({ probability, riskLevel: riskLevel(riskValue(value.severity, probability)) });
+              }}
+            >
               <option value="">—</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -307,11 +324,15 @@ export default function MocFormFields({
           <Field label="Nilai Risiko" hint="Keparahan × Probabilitas.">
             <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>{nilai ?? "—"}</div>
           </Field>
-          <Field label="Tingkat Risiko" hint="Dipilih Initiator; batas nilai→tingkat belum ditetapkan di TKO.">
-            <select className={INPUT} disabled={disabled} value={value.riskLevel ?? ""} onChange={(e) => onChange({ riskLevel: (e.target.value || null) as MocFormContent["riskLevel"] })}>
-              <option value="">—</option>
-              {MOC_RISK_LEVELS.map((l) => <option key={l} value={l}>{l} — {MOC_RISK_LEVEL_LABEL[l]}</option>)}
-            </select>
+          <Field label="Tingkat Risiko" hint="Otomatis dari Nilai Risiko, sesuai Form MoC 2025.">
+            <div className={`${INPUT} bg-[#E2E8EB] font-semibold flex items-center gap-2`}>
+              {value.riskLevel ? (
+                <>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: MOC_RISK_LEVEL_COLOR[value.riskLevel] }} />
+                  {value.riskLevel} — {MOC_RISK_LEVEL_LABEL[value.riskLevel]}
+                </>
+              ) : "—"}
+            </div>
           </Field>
         </div>
 
