@@ -10,7 +10,25 @@ import type { DocumentItem } from "@/lib/domain/types";
 import { EXPIRING_WITHIN_DAYS, psiInsights } from "@/lib/domain/dashboard";
 import { useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
+import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
+
+// Ubin "kotak-kotak" dipakai di dalam popup DashboardListModal — gaya yang sama
+// persis dengan CategoryTileCard di Direktori (border+radius+aksen kiri berwarna),
+// supaya tampilan popup ini konsisten dengan bahasa visual yang sudah ada, bukan
+// bahasa baru lagi.
+function DashboardTile({ href, accentColor, title, children }: { href: string; accentColor: string; title: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="relative overflow-hidden block text-left p-3.5 pl-[18px] rounded-[14px] border border-[#D8E1E4] bg-white hover:border-[#0F3B59] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,59,89,.08)] transition-all duration-200"
+    >
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: accentColor }} aria-hidden />
+      <div className="text-[12.5px] font-bold text-[#0F172A] leading-snug mb-1">{title}</div>
+      {children}
+    </Link>
+  );
+}
 
 type Insights = ReturnType<typeof psiInsights>;
 
@@ -53,11 +71,17 @@ function MetricGrid({ insights }: { insights: Insights }) {
 // ------------------------------------------------------------------ lists
 
 function ExpiringList({ items }: { items: Insights["expiring"] }) {
+  // Tombol "Lihat semua" DULU mengarah ke /dilemma — itu sebenarnya bug tersendiri:
+  // /dilemma menyaring dokumen yang SUDAH lewat (isDocOverdue), sedangkan panel ini
+  // menampilkan `insights.expiring` = dokumen yang BELUM lewat, cuma tinggal ≤90
+  // hari lagi — dua dataset yang beda sama sekali. Sekarang popup ini pakai `items`
+  // yang sama persis dengan yang dirender panelnya, jadi datanya pasti konsisten.
+  const [modalOpen, setModalOpen] = useState(false);
   const shown = items.slice(0, 5);
   return (
     <SectionCard
       title="Segera kedaluwarsa"
-      action={<Link href="/dilemma" className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></Link>}
+      action={items.length > 0 ? <button type="button" onClick={() => setModalOpen(true)} className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></button> : undefined}
       className="span-5"
       state={shown.length > 0 ? "ready" : "empty"}
       emptyLabel={`dokumen yang berakhir dalam ${EXPIRING_WITHIN_DAYS} hari`}
@@ -74,14 +98,37 @@ function ExpiringList({ items }: { items: Insights["expiring"] }) {
           </Link>
         ))}
       </div>
+      <DashboardListModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Segera Kedaluwarsa"
+        items={items}
+        emptyLabel={`dokumen yang berakhir dalam ${EXPIRING_WITHIN_DAYS} hari`}
+        renderTile={({ doc, daysLeft }) => (
+          <DashboardTile href={`/document/${doc.id}`} accentColor={daysLeft <= 30 ? "#DC2626" : "#B45309"} title={doc.title}>
+            <div className="text-[11px] text-[#3a3d40] font-semibold">{doc.location}</div>
+            <div className="text-[10.5px] font-mono text-[#9a9da0] mt-0.5">{fmtDate(doc.expiryDate)} · {daysLeft} hari lagi</div>
+          </DashboardTile>
+        )}
+      />
     </SectionCard>
   );
 }
 
 function StaleList({ items }: { items: Insights["stale"] }) {
+  // Expand-di-tempat (versi sebelumnya) ternyata bikin scroll kepanjangan begitu
+  // datanya banyak (masukan langsung, 2026-10-01) — diganti popup + grid ubin +
+  // paginasi (DashboardListModal), bukan menumpuk makin panjang di halaman.
+  const [modalOpen, setModalOpen] = useState(false);
   const shown = items.slice(0, 5);
   return (
-    <SectionCard title="Belum diperbarui > 12 bulan" className="span-4" state={shown.length > 0 ? "ready" : "empty"} emptyLabel="dokumen yang belum diperbarui">
+    <SectionCard
+      title="Belum diperbarui > 12 bulan"
+      action={items.length > 5 ? <button type="button" onClick={() => setModalOpen(true)} className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></button> : undefined}
+      className="span-4"
+      state={shown.length > 0 ? "ready" : "empty"}
+      emptyLabel="dokumen yang belum diperbarui"
+    >
       <div className="list-stack compact-list">
         {shown.map(({ doc, lastUpdate, months }) => (
           <Link className="stale-row" key={doc.id} href={`/document/${doc.id}`}>
@@ -91,15 +138,40 @@ function StaleList({ items }: { items: Insights["stale"] }) {
           </Link>
         ))}
       </div>
+      <DashboardListModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Belum Diperbarui > 12 Bulan"
+        items={items}
+        emptyLabel="dokumen yang belum diperbarui"
+        renderTile={({ doc, lastUpdate, months }) => (
+          <DashboardTile href={`/document/${doc.id}`} accentColor="#6D28D9" title={doc.title}>
+            <div className="text-[11px] text-[#3a3d40] font-semibold">{doc.location}</div>
+            <div className="text-[10.5px] font-mono text-[#9a9da0] mt-0.5">
+              {new Date(lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })} · {months} bln
+            </div>
+          </DashboardTile>
+        )}
+      />
     </SectionCard>
   );
 }
 
 function RecentUpdates({ items }: { items: Insights["recent"] }) {
+  // `items` sekarang datang TIDAK dipotong dari psiInsights() (lihat domain/dashboard.ts)
+  // — panel ini sendiri yang memotong ke 5 teratas, sisanya lewat popup "Lihat semua".
+  const [modalOpen, setModalOpen] = useState(false);
+  const shown = items.slice(0, 5);
   return (
-    <SectionCard title="Pembaruan terbaru" className="span-3" state={items.length > 0 ? "ready" : "empty"} emptyLabel="pembaruan dokumen">
+    <SectionCard
+      title="Pembaruan terbaru"
+      action={items.length > 5 ? <button type="button" onClick={() => setModalOpen(true)} className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></button> : undefined}
+      className="span-3"
+      state={shown.length > 0 ? "ready" : "empty"}
+      emptyLabel="pembaruan dokumen"
+    >
       <div className="update-stack">
-        {items.map(({ doc, entry, type, at }) => (
+        {shown.map(({ doc, entry, type, at }) => (
           <Link className="update-row" key={entry.id} href={`/document/${doc.id}`}>
             <div className="update-line"><span className="update-dot" /></div>
             <div className="row-main"><strong>{doc.title}</strong><span>{doc.location} <i /> {entry.actorName}</span></div>
@@ -110,6 +182,25 @@ function RecentUpdates({ items }: { items: Insights["recent"] }) {
           </Link>
         ))}
       </div>
+      <DashboardListModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Pembaruan Terbaru"
+        items={items}
+        emptyLabel="pembaruan dokumen"
+        renderTile={({ doc, entry, type, at }) => {
+          const color = type === "Baru" ? "#0F3B59" : type === "Direvisi" ? "#6D28D9" : "#B45309";
+          return (
+            <DashboardTile href={`/document/${doc.id}`} accentColor={color} title={doc.title}>
+              <div className="text-[11px] text-[#3a3d40] font-semibold">{doc.location} · {entry.actorName}</div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <StatusPill severity={type === "Baru" ? "baik" : type === "Direvisi" ? "revisi" : "peringatan"}>{type}</StatusPill>
+                <span className="text-[10.5px] font-mono text-[#9a9da0]">{new Date(at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span>
+              </div>
+            </DashboardTile>
+          );
+        }}
+      />
     </SectionCard>
   );
 }

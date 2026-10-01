@@ -72,6 +72,11 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
     .map((x) => ({ ...x, months: Math.floor((nowMs - x.lastUpdate) / (30.4 * DAY)) }))
     .sort((a, b) => a.lastUpdate - b.lastUpdate);
 
+  // Tidak lagi dipotong ke 5 di sini — dashboard panel "Pembaruan Terbaru" sendiri
+  // yang menampilkan 5 teratas, sisanya bisa dilihat lewat popup "Lihat semua"
+  // (DashboardListModal), sama seperti `stale` di atas (juga tidak dipotong di
+  // sini). Memotong di sumber data membuat popup "lihat semua" tidak punya apa-apa
+  // untuk ditampilkan selain 5 yang sudah kelihatan.
   const recent: PsiRecentUpdate[] = docs
     .flatMap((doc) =>
       doc.history
@@ -79,8 +84,7 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
         .map((entry) => ({ doc, entry, type: getLastUpdateType([entry]), at: parseTs(entry.timestamp) }))
     )
     .filter((x) => x.at > 0)
-    .sort((a, b) => b.at - a.at)
-    .slice(0, 5);
+    .sort((a, b) => b.at - a.at);
 
   return { overdue, expiring, stale, recent, total: docs.length, approved: live.filter((d) => d.status === "Approved").length };
 }
