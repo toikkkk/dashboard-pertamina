@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { DocumentItem, HistoryItem, getPendingApprovalStepOrder, canUserApproveDoc } from "@/lib/mockData";
-import { usePsi } from "@/lib/psiStore";
+import { DocumentItem, HistoryItem } from "@/lib/mockData";
 import { Download } from "lucide-react";
-import RoutingStatusPanel from "@/components/RoutingStatusPanel";
 import DocumentContentPreview, { getFileKind } from "@/components/DocumentContentPreview";
 import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
 import StatusTag from "@/components/StatusTag";
@@ -45,37 +43,16 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 export default function DocumentSplitViewer({ document: doc }: DocumentSplitViewerProps) {
-  const { activeUser, approveStep, rejectStep } = usePsi();
   const [tab, setTab] = useState<TabKey>("detail");
-  const [approveComment, setApproveComment] = useState("");
-  const [rejectComment, setRejectComment] = useState("");
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [banner, setBanner] = useState<{ tone: "success" | "error"; message: string; closing?: boolean } | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
-  const pendingStepOrder = getPendingApprovalStepOrder(doc);
-  const canApprove = canUserApproveDoc(doc, activeUser);
   const meta = DOCUMENT_STATUS_META[doc.status];
 
   const showBanner = (tone: "success" | "error", message: string) => {
     setBanner({ tone, message });
     setTimeout(() => setBanner((b) => (b ? { ...b, closing: true } : b)), 2900);
     setTimeout(() => setBanner(null), 3100);
-  };
-
-  const handleApprove = () => {
-    if (pendingStepOrder === null) return;
-    approveStep(doc.id, pendingStepOrder, approveComment || undefined);
-    setApproveComment("");
-    showBanner("success", "Dokumen berhasil disetujui.");
-  };
-
-  const handleReject = () => {
-    if (pendingStepOrder === null || !rejectComment.trim()) return;
-    rejectStep(doc.id, pendingStepOrder, rejectComment);
-    setRejectComment("");
-    setRejectModalOpen(false);
-    showBanner("error", "Dokumen ditolak dan dikembalikan ke initiator.");
   };
 
   const handleDownload = (item?: HistoryItem) => {
@@ -141,10 +118,14 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 items-stretch">
         {/* Tab rail — a horizontal scrollable row on mobile instead of the 200px
             vertical sidebar (which had nowhere to go on a narrow screen but to force
-            the whole page wider), full vertical list from lg up */}
+            the whole page wider), full vertical list from lg up. items-stretch
+            (was items-start) so this card's height matches the content column
+            instead of being a short floating box beside a much taller one — most
+            visible when the content side is a tall PDF viewer next to a 2-tab nav
+            (flagged directly by a user screenshot, 2026-10-01). */}
         <div className="bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)] p-2 flex flex-row lg:flex-col gap-0.5 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -182,28 +163,16 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
 
           {tab === "history" && (
             <div className="animate-fadeIn">
-              <RoutingStatusPanel doc={doc} pendingStepOrder={pendingStepOrder} />
-
-              {canApprove && (
-                <div className="bg-white border border-[#0F3B59] rounded-[8px] p-4 mb-3.5">
-                  <p className="mb-2.5 text-[12.5px] font-bold text-[#3a3d40]">Aksi Persetujuan — Tahap {pendingStepOrder}</p>
-                  <textarea
-                    value={approveComment}
-                    onChange={(e) => setApproveComment(e.target.value)}
-                    placeholder="Komentar (opsional)..."
-                    className="w-full min-h-[60px] px-2.5 py-2 text-[12.5px] border border-[#C5CED3] rounded-[8px] mb-2.5 resize-y"
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={handleApprove} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#15803D] bg-[#15803D] hover:bg-[#166534] active:scale-[0.97] text-white transition">
-                      Setujui Dokumen
-                    </button>
-                    <button onClick={() => setRejectModalOpen(true)} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#DC2626] bg-white text-[#DC2626] hover:bg-[#FEE2E2] active:scale-[0.97] transition">
-                      Tolak &amp; Kembalikan ke Initiator
-                    </button>
-                  </div>
-                </div>
-              )}
-
+              {/* Panel "Status Sirkuler Persetujuan" + tombol Setujui/Tolak SENGAJA
+                  dihapus dari sini (2026-10-01) — PSI sudah tidak punya konsep alur
+                  persetujuan sama sekali (itu sekarang murni milik MOC), jadi
+                  menampilkannya di dokumen PSI cuma menyesatkan walau datanya masih
+                  ada di dokumen lama. Riwayat kronologis polos di bawah ini sudah
+                  cukup dan tetap menyimpan fakta historisnya (termasuk entri
+                  Approved/Rejected lama, kalau ada). Konsekuensi yang disadari: enam
+                  dokumen PSI lama yang masih berstatus "In Routing"/"Revision
+                  Required" jadi tidak bisa diproses lagi lewat UI ini — sudah
+                  dikonfirmasi ke pengguna, bukan terlewat. */}
               <div className="flex flex-col gap-2.5">
                 {[...doc.history].reverse().map((h, i) => {
                   const isExpanded = !!expandedIds[h.id];
@@ -279,35 +248,6 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
         </div>
       </div>
 
-      {rejectModalOpen && (
-        <div className="fixed inset-0 bg-[rgba(29,45,61,.5)] flex items-center justify-center z-[100] p-5 animate-backdropIn">
-          <div className="w-[420px] max-w-full bg-white rounded-xl p-[22px] animate-modalPop">
-            <h3 className="font-heading text-lg font-bold mb-3">Tolak Dokumen</h3>
-            <p className="mb-2.5 text-[12.5px] text-[#6b6e72]">
-              Jelaskan alasan penolakan. Dokumen akan dikembalikan ke Initiator sebagai &quot;Perlu Revisi&quot;.
-            </p>
-            <textarea
-              value={rejectComment}
-              onChange={(e) => setRejectComment(e.target.value)}
-              placeholder="Alasan penolakan (wajib diisi)..."
-              className="w-full min-h-[90px] px-2.5 py-2 text-[12.5px] border border-[#C5CED3] rounded-[8px] resize-y mb-3.5"
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setRejectModalOpen(false)} className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] transition-all duration-200">
-                Batal
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={!rejectComment.trim()}
-                className="text-[12.5px] font-bold px-3.5 py-2 rounded-[8px] border border-[#DC2626] bg-[#DC2626] text-white active:scale-[0.97] transition"
-                style={{ opacity: rejectComment.trim() ? 1 : 0.5 }}
-              >
-                Konfirmasi Tolak
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
