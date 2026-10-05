@@ -44,8 +44,11 @@ function wordSimilarity(a: string, b: string): number {
 
 // Skor kecocokan dokumen untuk satu query (mis. "hazip" → cocok dengan "HAZOP").
 // -1 = tidak cocok; makin besar makin relevan, dipakai untuk mengurutkan hasil.
+// Ikut mencari di lokasi + nama sub-kategori Direktori juga, bukan cuma judul/nomor —
+// supaya "hac juanda" tetap ketemu dokumen yang masuk sub-folder "HAC Layout" di AFT
+// Juanda walau kata "hac"/"juanda" sendiri tidak ada di judul dokumennya.
 function documentMatchScore(query: string, doc: DocumentItem): number {
-  const haystack = `${doc.title} ${doc.documentNumber}`.toLowerCase();
+  const haystack = `${doc.title} ${doc.documentNumber} ${doc.location} ${doc.categoryName ?? ""}`.toLowerCase();
   if (haystack.includes(query)) return 1;
   const queryWords = query.split(/\s+/).filter(Boolean);
   const targetWords = haystack.split(/[\s\-/_.,()]+/).filter(Boolean);
@@ -205,7 +208,10 @@ export default function Topbar({
                     onClick={() => selectDocument(doc)}
                   >
                     <span className="topbar-search-result-title">{doc.title}</span>
-                    <span className="topbar-search-result-meta">{doc.documentNumber} · {doc.location}</span>
+                    <span className="topbar-search-result-meta">
+                      {doc.documentNumber} · {doc.location}
+                      {doc.categoryName ? ` · ${doc.categoryName}` : ""}
+                    </span>
                   </button>
                 ))
               ) : (

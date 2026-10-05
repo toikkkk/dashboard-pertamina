@@ -5,7 +5,7 @@
 // localStorage to these API responses.
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { documents, approvalRoutes, historyItems, historyDiffs, fileRegistry } from "@/lib/db/schema";
+import { documents, approvalRoutes, historyItems, historyDiffs, fileRegistry, documentCategories } from "@/lib/db/schema";
 import { DocumentItem, ApprovalRouteItem, HistoryItem, SimulatedUser } from "@/lib/domain/types";
 import type { SessionUser } from "@/lib/auth/session";
 
@@ -85,15 +85,20 @@ async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[])
 
   const historyIds = historyRows.map((h) => h.id);
   const allFileIds = Array.from(new Set([...primaryFileIds, ...historyRows.map((h) => h.fileId)]));
+  const categoryIds = Array.from(new Set(docRows.map((d) => d.categoryId).filter((id): id is string => !!id)));
 
-  const [diffRows, fileRows] = await Promise.all([
+  const [diffRows, fileRows, categoryRows] = await Promise.all([
     historyIds.length ? db.select().from(historyDiffs).where(inArray(historyDiffs.historyItemId, historyIds)) : Promise.resolve([]),
     allFileIds.length
       ? db.select({ id: fileRegistry.id, originalFilename: fileRegistry.originalFilename }).from(fileRegistry).where(inArray(fileRegistry.id, allFileIds))
       : Promise.resolve([]),
+    categoryIds.length
+      ? db.select({ id: documentCategories.id, name: documentCategories.name }).from(documentCategories).where(inArray(documentCategories.id, categoryIds))
+      : Promise.resolve([]),
   ]);
 
   const fileNameById = new Map(fileRows.map((f) => [f.id, f.originalFilename]));
+  const categoryNameById = new Map(categoryRows.map((c) => [c.id, c.name]));
   const routesByDoc = new Map<string, typeof routeRows>();
   for (const r of routeRows) routesByDoc.set(r.documentId, [...(routesByDoc.get(r.documentId) ?? []), r]);
   const historyByDoc = new Map<string, typeof historyRows>();
@@ -114,6 +119,7 @@ async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[])
     expiryDate: doc.expiryDate,
     fileUrl: fileDownloadUrl(doc.primaryFileId),
     fileName: fileNameById.get(doc.primaryFileId),
+    categoryName: doc.categoryId ? categoryNameById.get(doc.categoryId) : undefined,
     isCircular: doc.isCircular,
     routes: (routesByDoc.get(doc.id) ?? [])
       .slice()

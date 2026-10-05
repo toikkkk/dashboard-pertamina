@@ -67,6 +67,10 @@ export interface DocumentItem {
    * client tell PDF/spreadsheet/other apart for preview purposes, since fileUrl itself
    * is an opaque /api/files/:id/download route with no extension in it. */
   fileName?: string;
+  /** Nama sub-kategori Direktori (mis. "HAC Layout") — undefined untuk dokumen lama yang
+   * belum ditautkan ke kategori manapun. Dipakai supaya pencarian topbar bisa menemukan
+   * dokumen lewat nama sub-foldernya, bukan cuma judul/nomor dokumen literal. */
+  categoryName?: string;
   routes: ApprovalRouteItem[];
   history: HistoryItem[];
   isCircular: boolean;
