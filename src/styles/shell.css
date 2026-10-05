@@ -701,7 +701,13 @@
 .hsse-shell .topbar-search-input::placeholder { color: #9A9DA0; }
 .hsse-shell .topbar-search-input:focus { background: #FFFFFF; border-color: #0F3B59; }
 .hsse-shell .topbar-search-open .header-icon-button { color: #0F3B59; }
-.hsse-shell .topbar-search-error { position: absolute; top: 40px; left: 0; z-index: 5; padding: 5px 9px; border-radius: 8px; background: #DC2626; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+.hsse-shell .topbar-search-results { position: absolute; left: 0; top: 44px; z-index: 70; width: min(90vw, 360px); border: 1px solid #C5CED3; border-radius: 12px; background: #FFFFFF; box-shadow: 0 12px 32px rgba(15,23,42,.16); overflow: hidden; max-height: 70vh; overflow-y: auto; }
+.hsse-shell .topbar-search-result-row { display: block; width: 100%; padding: 10px 14px; border-bottom: 1px solid #F0F0F1; color: #3A3D40; text-align: left; background: transparent; cursor: pointer; }
+.hsse-shell .topbar-search-result-row:last-child { border-bottom: 0; }
+.hsse-shell .topbar-search-result-row:hover, .hsse-shell .topbar-search-result-row-active { background: #F7F8F8; }
+.hsse-shell .topbar-search-result-title { display: block; font-size: 12.5px; font-weight: 600; color: #0F172A; }
+.hsse-shell .topbar-search-result-meta { display: block; margin-top: 2px; color: #9A9DA0; font-size: 11px; }
+.hsse-shell .topbar-search-empty { padding: 14px; color: #9A9DA0; font-size: 12px; text-align: center; }
 .hsse-shell .topbar-panel { position: absolute; right: 0; top: 44px; z-index: 70; width: min(90vw, 308px); border: 1px solid #C5CED3; border-radius: 12px; background: #FFFFFF; box-shadow: 0 12px 32px rgba(15,23,42,.16); overflow: hidden; }
 .hsse-shell .topbar-panel-narrow { width: 200px; padding: 6px; }
 .hsse-shell .topbar-panel-title { padding: 10px 14px; border-bottom: 1px solid #E2E8EB; background: #F7F8F8; color: #0F172A; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
@@ -750,7 +756,7 @@
 @media (max-width: 680px) {
   .hsse-shell .topbar-panel { position: fixed; top: 72px; left: 10px; right: 10px; width: auto; max-width: none; }
   .hsse-shell .topbar-panel-body { max-height: calc(100vh - 150px); }
-  .hsse-shell .topbar-search-error { position: fixed; top: 72px; left: 10px; }
+  .hsse-shell .topbar-search-results { position: fixed; top: 72px; left: 10px; right: 10px; width: auto; max-width: none; }
 }
 
 /* --- Tambahan proyek: sidebar mengecil/melebar lebih halus. Bawaan Manus menukar

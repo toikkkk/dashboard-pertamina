@@ -2,12 +2,63 @@
 
 // Bilah atas: pencarian nomor dokumen, hamburger mobile, notifikasi (bawaan dari
 // Navbar lama), dan menu profil. DOM/kelas CSS porting dari desain Manus.
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, CheckCircle2, ClipboardList, Menu, Search } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { mocPendingActions, type MocAction, type MocRequest } from "@/lib/domain/moc";
+import type { DocumentItem } from "@/lib/mockData";
+
+// Levenshtein distance — dasar pencocokan "mirip" (typo-toleran), bukan hanya substring persis.
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+// Kemiripan 0..1 antar dua kata. Token sangat pendek (mis. "p", "201", nomor urut)
+// diabaikan sepenuhnya — kalau tidak, "hazip" otomatis "mengandung" huruf "p" dari token
+// 1 huruf manapun di dokumen lain dan memenangkan skor tertinggi secara tidak relevan.
+function wordSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a.length < 3 || b.length < 3) return a === b ? 1 : 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.9;
+  const dist = levenshtein(a, b);
+  return Math.max(0, 1 - dist / Math.max(a.length, b.length));
+}
+
+// Skor kecocokan dokumen untuk satu query (mis. "hazip" → cocok dengan "HAZOP").
+// -1 = tidak cocok; makin besar makin relevan, dipakai untuk mengurutkan hasil.
+function documentMatchScore(query: string, doc: DocumentItem): number {
+  const haystack = `${doc.title} ${doc.documentNumber}`.toLowerCase();
+  if (haystack.includes(query)) return 1;
+  const queryWords = query.split(/\s+/).filter(Boolean);
+  const targetWords = haystack.split(/[\s\-/_.,()]+/).filter(Boolean);
+  if (queryWords.length === 0 || targetWords.length === 0) return -1;
+  let total = 0;
+  for (const qw of queryWords) {
+    let best = 0;
+    for (const tw of targetWords) best = Math.max(best, wordSimilarity(qw, tw));
+    total += best;
+  }
+  const avg = total / queryWords.length;
+  return avg >= 0.6 ? avg : -1;
+}
 
 const mocNotifText = (m: MocRequest, a: MocAction): string => {
   if (a === "review") return `MOC "${m.judul || "tanpa judul"}" diajukan kepada Anda untuk direview`;
@@ -34,7 +85,7 @@ export default function Topbar({
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [error, setError] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   // Pencarian: ikon dulu; klik memperluas kolom input dengan transisi lebar (seperti
   // navbar lama). Menutup lagi saat klik di luar atau Escape, selama input kosong.
   const [searchOpen, setSearchOpen] = useState(false);
@@ -52,7 +103,6 @@ export default function Topbar({
         setNotifOpen(false);
         setSearchOpen(false);
         setQuery("");
-        setError(false);
       }
     };
     document.addEventListener("mousedown", onClick);
@@ -70,19 +120,34 @@ export default function Topbar({
 
   const totalNotifications = overdueCount + mocNotifs.length;
 
+  // Pencarian langsung (live) sambil mengetik, toleran typo — mis. mengetik "hazip"
+  // tetap menampilkan dokumen "HAZOP" berkat skor kemiripan kata (bukan cuma substring
+  // persis seperti sebelumnya). Menampilkan beberapa kandidat sekaligus di dropdown,
+  // bukan cuma satu hasil terbaik, supaya user tidak perlu mengetik judul secara utuh.
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return allDocuments
+      .map((doc) => ({ doc, score: documentMatchScore(q, doc) }))
+      .filter((r) => r.score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map((r) => r.doc);
+  }, [query, allDocuments]);
+
+  useEffect(() => setActiveIndex(0), [query]);
+
+  const selectDocument = (doc: DocumentItem) => {
+    setQuery("");
+    setSearchOpen(false);
+    setActiveIndex(0);
+    router.push(`/document/${doc.id}`);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = query.trim().toLowerCase();
-    if (!q) return;
-    const found = allDocuments.find((d) => d.documentNumber.toLowerCase() === q);
-    if (found) {
-      setError(false);
-      setQuery("");
-      setSearchOpen(false);
-      router.push(`/document/${found.id}`);
-      return;
-    }
-    setError(true);
+    const target = results[activeIndex] ?? results[0];
+    if (target) selectDocument(target);
   };
 
   return (
@@ -95,25 +160,59 @@ export default function Topbar({
         <form ref={searchRef} onSubmit={handleSearch} className={`topbar-search ${searchOpen ? "topbar-search-open" : ""}`} role="search">
           <button
             type="button"
-            aria-label={searchOpen ? "Cari nomor dokumen" : "Buka pencarian nomor dokumen"}
+            aria-label={searchOpen ? "Cari dokumen" : "Buka pencarian dokumen"}
             aria-expanded={searchOpen}
             className="header-icon-button"
             onClick={() => (searchOpen && query ? handleSearch({ preventDefault() {} } as React.FormEvent) : searchOpen ? setSearchOpen(false) : openSearch())}
           >
             <Search className="h-[18px] w-[18px]" />
           </button>
-          <label className="sr-only" htmlFor="doc-search">Cari nomor dokumen</label>
+          <label className="sr-only" htmlFor="doc-search">Cari dokumen</label>
           <input
             id="doc-search"
             ref={searchInputRef}
             type="text"
             value={query}
             tabIndex={searchOpen ? 0 : -1}
-            onChange={(e) => { setQuery(e.target.value); setError(false); }}
-            placeholder="Cari nomor dokumen…"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveIndex((i) => Math.min(i + 1, Math.max(results.length - 1, 0)));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveIndex((i) => Math.max(i - 1, 0));
+              }
+            }}
+            placeholder="Cari nomor atau judul dokumen (mis. hazop, p&id juanda)…"
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={searchOpen && query.trim().length >= 2}
+            aria-controls="doc-search-results"
             className="topbar-search-input"
           />
-          {error && <p className="topbar-search-error" role="alert">Nomor dokumen tidak ditemukan</p>}
+          {searchOpen && query.trim().length >= 2 && (
+            <div className="topbar-search-results" id="doc-search-results" role="listbox">
+              {results.length > 0 ? (
+                results.map((doc, idx) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    role="option"
+                    aria-selected={idx === activeIndex}
+                    className={`topbar-search-result-row${idx === activeIndex ? " topbar-search-result-row-active" : ""}`}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    onClick={() => selectDocument(doc)}
+                  >
+                    <span className="topbar-search-result-title">{doc.title}</span>
+                    <span className="topbar-search-result-meta">{doc.documentNumber} · {doc.location}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="topbar-search-empty">Tidak ada dokumen yang mirip dengan &quot;{query}&quot;</div>
+              )}
+            </div>
+          )}
         </form>
       ) : (
         <div className="topbar-search" />
