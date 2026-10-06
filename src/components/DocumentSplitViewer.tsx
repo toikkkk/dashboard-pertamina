@@ -7,6 +7,7 @@ import DocumentContentPreview, { getFileKind } from "@/components/DocumentConten
 import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
 import StatusTag from "@/components/StatusTag";
 import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
+import { usePsi } from "@/lib/psiStore";
 
 interface DocumentSplitViewerProps {
   document: DocumentItem;
@@ -42,10 +43,16 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+type HistoryEditForm = { timestamp: string; actorName: string; actorRole: string; notes: string };
+
 export default function DocumentSplitViewer({ document: doc }: DocumentSplitViewerProps) {
+  const { activeUser, updateHistoryItem } = usePsi();
   const [tab, setTab] = useState<TabKey>("detail");
   const [banner, setBanner] = useState<{ tone: "success" | "error"; message: string; closing?: boolean } | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<HistoryEditForm | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const meta = DOCUMENT_STATUS_META[doc.status];
 
@@ -62,6 +69,41 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
   };
 
   const toggleExpand = (id: string) => setExpandedIds((s) => ({ ...s, [id]: !s[id] }));
+
+  const startEdit = (h: HistoryItem) => {
+    setEditingId(h.id);
+    setEditForm({
+      timestamp: h.timestamp.replace(" ", "T"),
+      actorName: h.actorName,
+      actorRole: h.actorRole,
+      notes: h.notes ?? "",
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async (historyId: string) => {
+    if (!editForm) return;
+    setSavingEdit(true);
+    try {
+      await updateHistoryItem(doc.id, historyId, {
+        timestamp: editForm.timestamp,
+        actorName: editForm.actorName,
+        actorRole: editForm.actorRole,
+        notes: editForm.notes,
+      });
+      showBanner("success", "Riwayat proses berhasil diperbarui.");
+      setEditingId(null);
+      setEditForm(null);
+    } catch (e) {
+      showBanner("error", e instanceof Error ? e.message : "Gagal memperbarui riwayat proses.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   return (
     <div>
@@ -182,28 +224,84 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                       className="bg-white border border-[#C5CED3] border-l-[3px] rounded-[8px] shadow-[0_1px_2px_rgba(15,23,42,.05),0_1px_6px_rgba(15,23,42,.04)] p-[14px_16px] transition-shadow duration-300 ease-out-expo hover:shadow-[0_2px_10px_rgba(0,0,0,.05)] animate-fadeInUp"
                       style={{ borderLeftColor: ACTION_COLOR[h.action], animationDelay: `${Math.min(i * 50, 300)}ms` }}
                     >
-                      <div className="flex items-start justify-between gap-2.5 flex-wrap">
-                        <div>
-                          <div className="text-[12.5px] font-bold text-[#3a3d40]">{ACTION_LABELS[h.action]}</div>
-                          <div className="text-[11px] text-[#9a9da0] mt-0.5">{h.timestamp} · {h.actorName} ({h.actorRole}) · {h.location}</div>
-                          {h.notes && <div className="text-xs text-[#3a3d40] mt-1.5">{h.notes}</div>}
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          {getFileKind(h.fileName) !== "none" ? (
-                            <a href={h.fileUrl} download className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
-                              Unduh Berkas v{h.version}
-                            </a>
-                          ) : (
-                            <button onClick={() => handleDownload(h)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
-                              Unduh Berkas v{h.version}
+                      {editingId === h.id && editForm ? (
+                        <div className="flex flex-col gap-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <label className="flex flex-col gap-1 text-[11px] font-semibold text-[#3a3d40]">
+                              Tanggal &amp; Waktu
+                              <input
+                                type="datetime-local"
+                                value={editForm.timestamp}
+                                onChange={(e) => setEditForm((f) => (f ? { ...f, timestamp: e.target.value } : f))}
+                                className="text-[12.5px] px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59]"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11px] font-semibold text-[#3a3d40]">
+                              Nama Aktor
+                              <input
+                                type="text"
+                                value={editForm.actorName}
+                                onChange={(e) => setEditForm((f) => (f ? { ...f, actorName: e.target.value } : f))}
+                                className="text-[12.5px] px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59]"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11px] font-semibold text-[#3a3d40]">
+                              Jabatan / Peran
+                              <input
+                                type="text"
+                                value={editForm.actorRole}
+                                onChange={(e) => setEditForm((f) => (f ? { ...f, actorRole: e.target.value } : f))}
+                                className="text-[12.5px] px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59]"
+                              />
+                            </label>
+                          </div>
+                          <label className="flex flex-col gap-1 text-[11px] font-semibold text-[#3a3d40]">
+                            Catatan
+                            <textarea
+                              value={editForm.notes}
+                              onChange={(e) => setEditForm((f) => (f ? { ...f, notes: e.target.value } : f))}
+                              rows={2}
+                              className="text-[12.5px] px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] focus:outline-none focus:border-[#0F3B59] resize-none"
+                            />
+                          </label>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={cancelEdit} disabled={savingEdit} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] disabled:opacity-50 transition-all duration-200">
+                              Batal
                             </button>
-                          )}
-                          <button onClick={() => toggleExpand(h.id)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
-                            {isExpanded ? "Tutup detail perubahan" : "Lihat detail perubahan"}
-                          </button>
+                            <button onClick={() => saveEdit(h.id)} disabled={savingEdit} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] text-white hover:bg-[#0B2C43] disabled:opacity-50 transition-all duration-200">
+                              {savingEdit ? "Menyimpan…" : "Simpan"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      {isExpanded && (
+                      ) : (
+                        <div className="flex items-start justify-between gap-2.5 flex-wrap">
+                          <div>
+                            <div className="text-[12.5px] font-bold text-[#3a3d40]">{ACTION_LABELS[h.action]}</div>
+                            <div className="text-[11px] text-[#9a9da0] mt-0.5">{h.timestamp} · {h.actorName} ({h.actorRole}) · {h.location}</div>
+                            {h.notes && <div className="text-xs text-[#3a3d40] mt-1.5">{h.notes}</div>}
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {getFileKind(h.fileName) !== "none" ? (
+                              <a href={h.fileUrl} download className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                                Unduh Berkas v{h.version}
+                              </a>
+                            ) : (
+                              <button onClick={() => handleDownload(h)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                                Unduh Berkas v{h.version}
+                              </button>
+                            )}
+                            {activeUser.isRegionalAdmin && (
+                              <button onClick={() => startEdit(h)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                                Edit
+                              </button>
+                            )}
+                            <button onClick={() => toggleExpand(h.id)} className="text-[11px] font-bold px-2.5 py-1 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.96] transition-all duration-200">
+                              {isExpanded ? "Tutup detail perubahan" : "Lihat detail perubahan"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {isExpanded && editingId !== h.id && (
                         <div className="animate-fadeInUp">
                           <table className="w-full text-[11.5px] border-collapse mt-3 border-t border-[#eceded] pt-2">
                             <tbody>

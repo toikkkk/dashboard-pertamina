@@ -49,6 +49,11 @@ interface PsiContextType {
   approveStep: (docId: string, stepOrder: number, comment?: string) => Promise<void>;
   rejectStep: (docId: string, stepOrder: number, comment: string) => Promise<void>;
   extendValidity: (docId: string, notes?: string) => Promise<void>;
+  /** PATCHes /api/documents/:id/history/:historyId — Admin Regional only (enforced
+   * server-side). Corrects a history entry's recorded date/actor/notes, e.g. for
+   * documents migrated from the archive where "Created" was stamped with the
+   * migration date, not the document's real original date. */
+  updateHistoryItem: (docId: string, historyId: string, data: { timestamp?: string; actorName?: string; actorRole?: string; notes?: string }) => Promise<void>;
   reviseDocument: (docId: string, newVersion: string, newFileId: string, notes?: string) => Promise<void>;
   addNewDocument: (docData: NewDocumentInput) => Promise<void>;
   getComplianceMetrics: () => {
@@ -235,6 +240,15 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await mutate();
   };
 
+  const updateHistoryItem = async (
+    docId: string,
+    historyId: string,
+    data: { timestamp?: string; actorName?: string; actorRole?: string; notes?: string }
+  ): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/history/${historyId}`, { method: "PATCH", body: JSON.stringify(data) });
+    await mutate();
+  };
+
   const addNewDocument = async (docData: NewDocumentInput): Promise<void> => {
     await fetchJson("/api/documents", { method: "POST", body: JSON.stringify(docData) });
     await mutate();
@@ -334,6 +348,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rejectStep,
         extendValidity,
         reviseDocument,
+        updateHistoryItem,
         addNewDocument,
         getComplianceMetrics,
         isLoggedIn,
