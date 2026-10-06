@@ -15,6 +15,8 @@ export default function LocationPickerField({
   label = "Lokasi",
   disabled = false,
   required = false,
+  labelClassName = "block text-xs font-semibold text-[#3a3d40] mb-[5px]",
+  triggerClassName = "min-h-[36px] bg-white",
 }: {
   locations: { locationName: string }[];
   value: string;
@@ -22,21 +24,23 @@ export default function LocationPickerField({
   label?: string;
   disabled?: boolean;
   required?: boolean;
+  labelClassName?: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   return (
     <div>
-      <label className="block text-xs font-semibold text-[#3a3d40] mb-[5px]">
+      <label className={labelClassName}>
         {label} {required && <span className="text-[#DC2626]">*</span>}
       </label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="w-full min-h-[36px] px-3 py-1 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0] disabled:cursor-not-allowed"
-        style={{ background: disabled ? "#F8FAFC" : "#fff" }}
+        className={`w-full px-3 py-1 text-[13px] border border-[#C5CED3] rounded-[8px] flex items-center justify-between text-left transition-colors duration-200 hover:border-[#9a9da0] disabled:cursor-not-allowed ${triggerClassName}`}
+        style={disabled ? { background: "#F8FAFC" } : undefined}
       >
         <span style={{ color: value ? "#0F172A" : "#9a9da0" }}>{value || "Pilih lokasi..."}</span>
         {!disabled && <ChevronDown className="w-[13px] h-[13px] text-[#9a9da0] flex-shrink-0" strokeWidth={2} />}

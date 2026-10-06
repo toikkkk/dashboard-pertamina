@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { CheckCircle2, UserCog } from "lucide-react";
+import LocationPickerField from "@/components/LocationPickerField";
 import { MOC_FUNCTION_SUGGESTIONS, MOC_ROLE_FLAGS, MOC_ROLES_NEED_FUNCTION, type MocRoleFlag } from "@/lib/domain/moc";
 
 // Peran dasar akun (nilai = yang tersimpan di DB) dengan nama menurut TKO B6.2-08 (PSI) dan
@@ -117,15 +118,25 @@ export default function OnboardingPreferencesModal() {
             <div className="w-full flex flex-col gap-3.5">
               <div>
                 <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Peran</div>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59] text-[#0F172A] transition-all duration-200"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
+                <div role="radiogroup" aria-label="Peran" className="flex flex-col gap-1.5">
+                  {ROLES.map((r) => {
+                    const sel = role === r.value;
+                    return (
+                      <button
+                        key={r.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={sel}
+                        onClick={() => setRole(r.value)}
+                        className={`w-full min-h-[40px] px-3 py-1.5 text-[13px] text-left rounded-[8px] border transition-colors duration-200 ${
+                          sel ? "border-[#0F3B59] bg-[#E2E8EB] font-bold text-[#0B2C43]" : "border-[#C5CED3] bg-[#F5F7F9] text-[#0F172A] hover:border-[#9a9da0]"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {!isAdminRole && (
@@ -166,18 +177,14 @@ export default function OnboardingPreferencesModal() {
                 </div>
               )}
 
-              <div>
-                <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Terminal</div>
-                <select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59] text-[#0F172A] transition-all duration-200"
-                >
-                  {locations.map((l) => (
-                    <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
-                  ))}
-                </select>
-              </div>
+              <LocationPickerField
+                locations={locations}
+                value={location}
+                onChange={setLocation}
+                label="Terminal"
+                labelClassName="block text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5"
+                triggerClassName="min-h-[40px] bg-[#F5F7F9]"
+              />
 
               {error && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{error}</div>}
 
