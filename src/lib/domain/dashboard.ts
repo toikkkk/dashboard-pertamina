@@ -64,7 +64,10 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   //    bukan tanggal dokumen), dan
   //  - "Revised" yang hanya memindahkan sub-kategori (bukan perubahan isi).
   const isRealUpdate = (h: HistoryItem): boolean => {
-    if (h.action === "Created") return !(h.notes ?? "").startsWith("Ditautkan dari arsip registry");
+    if (h.action === "Created") {
+      const n = h.notes ?? "";
+      return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi: tanggal asli dokumen");
+    }
     if (h.action === "Extended Validity") return true;
     if (h.action === "Revised") return !(h.diff && h.diff.length > 0 && h.diff.every((x) => x.field === "Sub-kategori"));
     return false;
