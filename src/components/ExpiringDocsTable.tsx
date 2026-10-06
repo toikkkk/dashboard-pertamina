@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
-import { CheckCircle2, Upload as UploadIcon, RefreshCw, FileText, FileSpreadsheet, FileType, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { CheckCircle2, Upload as UploadIcon, RefreshCw, FileText, FileSpreadsheet, FileType, ArrowUp, ArrowDown, ArrowUpDown, Eye } from "lucide-react";
+import DocumentPreviewModal from "@/components/DocumentPreviewModal";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import StatusTag from "@/components/StatusTag";
 import { isDocOverdue, type DocumentItem } from "@/lib/mockData";
@@ -199,6 +200,7 @@ export default function ExpiringDocsTable() {
   const [revisionError, setRevisionError] = useState<string | null>(null);
   const [revising, setRevising] = useState(false);
   const [view, setView] = useState<"mine" | "other">("mine");
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "expiryDate", dir: 1 });
 
   const expiringDocs = allDocuments.filter(isDocOverdue);
@@ -310,6 +312,14 @@ export default function ExpiringDocsTable() {
         </div>
       )}
 
+      {previewDoc && (
+        <DocumentPreviewModal
+          document={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          onDownload={() => flashSuccess(`Mengunduh berkas v${previewDoc.currentVersion} (${previewDoc.fileName ?? "berkas"}) — simulasi.`)}
+        />
+      )}
+
       {hasOwnLocation && (
         <div className="flex gap-1 p-2 border-b border-[#f0f0f1] bg-[#fafafb]">
           {([
@@ -382,6 +392,13 @@ export default function ExpiringDocsTable() {
               <div className="text-[12px] text-[#6b6e72] mb-2.5">
                 {doc.location} · Expired {fmtDate(doc.expiryDate)}
               </div>
+              <button
+                onClick={() => setPreviewDoc(doc)}
+                className="w-full justify-center mb-2 text-[11.5px] font-bold px-2.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
+              >
+                <Eye className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
+                Lihat
+              </button>
               {canWrite(doc) ? (
                 <div className="flex gap-2">
                   <button
@@ -481,26 +498,35 @@ export default function ExpiringDocsTable() {
                     <StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" />
                   </td>
                   <td className="px-3.5 py-3">
-                    {canWrite(doc) ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleExtend(doc.id)}
-                          className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
-                        >
-                          <RefreshCw className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
-                          Perpanjang Validitas
-                        </button>
-                        <button
-                          onClick={() => openRevise(doc.id, suggestedVersion)}
-                          className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
-                        >
-                          <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
-                          Revisi File
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[11.5px] text-[#9a9da0] italic">Lokasi lain · lihat saja</span>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
+                      >
+                        <Eye className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
+                        Lihat
+                      </button>
+                      {canWrite(doc) ? (
+                        <>
+                          <button
+                            onClick={() => handleExtend(doc.id)}
+                            className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
+                          >
+                            <RefreshCw className="w-3 h-3 text-[#3a3d40]" strokeWidth={1.8} />
+                            Perpanjang Validitas
+                          </button>
+                          <button
+                            onClick={() => openRevise(doc.id, suggestedVersion)}
+                            className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
+                          >
+                            <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
+                            Revisi File
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[11.5px] text-[#9a9da0] italic">Lokasi lain · lihat saja</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
 
