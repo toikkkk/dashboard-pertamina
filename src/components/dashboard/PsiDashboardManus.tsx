@@ -42,7 +42,7 @@ const fmtDate = (iso: string) => {
 function MetricGrid({ insights }: { insights: Insights }) {
   const pct = (n: number) => (insights.total > 0 ? Math.round((n / insights.total) * 100) : 0);
   const metrics: { label: string; value: number; percentage: number; severity: Severity; note: string; href: string }[] = [
-    { label: "Approved", value: insights.approved, percentage: pct(insights.approved), severity: "baik", note: "masih berlaku", href: "/directory?status=Approved" },
+    { label: "Approved", value: insights.approved, percentage: pct(insights.approved), severity: "baik", note: "masih berlaku", href: "/directory" },
     { label: "Kedaluwarsa", value: insights.overdue.length, percentage: pct(insights.overdue.length), severity: "kritis", note: "melewati 5 tahun", href: "/dilemma" },
     { label: "Berakhir ≤ 90 hari", value: insights.expiring.length, percentage: pct(insights.expiring.length), severity: "peringatan", note: "perlu dijadwalkan", href: "#segera-kedaluwarsa" },
     { label: "Belum diperbarui > 12 bln", value: insights.stale.length, percentage: pct(insights.stale.length), severity: "revisi", note: "perlu ditinjau", href: "#belum-diperbarui" },
@@ -242,13 +242,13 @@ function ComplianceTable({
 
   // Kolom Approved/Target/Kepatuhan bisa diurutkan — klik judul kolom untuk
   // mengurutkan, klik lagi untuk membalik arah. Default sama seperti sebelumnya:
-  // kepatuhan menaik (paling butuh perhatian dulu). "Kekurangan" (gap) dihapus
+  // terpenuhi terbanyak dulu (diminta 2026-10-07). "Kekurangan" (gap) dihapus
   // 2026-09-29 — dihitung dari `target`, yang cuma diisi untuk 5 dari 29 lokasi
   // (lihat location_targets); tanpa maksimal dokumen yang jelas untuk 24 lokasi
   // lainnya, angka kekurangannya tidak bermakna/menyesatkan.
   type SortCol = "approved" | "target" | "pct";
-  const [sortCol, setSortCol] = useState<SortCol>("pct");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortCol, setSortCol] = useState<SortCol>("approved");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
