@@ -16,7 +16,7 @@ const SORT_LABELS: Record<SortKey, string> = {
   title: "Judul",
   fileType: "Tipe Berkas",
   location: "Lokasi",
-  expiryDate: "Expired",
+  expiryDate: "Kedaluwarsa",
 };
 
 const fileExt = (name?: string) => (name?.split(".").pop() ?? "").toLowerCase();
@@ -390,7 +390,7 @@ export default function ExpiringDocsTable() {
               </div>
               <div className="mb-1"><UpdateTypeBadge history={doc.history} /></div>
               <div className="text-[12px] text-[#6b6e72] mb-2.5">
-                {doc.location} · Expired {fmtDate(doc.expiryDate)}
+                {doc.location} · Terbit {fmtDate(doc.issueDate)} · Kedaluwarsa {fmtDate(doc.expiryDate)}
               </div>
               <button
                 onClick={() => setPreviewDoc(doc)}
@@ -493,7 +493,10 @@ export default function ExpiringDocsTable() {
                   </td>
                   <td className="px-3.5 py-3"><FileTypeBadge fileName={doc.fileName} /></td>
                   <td className="px-3.5 py-3">{doc.location}</td>
-                  <td className="px-3.5 py-3">{fmtDate(doc.expiryDate)}</td>
+                  <td className="px-3.5 py-3">
+                    {fmtDate(doc.expiryDate)}
+                    <div className="text-[10.5px] text-[#9a9da0] mt-0.5">Terbit {fmtDate(doc.issueDate)}</div>
+                  </td>
                   <td className="px-3.5 py-3">
                     <StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" />
                   </td>
