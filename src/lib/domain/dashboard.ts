@@ -66,7 +66,7 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   const isRealUpdate = (h: HistoryItem): boolean => {
     if (h.action === "Created") {
       const n = h.notes ?? "";
-      return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi: tanggal asli dokumen");
+      return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi:");
     }
     if (h.action === "Extended Validity") return true;
     if (h.action === "Revised") return !(h.diff && h.diff.length > 0 && h.diff.every((x) => x.field === "Sub-kategori"));
