@@ -51,11 +51,18 @@ export interface CategorySummaryItem {
 
 // Ringkasan lintas-lokasi — dipakai tab "Per jenis PSI" di kartu Kepatuhan Dokumen
 // dashboard (lihat api/document-categories/summary/route.ts untuk arti target/approved).
+export interface LocationSummaryItem {
+  location: string;
+  approved: number;
+  target: number;
+  pct: number;
+}
+
 export function useDocumentCategorySummary(enabled: boolean) {
-  const { data, error, isLoading } = useSWR<{ categories: CategorySummaryItem[] }>(
+  const { data, error, isLoading } = useSWR<{ categories: CategorySummaryItem[]; locations: LocationSummaryItem[] }>(
     enabled ? "/api/document-categories/summary" : null,
     (u: string) => fetchJson(u),
     { shouldRetryOnError: false }
   );
-  return { categories: data?.categories ?? [], error, isLoading };
+  return { categories: data?.categories ?? [], locations: data?.locations ?? [], error, isLoading };
 }

@@ -58,13 +58,22 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
     .filter((x) => x.daysLeft <= EXPIRING_WITHIN_DAYS)
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
-  // Pembaruan terakhir = entri riwayat berupa perubahan isi (dibuat/direvisi/diperpanjang),
-  // atau tanggal terbit bila riwayat kosong. TKO PSI meminta evaluasi tiap tahun.
-  const contentActions: HistoryItem["action"][] = ["Created", "Extended Validity", "Revised"];
+  // Pembaruan nyata = tindakan pengguna yang mengubah/menjaga isi dokumen: dokumen baru
+  // diunggah, direvisi (isi/berkas), atau validitas diperpanjang. TIDAK dihitung:
+  //  - entri "Created" hasil tautan arsip registry (migrasi; waktunya = saat diimpor,
+  //    bukan tanggal dokumen), dan
+  //  - "Revised" yang hanya memindahkan sub-kategori (bukan perubahan isi).
+  const isRealUpdate = (h: HistoryItem): boolean => {
+    if (h.action === "Created") return !(h.notes ?? "").startsWith("Ditautkan dari arsip registry");
+    if (h.action === "Extended Validity") return true;
+    if (h.action === "Revised") return !(h.diff && h.diff.length > 0 && h.diff.every((x) => x.field === "Sub-kategori"));
+    return false;
+  };
+  // Pembaruan terakhir = yang paling baru antara tanggal terbit dokumen dan pembaruan
+  // nyata di atas. TKO PSI meminta evaluasi tiap tahun.
   const lastUpdateOf = (d: DocumentItem): number => {
-    const times = d.history.filter((h) => contentActions.includes(h.action)).map((h) => parseTs(h.timestamp));
-    const t = times.length > 0 ? Math.max(...times) : parseTs(d.issueDate);
-    return t;
+    const times = d.history.filter(isRealUpdate).map((h) => parseTs(h.timestamp));
+    return Math.max(parseTs(d.issueDate), ...times);
   };
   const stale = live
     .map((doc) => ({ doc, lastUpdate: lastUpdateOf(doc) }))
@@ -80,7 +89,7 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   const recent: PsiRecentUpdate[] = docs
     .flatMap((doc) =>
       doc.history
-        .filter((h) => contentActions.includes(h.action))
+        .filter(isRealUpdate)
         .map((entry) => ({ doc, entry, type: getLastUpdateType([entry]), at: parseTs(entry.timestamp) }))
     )
     .filter((x) => x.at > 0)

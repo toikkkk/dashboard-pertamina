@@ -32,13 +32,21 @@ export async function GET() {
       if (!current || d.issueDate > current.issueDate) latestByCategory.set(d.categoryId, { issueDate: d.issueDate });
     }
 
+    // Sub-kategori buatan sendiri (isCustom: "Other", dst.) bukan persyaratan baku, jadi
+    // tidak masuk hitungan kepatuhan — hanya 33 sub-kategori PSI First Column.
     const byName = new Map<string, { approved: number; target: number }>();
+    const byLocation = new Map<string, { approved: number; target: number }>();
     for (const c of cats) {
+      if (c.isCustom) continue;
       const status = categoryDocStatus(c, latestByCategory.get(c.id) ?? null);
       const bucket = byName.get(c.name) ?? { approved: 0, target: 0 };
       bucket.target += 1;
       if (status === "ok") bucket.approved += 1;
       byName.set(c.name, bucket);
+      const lb = byLocation.get(c.location) ?? { approved: 0, target: 0 };
+      lb.target += 1;
+      if (status === "ok") lb.approved += 1;
+      byLocation.set(c.location, lb);
     }
 
     const items = Array.from(byName.entries()).map(([name, v]) => ({
@@ -48,6 +56,13 @@ export async function GET() {
       pct: v.target > 0 ? Math.min(100, Math.round((v.approved / v.target) * 100)) : 0,
     }));
 
-    return NextResponse.json({ categories: items });
+    const locations = Array.from(byLocation.entries()).map(([location, v]) => ({
+      location,
+      approved: v.approved,
+      target: v.target,
+      pct: v.target > 0 ? Math.min(100, Math.round((v.approved / v.target) * 100)) : 0,
+    }));
+
+    return NextResponse.json({ categories: items, locations });
   });
 }

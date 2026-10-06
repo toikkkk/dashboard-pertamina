@@ -278,7 +278,7 @@ function ComplianceTable({
   // kategori itu, approved = jumlah lokasi yang kategorinya ✅ (lihat
   // api/document-categories/summary). Bisa 33 baris — sama seperti "Per lokasi",
   // cuma tampilkan yang paling butuh perhatian dulu, sisanya di balik "Tampilkan semua".
-  const { categories: categorySummary } = useDocumentCategorySummary(detail === "type");
+  const { categories: categorySummary, locations: locationSummary } = useDocumentCategorySummary(true);
   const [showAllTypes, setShowAllTypes] = useState(false);
   const byTypeAll = bySort(
     categorySummary.map((c) => ({ label: c.name, sublabel: "Sub-kategori PSI", approved: c.approved, target: c.target, pct: c.pct }))
@@ -286,8 +286,12 @@ function ComplianceTable({
   const byType = showAllTypes ? byTypeAll : byTypeAll.slice(0, 8);
 
   const byLocation = locations.map((loc) => {
-    const approved = documents.filter((d) => d.location === loc.locationName && d.status === "Approved").length;
-    const target = Object.values(loc.targets).reduce((s, t) => s + t, 0);
+    // Dasar kepatuhan = sub-kategori PSI baku yang punya dokumen berlaku di lokasi itu
+    // (sama persis dengan grid Direktori), bukan target manual lama yang hanya terisi
+    // untuk 5 lokasi.
+    const sum = locationSummary.find((l) => l.location === loc.locationName);
+    const approved = sum?.approved ?? 0;
+    const target = sum?.target ?? 0;
     const pct = target > 0 ? Math.min(100, Math.round((approved / target) * 100)) : 0;
     return { label: loc.locationName, sublabel: "Lokasi", approved, target, pct, locationType: loc.locationType };
   });
@@ -334,19 +338,19 @@ function ComplianceTable({
       <div className="compliance-summary">
         <div><span>Kepatuhan keseluruhan</span><strong>{overallPct}<small>%</small></strong></div>
         <div className="summary-divider" />
-        <div><span>Approved / Target</span><strong className="mono-summary">{totals.approved} <small>/ {totals.target}</small></strong></div>
+        <div><span>Sub-kategori terpenuhi</span><strong className="mono-summary">{totals.approved} <small>/ {totals.target}</small></strong></div>
       </div>
       <div className="compliance-table-wrap">
         <table>
           <thead>
             <tr>
               <th>{detail === "location" ? "Lokasi" : "Jenis PSI"}</th>
-              <SortHeader col="approved" label="Approved" />
+              <SortHeader col="approved" label="Terpenuhi" />
               {/* Target dihilangkan di "Per Jenis PSI" — di sana angkanya cuma
                   jumlah lokasi yang punya kategori itu (bukan target dari client
                   seperti di "Per Lokasi"), jadi hampir selalu 29 dan tidak
                   informatif. */}
-              {detail === "location" && <SortHeader col="target" label="Target" />}
+              {detail === "location" && <SortHeader col="target" label="Sub-kategori" />}
               <SortHeader col="pct" label="Kepatuhan" />
             </tr>
           </thead>
