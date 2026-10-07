@@ -70,3 +70,16 @@ export function useDocumentCategorySummary(enabled: boolean) {
   );
   return { categories: data?.categories ?? [], locations: data?.locations ?? [], error, isLoading };
 }
+
+// Ringkasan Direktori lintas lokasi (kartu lokasi, matriks, chip "Belum ada dokumen").
+export interface DirectoryOverview {
+  total: number;
+  locations: { name: string; type: string; docCount: number; filled: number; ok: number }[];
+  items: { name: string; chapter: string; no: number }[];
+  cells: Record<string, Record<string, { id: string; n: number; s: CategoryDocStatus }>>;
+}
+
+export function useDirectoryOverview() {
+  const { data, error, isLoading } = useSWR<DirectoryOverview>("/api/directory/overview", (u: string) => fetchJson(u), { shouldRetryOnError: false });
+  return { overview: data ?? null, error, isLoading };
+}
