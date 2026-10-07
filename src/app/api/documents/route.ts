@@ -43,6 +43,9 @@ const bodySchema = z.object({
   // Sub-kategori grid Direktori (2026-09-28) — opsional untuk kompatibilitas mundur
   // (halaman /upload lama belum kirim ini).
   categoryId: z.string().uuid().optional(),
+  // Tanggal terbit asli dokumen (YYYY-MM-DD), mis. dibaca dari isi berkas saat unggah.
+  // Kosong = hari ini (perilaku lama). Tidak boleh di masa depan.
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -68,7 +71,11 @@ export async function POST(req: NextRequest) {
     }
 
     const initialStatus = body.isCircular ? "In Routing" : "Approved";
-    const issueDate = new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+    const issueDate = body.issueDate ?? today;
+    if (issueDate > today || issueDate < "2000-01-01") {
+      return NextResponse.json({ error: "Tanggal terbit tidak valid (tidak boleh di masa depan)." }, { status: 400 });
+    }
 
     const [doc] = await db
       .insert(documents)

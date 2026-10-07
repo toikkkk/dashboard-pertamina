@@ -24,6 +24,8 @@ type NewDocumentInput = Omit<DocumentItem, "id" | "history" | "currentVersion" |
   // Sub-kategori grid Direktori (2026-09-28, lihat useDocumentCategories.ts) — opsional,
   // dipakai saat dokumen diunggah dari dalam satu ubin kategori.
   categoryId?: string;
+  // Tanggal terbit asli (YYYY-MM-DD); kosong = hari ini. Lihat POST /api/documents.
+  issueDate?: string;
 };
 
 interface PsiContextType {

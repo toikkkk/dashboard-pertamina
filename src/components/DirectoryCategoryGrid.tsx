@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories, createDocumentCategory, type CategoryTile } from "@/lib/useDocumentCategories";
@@ -8,6 +8,8 @@ import { CATEGORY_STATUS_META } from "@/lib/domain/documentCategories";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import { uploadFileToR2 } from "@/lib/uploadFile";
+import { readDateSuggestion } from "@/lib/readFileDate";
+import { titleFromFilename } from "@/lib/domain/dateFromText";
 import { PSIType } from "@/lib/mockData";
 import { Plus, Upload as UploadIcon, X, FileText, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
 
@@ -48,7 +50,8 @@ const STATUS_COLOR: Record<CategoryTile["status"], string> = {
 // 3px berwarna status — bahasa visual yang sama dengan log riwayat dokumen —
 // dipakai untuk dipindai sekilas, sementara teks label tetap netral (tinta biasa,
 // bukan warna status) sesuai aturan desain "Presisi Korporat" di app ini.
-function CategoryTileCard({ tile, onClick }: { tile: CategoryTile; onClick: () => void }) {
+function CategoryTileCard({ tile, onClick, onFiles }: { tile: CategoryTile; onClick: () => void; onFiles?: (files: File[]) => void }) {
+  const [over, setOver] = useState(false);
   const meta = CATEGORY_STATUS_META[tile.status];
   const Icon = STATUS_ICON[tile.status];
   const color = STATUS_COLOR[tile.status];
@@ -56,7 +59,10 @@ function CategoryTileCard({ tile, onClick }: { tile: CategoryTile; onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className="relative overflow-hidden text-left p-3.5 pl-[18px] rounded-[14px] border border-[#D8E1E4] bg-white hover:border-[#0F3B59] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,59,89,.08)] transition-all duration-200 flex flex-col gap-2 min-h-[92px]"
+      onDragOver={onFiles ? (e) => { e.preventDefault(); setOver(true); } : undefined}
+      onDragLeave={onFiles ? () => setOver(false) : undefined}
+      onDrop={onFiles ? (e) => { e.preventDefault(); setOver(false); const dropped = Array.from(e.dataTransfer.files); if (dropped.length) onFiles(dropped); } : undefined}
+      className={`relative overflow-hidden text-left p-3.5 pl-[18px] rounded-[14px] border ${over ? "border-[#0F3B59] bg-[#E2E8EB]" : "border-[#D8E1E4] bg-white"} hover:border-[#0F3B59] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,59,89,.08)] transition-all duration-200 flex flex-col gap-2 min-h-[92px]`}
     >
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} aria-hidden />
       <div className="flex items-start justify-between gap-2">
@@ -140,66 +146,147 @@ function AddCategoryTile({ location, onCreated }: { location: string; onCreated:
   );
 }
 
-// Formulir unggah singkat untuk satu ubin kategori kosong — dibuka sebagai panel,
-// bukan modal terpisah, supaya jelas dokumen ini akan masuk ke kategori yang mana.
-function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { location: string; category: CategoryTile; onClose: () => void; onUploaded: () => void }) {
+// Unggah banyak berkas sekaligus ke satu sub-dokumen. Judul diisi dari nama berkas, tanggal
+// terbit dibaca otomatis dari isi dokumen (PDF/Excel) atau nama berkas — hanya SARAN: user
+// wajib memeriksa/mengoreksi, dan berkas yang tanggalnya tak terbaca dibiarkan kosong
+// (tidak ditebak dari tanggal salin berkas).
+interface UploadRow {
+  key: string;
+  file: File;
+  title: string;
+  date: string;
+  hint: string | null;
+  reading: boolean;
+  status: "idle" | "saving" | "done" | "error";
+  error: string | null;
+}
+
+let rowSeq = 0;
+
+function defaultPsiType(category: CategoryTile): PSIType {
+  return category.chapter === "A" ? "Informasi Bahan Berbahaya" : "Informasi Teknologi Proses";
+}
+
+function UploadIntoCategoryPanel({
+  location,
+  category,
+  initialFiles,
+  onClose,
+  onUploaded,
+}: {
+  location: string;
+  category: CategoryTile;
+  initialFiles: File[];
+  onClose: () => void;
+  onUploaded: () => void;
+}) {
   const { addNewDocument } = usePsi();
-  const [title, setTitle] = useState(category.name);
-  const [psiType, setPsiType] = useState<PSIType>("Informasi Teknologi Proses");
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const todayIso = new Date().toISOString().split("T")[0];
+  const [psiType, setPsiType] = useState<PSIType>(defaultPsiType(category));
+  const [rows, setRows] = useState<UploadRow[]>([]);
   const [busy, setBusy] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const seeded = useRef(false);
+
+  const patch = (key: string, p: Partial<UploadRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...p } : r)));
+
+  const addFiles = useCallback((files: File[]) => {
+    const fresh: UploadRow[] = files.map((file) => ({
+      key: `r${++rowSeq}`,
+      file,
+      title: titleFromFilename(file.name) || file.name,
+      date: "",
+      hint: null,
+      reading: true,
+      status: "idle",
+      error: null,
+    }));
+    setRows((prev) => [...prev, ...fresh]);
+    fresh.forEach(async (r) => {
+      const s = await readDateSuggestion(r.file).catch(() => null);
+      setRows((prev) =>
+        prev.map((x) =>
+          x.key !== r.key
+            ? x
+            : {
+                ...x,
+                reading: false,
+                date: s && !x.date ? s.date : x.date,
+                hint: s ? `${s.confidence === "pasti" ? "" : "Perkiraan — periksa. "}${s.source}` : "Tanggal tidak terbaca otomatis — isi manual.",
+              }
+        )
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    if (seeded.current) return;
+    seeded.current = true;
+    if (initialFiles.length) addFiles(initialFiles);
+  }, [initialFiles, addFiles]);
 
   const submit = async () => {
-    if (!title.trim()) return setError("Judul dokumen wajib diisi.");
-    if (!file) return setError("Berkas wajib diunggah.");
+    const todo = rows.filter((r) => r.status !== "done");
+    if (todo.length === 0) return;
+    if (todo.some((r) => r.reading)) return setError("Tunggu sebentar, tanggal masih dibaca dari berkas.");
+    const bad = todo.find((r) => !r.title.trim() || !r.date || r.date > todayIso);
+    if (bad) {
+      patch(bad.key, { error: !bad.title.trim() ? "Judul wajib diisi." : !bad.date ? "Isi tanggal terbit." : "Tanggal terbit tidak boleh di masa depan." });
+      return setError("Lengkapi judul dan tanggal terbit semua berkas.");
+    }
     setError(null);
     setBusy(true);
-    try {
-      const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
-      const todayIso = new Date().toISOString().split("T")[0];
-      const documentNumber = `PSI-${locationCode}-${todayIso.slice(0, 4)}-${String(Date.now()).slice(-4)}`;
-      // Kedaluwarsa dihitung dari siklus tinjau kategori ini (5 tahun standar, 2
-      // tahun untuk OSCP) — bukan angka tetap seperti formulir unggah lama.
-      const expiry = new Date(`${todayIso}T00:00:00`);
-      expiry.setMonth(expiry.getMonth() + category.reviewCycleMonths);
-      const fileId = await uploadFileToR2(file);
-      await addNewDocument({
-        documentNumber,
-        title: title.trim(),
-        psiType,
-        location,
-        lifecyclePhase: "Operasi",
-        isCircular: false,
-        routes: [],
-        fileId,
-        expiryDate: expiry.toISOString().split("T")[0],
-        categoryId: category.id,
-      });
-      onUploaded();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menyimpan dokumen.");
-    } finally {
-      setBusy(false);
+    const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
+    let okCount = 0;
+    for (let i = 0; i < todo.length; i++) {
+      const r = todo[i];
+      patch(r.key, { status: "saving", error: null });
+      try {
+        // Kedaluwarsa = tanggal terbit + siklus tinjau sub-dokumen ini (5 tahun; OSCP 2 tahun).
+        const expiry = new Date(`${r.date}T00:00:00`);
+        expiry.setMonth(expiry.getMonth() + category.reviewCycleMonths);
+        const expiryIso = `${expiry.getFullYear()}-${String(expiry.getMonth() + 1).padStart(2, "0")}-${String(expiry.getDate()).padStart(2, "0")}`;
+        const fileId = await uploadFileToR2(r.file);
+        await addNewDocument({
+          documentNumber: `PSI-${locationCode}-${todayIso.slice(0, 4)}-${String(Date.now() + i).slice(-5)}`,
+          title: r.title.trim(),
+          psiType,
+          location,
+          lifecyclePhase: "Operasi",
+          isCircular: false,
+          routes: [],
+          fileId,
+          expiryDate: expiryIso,
+          issueDate: r.date,
+          categoryId: category.id,
+        });
+        patch(r.key, { status: "done" });
+        okCount += 1;
+      } catch (err) {
+        patch(r.key, { status: "error", error: err instanceof Error ? err.message : "Gagal menyimpan dokumen." });
+      }
     }
+    setBusy(false);
+    if (okCount === todo.length) onUploaded();
+    else setError(`${okCount} dari ${todo.length} berkas tersimpan. Perbaiki yang gagal lalu simpan lagi.`);
   };
 
+  const pending = rows.filter((r) => r.status !== "done").length;
+  const doneCount = rows.length - pending;
+
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[#0F172A]/40 px-4 animate-backdropIn" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-[420px] rounded-[14px] bg-white p-6 shadow-[0_24px_60px_-12px_rgba(15,23,42,.35)] animate-modalPop">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">{category.name}</div>
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[#0F172A]/40 px-4 animate-backdropIn" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) { if (doneCount > 0) onUploaded(); else onClose(); } }}>
+      <div className="w-full max-w-[640px] max-h-[88vh] flex flex-col rounded-[14px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,.35)] animate-modalPop">
+        <div className="flex items-start justify-between gap-3 p-6 pb-4">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1 truncate">{category.name}</div>
             <h2 className="font-heading text-[17px] font-bold text-[#0F172A] leading-snug">Tambahkan Dokumen</h2>
           </div>
-          <button onClick={onClose} aria-label="Tutup" className="text-[#9a9da0] hover:text-[#0F172A]"><X className="w-4 h-4" /></button>
+          <button onClick={() => (doneCount > 0 ? onUploaded() : onClose())} disabled={busy} aria-label="Tutup" className="text-[#9a9da0] hover:text-[#0F172A] disabled:opacity-40"><X className="w-4 h-4" /></button>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div>
-            <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Judul Dokumen</div>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59]" />
-          </div>
+        <div className="px-6 overflow-y-auto flex flex-col gap-3 min-h-0">
           <div>
             <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Tipe PSI</div>
             <div role="radiogroup" aria-label="Tipe PSI" className="grid grid-cols-2 gap-1.5">
@@ -211,6 +298,7 @@ function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { 
                     type="button"
                     role="radio"
                     aria-checked={sel}
+                    disabled={busy}
                     onClick={() => setPsiType(t)}
                     className={`min-h-[40px] px-3 py-1.5 text-[12.5px] text-left rounded-[8px] border transition-colors duration-200 ${
                       sel ? "border-[#0F3B59] bg-[#E2E8EB] font-bold text-[#0B2C43]" : "border-[#C5CED3] bg-[#F5F7F9] text-[#0F172A] hover:border-[#9a9da0]"
@@ -222,17 +310,66 @@ function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { 
               })}
             </div>
           </div>
-          <div>
-            <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Berkas</div>
-            <label className="flex items-center gap-2 min-h-[40px] px-3 text-[13px] border border-dashed border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] cursor-pointer hover:border-[#0F3B59]">
-              <UploadIcon className="w-4 h-4 text-[#6b7780] flex-shrink-0" strokeWidth={1.8} />
-              <span className="truncate text-[#0F172A]">{file ? file.name : "Pilih berkas..."}</span>
-              <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            </label>
-          </div>
+
+          <label
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); if (!busy) addFiles(Array.from(e.dataTransfer.files)); }}
+            className={`flex items-center justify-center gap-2 min-h-[56px] px-3 text-[13px] border border-dashed rounded-[8px] cursor-pointer transition-colors duration-150 ${
+              dragOver ? "border-[#0F3B59] bg-[#E2E8EB]" : "border-[#C5CED3] bg-[#F5F7F9] hover:border-[#0F3B59]"
+            }`}
+          >
+            <UploadIcon className="w-4 h-4 text-[#6b7780] flex-shrink-0" strokeWidth={1.8} />
+            <span className="text-[#0F172A]">{rows.length === 0 ? "Seret berkas ke sini, atau klik untuk memilih" : "Tambah berkas lain"}</span>
+            <input type="file" multiple className="hidden" disabled={busy} onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+          </label>
+
+          {rows.length > 0 && (
+            <div className="border border-[#D8E1E4] rounded-[8px] divide-y divide-[#EEF2F4]">
+              {rows.map((r) => (
+                <div key={r.key} className="p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-[#9a9da0] flex-shrink-0" strokeWidth={1.8} />
+                    <span className="text-[11.5px] font-mono text-[#6b6e72] truncate flex-1">{r.file.name}</span>
+                    {r.status === "done" && <CheckCircle2 className="w-4 h-4 text-[#15803D] flex-shrink-0" strokeWidth={2.2} aria-label="Tersimpan" />}
+                    {r.status === "saving" && <span className="text-[11px] text-[#6b6e72] flex-shrink-0">Menyimpan…</span>}
+                    {r.status !== "done" && !busy && (
+                      <button type="button" aria-label={`Hapus ${r.file.name}`} onClick={() => setRows((prev) => prev.filter((x) => x.key !== r.key))} className="text-[#9a9da0] hover:text-[#DC2626] flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] gap-2">
+                    <input
+                      value={r.title}
+                      disabled={busy || r.status === "done"}
+                      onChange={(e) => patch(r.key, { title: e.target.value, error: null })}
+                      aria-label="Judul dokumen"
+                      className="min-h-[38px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59] disabled:opacity-60 min-w-0"
+                    />
+                    <input
+                      type="date"
+                      value={r.date}
+                      max={todayIso}
+                      disabled={busy || r.status === "done"}
+                      onChange={(e) => patch(r.key, { date: e.target.value, error: null })}
+                      aria-label="Tanggal terbit"
+                      className="min-h-[38px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59] disabled:opacity-60 min-w-0"
+                    />
+                  </div>
+                  {r.error ? (
+                    <p role="alert" className="text-[11px] font-semibold text-[#DC2626]">{r.error}</p>
+                  ) : (
+                    <p className="text-[11px] text-[#9a9da0]">{r.reading ? "Membaca tanggal dari berkas…" : r.hint}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {error && <p role="alert" className="text-[11.5px] font-semibold text-[#DC2626]">{error}</p>}
-          <button onClick={submit} disabled={busy} className="mt-1 w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[13.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 disabled:opacity-60">
-            {busy ? "Menyimpan…" : "Simpan Dokumen"}
+        </div>
+
+        <div className="p-6 pt-4">
+          <button onClick={submit} disabled={busy || pending === 0} className="w-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-heading font-bold text-[13.5px] py-2.5 rounded-[8px] active:scale-[0.98] transition-all duration-200 disabled:opacity-60">
+            {busy ? "Menyimpan…" : pending > 1 ? `Simpan ${pending} Dokumen` : "Simpan Dokumen"}
           </button>
         </div>
       </div>
@@ -240,13 +377,20 @@ function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { 
   );
 }
 
+
 // Isi satu sub-dokumen (halaman, bukan popup): daftar dokumen di dalamnya + tombol
 // tambah. Navigasi naik lewat breadcrumb di atas.
-function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; canWrite: boolean; onAdd: () => void }) {
+function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; canWrite: boolean; onAdd: (files?: File[]) => void }) {
   const router = useRouter();
+  const [over, setOver] = useState(false);
   const chapter = PSI_CHAPTERS.find((c) => c.key === category.chapter);
   return (
-    <div>
+    <div
+      onDragOver={canWrite ? (e) => { e.preventDefault(); setOver(true); } : undefined}
+      onDragLeave={canWrite ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); } : undefined}
+      onDrop={canWrite ? (e) => { e.preventDefault(); setOver(false); const dropped = Array.from(e.dataTransfer.files); if (dropped.length) onAdd(dropped); } : undefined}
+      className={`rounded-[14px] transition-colors duration-150 ${over ? "outline-2 outline-dashed outline-[#0F3B59] outline-offset-4 bg-[#E2E8EB]/50" : ""}`}
+    >
       <div className="mb-4">
         {chapter && (
           <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">
@@ -287,7 +431,7 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
       {canWrite && (
         <button
           type="button"
-          onClick={onAdd}
+          onClick={() => onAdd()}
           className="mt-3 text-[12.5px] font-bold px-3.5 py-2.5 rounded-[8px] border border-dashed border-[#C5CED3] text-[#6b6e72] hover:border-[#0F3B59] hover:text-[#0F3B59] transition-all duration-200"
         >
           + Tambahkan dokumen di sub-dokumen ini
@@ -326,6 +470,11 @@ export default function DirectoryCategoryGrid({
 }) {
   const { categories, isLoading, mutate } = useDocumentCategories(location);
   const [openTile, setOpenTile] = useState<CategoryTile | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const openUpload = (tile: CategoryTile, files: File[] = []) => {
+    setPendingFiles(files);
+    setOpenTile(tile);
+  };
 
   if (isLoading) {
     return <div className="py-14 text-center text-[13px] text-[#9a9da0]">Memuat sub-dokumen...</div>;
@@ -346,8 +495,10 @@ export default function DirectoryCategoryGrid({
 
   const upload = openTile && (
     <UploadIntoCategoryPanel
+      key={openTile.id}
       location={location}
       category={openTile}
+      initialFiles={pendingFiles}
       onClose={() => setOpenTile(null)}
       onUploaded={() => {
         setOpenTile(null);
@@ -360,7 +511,7 @@ export default function DirectoryCategoryGrid({
     return (
       <>
         <Breadcrumb crumbs={crumbs} />
-        <CategoryView category={selected} canWrite={canWrite} onAdd={() => setOpenTile(selected)} />
+        <CategoryView category={selected} canWrite={canWrite} onAdd={(files) => openUpload(selected, files)} />
         {upload}
       </>
     );
@@ -380,7 +531,7 @@ export default function DirectoryCategoryGrid({
             <ChapterHeading label={ch.label} title={ch.title} count={items.filter((c) => c.documents.length > 0).length} total={items.length} />
             <div className={grid}>
               {items.map((c) => (
-                <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} />
+                <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} onFiles={canWrite ? (files) => openUpload(c, files) : undefined} />
               ))}
             </div>
           </section>
@@ -391,7 +542,7 @@ export default function DirectoryCategoryGrid({
           <ChapterHeading label="Di luar daftar PSI" title="Dokumen Lainnya" />
           <div className={grid}>
             {others.map((c) => (
-              <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} />
+              <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} onFiles={canWrite ? (files) => openUpload(c, files) : undefined} />
             ))}
             {canWrite && <AddCategoryTile location={location} onCreated={() => mutate()} />}
           </div>
