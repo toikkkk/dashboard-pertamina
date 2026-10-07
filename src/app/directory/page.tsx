@@ -31,7 +31,9 @@ function DirectoryContent() {
   const [query, setQuery] = useState("");
   const canPeekOtherLocations = !activeUser.isRegionalAdmin && !!activeUser.location;
   const selectedLocation = searchParams.get("location");
-  const canBrowseMultipleLocations = activeUser.isRegionalAdmin || (canPeekOtherLocations && scopeAll);
+  // Membuka lokasi lain lewat URL/matriks otomatis berarti mode "lihat semua lokasi" (hanya-lihat).
+  const viewingOther = !!selectedLocation && selectedLocation !== activeUser.location;
+  const canBrowseMultipleLocations = activeUser.isRegionalAdmin || (canPeekOtherLocations && (scopeAll || viewingOther));
   const aksiParam = searchParams.get("aksi");
   const aksi = (ACTIONS as string[]).includes(aksiParam ?? "") ? (aksiParam as ActionKind) : null;
   const tab = searchParams.get("v") === "matriks" ? "matriks" : "lokasi";
@@ -52,7 +54,10 @@ function DirectoryContent() {
 
   // Lokasi efektif: dari URL kalau admin/scopeAll (boleh pilih bebas), selalu lokasi
   // sendiri kalau non-admin dan scopeAll mati (grid satu kartu tidak berguna).
-  const gridLocation = canBrowseMultipleLocations ? selectedLocation : activeUser.location;
+  // Tab Matriks (semua lokasi, hanya-lihat) tersedia untuk semua user; non-admin tanpa lokasi
+  // terpilih yang membuka Matriks tidak dipaksa masuk ke grid lokasinya sendiri.
+  const matrixView = tab === "matriks" && !selectedLocation && !searchParams.get("category");
+  const gridLocation = canBrowseMultipleLocations ? selectedLocation : matrixView ? null : activeUser.location;
 
   const counts = useMemo(() => {
     const ins = psiInsights(sourceDocs, Date.now());
@@ -74,7 +79,7 @@ function DirectoryContent() {
 
   const scopeSwitcher = canPeekOtherLocations && (
     <select
-      value={scopeAll ? "ALL" : "OWN"}
+      value={canBrowseMultipleLocations ? "ALL" : "OWN"}
       onChange={(e) => { setScopeAll(e.target.value === "ALL"); setParam({ location: null, category: null, aksi: null }); }}
       aria-label="Cakupan lokasi"
       className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
@@ -85,7 +90,8 @@ function DirectoryContent() {
   );
 
   const searching = query.trim().length > 0;
-  const showTabs = !gridLocation && !aksi && !searching;
+  const ownGridRoot = !canBrowseMultipleLocations && gridLocation === activeUser.location && !searchParams.get("category");
+  const showTabs = (!gridLocation || ownGridRoot) && !aksi && !searching;
 
   let content: React.ReactNode;
   if (searching) {
@@ -118,7 +124,7 @@ function DirectoryContent() {
     content = (
       <>
         <Breadcrumb crumbs={[{ label: "Direktori" }, { label: "Matriks kepatuhan" }]} />
-        <ComplianceMatrix overview={overview} scope={scope} onOpen={openCategory} onOpenLocation={openLocation} />
+        <ComplianceMatrix overview={overview} scope={null} onOpen={openCategory} onOpenLocation={openLocation} />
       </>
     );
   } else {
