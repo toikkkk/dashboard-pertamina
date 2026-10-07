@@ -59,28 +59,28 @@ const GOOD_CTX = /(tanggal|tgl|date|hari ini|issued|dibuat|disetujui|ditetapkan|
 export function findDates(text: string, today = new Date()): Found[] {
   const t = text.replace(/\s+/g, " ");
   const out: Found[] = [];
-  const push = (pos: number, iso: string | null) => {
-    if (iso) out.push({ pos, date: iso, ctx: t.slice(Math.max(0, pos - 40), pos + 60), at: t.slice(pos, pos + 28).trim() });
+  const push = (pos: number, iso: string | null, len = 28) => {
+    if (iso) out.push({ pos, date: iso, ctx: t.slice(Math.max(0, pos - 40), pos + 60), at: t.slice(pos, pos + len).trim() });
   };
 
   // 3 Oktober 2025 | 3-Okt-25 | 03/Oct/2025
   for (const m of Array.from(t.matchAll(new RegExp(`(?<!\\d)(\\d{1,2})\\s*[-./ ]?\\s*(${MONTH_RE})[a-z]*\\.?\\s*[-./,' ]?\\s*(\\d{4}|\\d{2})(?!\\d)`, "gi")))) {
     const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
-    push(m.index ?? 0, valid(y, ID_MONTHS[m[2].toLowerCase()], Number(m[1]), today));
+    push(m.index ?? 0, valid(y, ID_MONTHS[m[2].toLowerCase()], Number(m[1]), today), m[0].length);
   }
   // October 3, 2025
   for (const m of Array.from(t.matchAll(new RegExp(`\\b(${MONTH_RE})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`, "gi")))) {
-    push(m.index ?? 0, valid(Number(m[3]), ID_MONTHS[m[1].toLowerCase()], Number(m[2]), today));
+    push(m.index ?? 0, valid(Number(m[3]), ID_MONTHS[m[1].toLowerCase()], Number(m[2]), today), m[0].length);
   }
   // 2025-10-03
   for (const m of Array.from(t.matchAll(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/g))) {
-    push(m.index ?? 0, valid(Number(m[1]), Number(m[2]), Number(m[3]), today));
+    push(m.index ?? 0, valid(Number(m[1]), Number(m[2]), Number(m[3]), today), m[0].length);
   }
   // 03-10-2025 | 03/10/25  (pemisah harus sama; titik dengan 2 digit tahun ditolak: sering nomor bab "02.03.05")
   for (const m of Array.from(t.matchAll(/(?<!\d)(\d{1,2})\s*([-/.])\s*(\d{1,2})\s*\2\s*(\d{4}|\d{2})(?!\d)/g))) {
     if (m[4].length === 2 && m[2] === ".") continue;
     const y = m[4].length === 2 ? 2000 + Number(m[4]) : Number(m[4]);
-    push(m.index ?? 0, valid(y, Number(m[3]), Number(m[1]), today));
+    push(m.index ?? 0, valid(y, Number(m[3]), Number(m[1]), today), m[0].length);
   }
   // Tanggal Dua Puluh Enam Bulan Januari Tahun Dua Ribu Dua Puluh Lima
   const lower = t.toLowerCase();
@@ -89,7 +89,7 @@ export function findDates(text: string, today = new Date()): Found[] {
   for (const m of Array.from(lower.matchAll(new RegExp(`tanggal\\s+((?:${numw}\\s*){1,5})\\s*bulan\\s+(${longMonths})\\s*tahun\\s+((?:${numw}\\s*){2,8})`, "g")))) {
     const d = wordsToNumber(m[1].trim().split(/\s+/));
     const y = wordsToNumber(m[3].trim().split(/\s+/));
-    if (d && y) push(m.index ?? 0, valid(y, ID_MONTHS[m[2]], d, today));
+    if (d && y) push(m.index ?? 0, valid(y, ID_MONTHS[m[2]], d, today), m[0].length);
   }
   return out.sort((a, b) => a.pos - b.pos);
 }
