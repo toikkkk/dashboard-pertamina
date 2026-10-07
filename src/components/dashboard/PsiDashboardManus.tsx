@@ -280,17 +280,12 @@ function ComplianceTable({
   // api/document-categories/summary). Bisa 33 baris — sama seperti "Per lokasi",
   // cuma tampilkan yang paling butuh perhatian dulu, sisanya di balik "Tampilkan semua".
   const { categories: categorySummary, locations: locationSummary } = useDocumentCategorySummary(true);
-  // Dikelompokkan per cluster Excel client (Sub Chapter A, B.1–B.5), tiap item bernomor dan
-  // bernama persis seperti Excel; di dalam cluster urut dari Terpenuhi terbanyak (atau kolom
-  // yang diklik). Cluster default terbuka (hanya 6, bukan daftar panjang).
-  const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set());
-  const toggleTypeGroup = (key: string) =>
-    setCollapsedTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  // Dikelompokkan per cluster Excel client (Sub Chapter A, B.1–B.5); di dalam cluster urut dari
+  // Terpenuhi terbanyak (atau kolom yang diklik). Akordeon: awalnya semua tertutup (6 baris
+  // ringkas) dan hanya satu cluster terbuka sekaligus, supaya halaman tidak memanjang —
+  // 53 baris terbuka sekaligus membuat user harus scroll jauh.
+  const [openType, setOpenType] = useState<string | null>(null);
+  const toggleTypeGroup = (key: string) => setOpenType((cur) => (cur === key ? null : key));
   const byTypeAll = categorySummary.map((c) => {
     const ex = psiSubDocumentByName(c.name);
     return { label: c.name, no: ex?.no ?? null, chapter: ex?.chapter ?? null, approved: c.approved, target: c.target, pct: c.pct };
@@ -374,7 +369,7 @@ function ComplianceTable({
           <tbody>
             {detail === "type"
               ? byTypeGroups.map((g) => {
-                  const isOpen = !collapsedTypes.has(g.key);
+                  const isOpen = openType === g.key;
                   return (
                     <React.Fragment key={g.key}>
                       <tr className="compliance-group-row" onClick={() => toggleTypeGroup(g.key)}>
