@@ -3,10 +3,11 @@
 // Bilah alat Direktori: kotak cari + chip "Perlu tindakan" (dengan jumlahnya) dan, di
 // level daftar lokasi, pengalih Per Lokasi / Matriks.
 import React from "react";
-import { Search, X, LayoutGrid, Table2 } from "lucide-react";
+import { Search, X, LayoutGrid, Table2, AlertTriangle, Clock, History, FileX, type LucideIcon } from "lucide-react";
 import { ACTION_META, type ActionKind } from "@/components/directory/ActionList";
 
 const KINDS: ActionKind[] = ["kedaluwarsa", "segera", "stale", "kosong"];
+const KIND_ICON: Record<ActionKind, LucideIcon> = { kedaluwarsa: AlertTriangle, segera: Clock, stale: History, kosong: FileX };
 
 export default function DirectoryToolbar({
   query,
@@ -67,10 +68,10 @@ export default function DirectoryToolbar({
         )}
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mr-1">Perlu tindakan</span>
+      <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Perlu tindakan">
         {KINDS.map((k) => {
           const meta = ACTION_META[k];
+          const Icon = KIND_ICON[k];
           const on = active === k;
           const n = counts[k];
           return (
@@ -79,11 +80,18 @@ export default function DirectoryToolbar({
               type="button"
               aria-pressed={on}
               onClick={() => onAction(on ? null : k)}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] border text-[12px] font-semibold transition-colors duration-150 ${on ? "border-[#0F3B59] bg-[#E2E8EB] text-[#0B2C43]" : "border-[#C5CED3] bg-white text-[#0F172A] hover:border-[#0F3B59]"}`}
+              className={`inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full border text-[12.5px] font-semibold transition-all duration-150 active:scale-[0.97] ${
+                on ? "border-[#0F3B59] bg-[#0F3B59] text-white shadow-[0_2px_6px_rgba(15,59,89,.25)]" : "border-[#C5CED3] bg-white text-[#0F172A] hover:bg-[#F0F4F6]"
+              }`}
             >
-              <span className="w-2.5 h-[3px] rounded-full" style={{ background: meta.color }} aria-hidden />
+              <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.2} style={{ color: on ? "#fff" : meta.color }} />
               {meta.label}
-              <span className="font-mono tabular-nums text-[11px] text-[#6b6e72]">{n ?? "…"}</span>
+              <span
+                className={`min-w-[22px] px-1.5 py-[1px] rounded-full text-center font-mono tabular-nums text-[11px] ${on ? "bg-white/20 text-white" : "bg-[#EEF2F4] text-[#3a3d40]"}`}
+              >
+                {n ?? "…"}
+              </span>
+              {on && <X className="w-3.5 h-3.5 -ml-0.5" strokeWidth={2.4} aria-label="Hapus filter" />}
             </button>
           );
         })}
