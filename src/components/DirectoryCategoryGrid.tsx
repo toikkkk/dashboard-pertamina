@@ -202,9 +202,25 @@ function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { 
           </div>
           <div>
             <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Tipe PSI</div>
-            <select value={psiType} onChange={(e) => setPsiType(e.target.value as PSIType)} className="w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-[#F5F7F9] focus:bg-white focus:outline-none focus:border-[#0F3B59]">
-              {PSI_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <div role="radiogroup" aria-label="Tipe PSI" className="grid grid-cols-2 gap-1.5">
+              {PSI_TYPES.map((t) => {
+                const sel = psiType === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={sel}
+                    onClick={() => setPsiType(t)}
+                    className={`min-h-[40px] px-3 py-1.5 text-[12.5px] text-left rounded-[8px] border transition-colors duration-200 ${
+                      sel ? "border-[#0F3B59] bg-[#E2E8EB] font-bold text-[#0B2C43]" : "border-[#C5CED3] bg-[#F5F7F9] text-[#0F172A] hover:border-[#9a9da0]"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <div className="text-[10.5px] font-bold tracking-[.05em] text-[#6b6e72] uppercase mb-1.5">Berkas</div>
