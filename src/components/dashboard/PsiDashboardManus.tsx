@@ -12,6 +12,7 @@ import { useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
+import { PSI_CHAPTERS, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
 
 // Ubin "kotak-kotak" dipakai di dalam popup DashboardListModal — gaya yang sama
 // persis dengan CategoryTileCard di Direktori (border+radius+aksen kiri berwarna),
@@ -279,11 +280,28 @@ function ComplianceTable({
   // api/document-categories/summary). Bisa 33 baris — sama seperti "Per lokasi",
   // cuma tampilkan yang paling butuh perhatian dulu, sisanya di balik "Tampilkan semua".
   const { categories: categorySummary, locations: locationSummary } = useDocumentCategorySummary(true);
-  const [showAllTypes, setShowAllTypes] = useState(false);
-  const byTypeAll = bySort(
-    categorySummary.map((c) => ({ label: c.name, sublabel: "Sub-kategori PSI", approved: c.approved, target: c.target, pct: c.pct }))
-  );
-  const byType = showAllTypes ? byTypeAll : byTypeAll.slice(0, 8);
+  // Dikelompokkan per cluster Excel client (Sub Chapter A, B.1–B.5), tiap item bernomor dan
+  // bernama persis seperti Excel; di dalam cluster urut dari Terpenuhi terbanyak (atau kolom
+  // yang diklik). Cluster default terbuka (hanya 6, bukan daftar panjang).
+  const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set());
+  const toggleTypeGroup = (key: string) =>
+    setCollapsedTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const byTypeAll = categorySummary.map((c) => {
+    const ex = psiSubDocumentByName(c.name);
+    return { label: c.name, no: ex?.no ?? null, chapter: ex?.chapter ?? null, approved: c.approved, target: c.target, pct: c.pct };
+  });
+  const byTypeGroups = PSI_CHAPTERS.map((ch) => {
+    const children = bySort(byTypeAll.filter((r) => r.chapter === ch.key));
+    const approved = children.reduce((sum, r) => sum + r.approved, 0);
+    const target = children.reduce((sum, r) => sum + r.target, 0);
+    const pct = target > 0 ? Math.min(100, Math.round((approved / target) * 100)) : 0;
+    return { key: ch.key, label: ch.label, title: ch.title, approved, target, pct, children };
+  }).filter((g) => g.children.length > 0);
 
   const byLocation = locations.map((loc) => {
     // Dasar kepatuhan = sub-kategori PSI baku yang punya dokumen berlaku di lokasi itu
@@ -308,11 +326,10 @@ function ComplianceTable({
       })
   );
 
-  const rows = byType;
   // Total/persentase di header selalu dari SELURUH baris (bukan cuma yang sedang
   // ditampilkan) — supaya angka "Kepatuhan keseluruhan" tidak berubah saat daftar
   // dibuka/ditutup atau "Tampilkan semua" belum diklik.
-  const totals = (detail === "location" ? byLocationGroups : byTypeAll).reduce(
+  const totals = (detail === "location" ? byLocationGroups : byTypeGroups).reduce(
     (acc, r) => ({ approved: acc.approved + r.approved, target: acc.target + r.target }),
     { approved: 0, target: 0 }
   );
@@ -322,7 +339,7 @@ function ComplianceTable({
     <SectionCard
       title="Kepatuhan dokumen"
       className="span-12"
-      state={(detail === "location" ? byLocationGroups.length : byTypeAll.length) > 0 ? "ready" : "empty"}
+      state={(detail === "location" ? byLocationGroups.length : byTypeGroups.length) > 0 ? "ready" : "empty"}
       emptyLabel="target kepatuhan dokumen"
     >
       {/* Dulu ditempel kecil (9,5px) di pojok judul kartu, gampang kelewat dan di
@@ -356,16 +373,38 @@ function ComplianceTable({
           </thead>
           <tbody>
             {detail === "type"
-              ? rows.map((row) => (
-                  <tr key={row.label}>
-                    <td><strong>{row.label}</strong><span>{row.sublabel}</span></td>
-                    <td className="mono">{row.approved}</td>
-                    <td>
-                      <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
-                      <b>{row.pct}%</b>
-                    </td>
-                  </tr>
-                ))
+              ? byTypeGroups.map((g) => {
+                  const isOpen = !collapsedTypes.has(g.key);
+                  return (
+                    <React.Fragment key={g.key}>
+                      <tr className="compliance-group-row" onClick={() => toggleTypeGroup(g.key)}>
+                        <td>
+                          <span className="compliance-group-toggle">
+                            {isOpen ? <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.2} /> : <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.2} />}
+                            <strong>{g.title}</strong>
+                          </span>
+                          <span>{g.label} · {g.children.length} sub-dokumen</span>
+                        </td>
+                        <td className="mono">{g.approved}</td>
+                        <td>
+                          <div className="table-progress"><span style={{ width: `${g.pct}%`, background: barColor(g.pct) }} /></div>
+                          <b>{g.pct}%</b>
+                        </td>
+                      </tr>
+                      {isOpen &&
+                        g.children.map((row) => (
+                          <tr key={row.label} className="compliance-child-row">
+                            <td><strong>{row.no != null && <span className="mono" style={{ display: "inline", marginRight: 6, color: "#9a9da0" }}>{row.no}.</span>}{row.label}</strong></td>
+                            <td className="mono">{row.approved}</td>
+                            <td>
+                              <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
+                              <b>{row.pct}%</b>
+                            </td>
+                          </tr>
+                        ))}
+                    </React.Fragment>
+                  );
+                })
               : byLocationGroups.map((group) => {
                   const isOpen = expanded.has(group.label);
                   return (
@@ -403,11 +442,6 @@ function ComplianceTable({
           </tbody>
         </table>
       </div>
-      {detail === "type" && byTypeAll.length > byType.length && (
-        <button type="button" className="compliance-show-all" onClick={() => setShowAllTypes(true)}>
-          Tampilkan semua ({byTypeAll.length})
-        </button>
-      )}
     </SectionCard>
   );
 }
