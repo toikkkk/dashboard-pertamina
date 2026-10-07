@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories, createDocumentCategory, type CategoryTile } from "@/lib/useDocumentCategories";
 import { CATEGORY_STATUS_META } from "@/lib/domain/documentCategories";
+import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
+import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import { uploadFileToR2 } from "@/lib/uploadFile";
 import { PSIType } from "@/lib/mockData";
 import { Plus, Upload as UploadIcon, X, FileText, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
@@ -59,7 +60,10 @@ function CategoryTileCard({ tile, onClick }: { tile: CategoryTile; onClick: () =
     >
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} aria-hidden />
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[12.5px] font-bold text-[#0F172A] leading-snug">{tile.name}</span>
+        <span className="text-[12.5px] font-bold text-[#0F172A] leading-snug">
+          {tile.no != null && <span className="font-mono text-[#9a9da0] font-semibold mr-1.5">{tile.no}.</span>}
+          {tile.name}
+        </span>
         <Icon className="w-[15px] h-[15px] flex-shrink-0" strokeWidth={2} style={{ color }} />
       </div>
       {tile.document ? (
@@ -71,7 +75,7 @@ function CategoryTileCard({ tile, onClick }: { tile: CategoryTile; onClick: () =
           </div>
         </div>
       ) : (
-        <div className="mt-auto text-[11px] text-[#9a9da0]">{meta.label}</div>
+        <div className="mt-auto text-[11px] text-[#9a9da0]">{tile.keterangan === "N/A" ? "N/A" : meta.label}</div>
       )}
     </button>
   );
@@ -220,115 +224,162 @@ function UploadIntoCategoryPanel({ location, category, onClose, onUploaded }: { 
   );
 }
 
-// Satu kategori bisa punya lebih dari satu dokumen (mis. beberapa produk SDS
-// berbeda) — dulu ubin langsung lompat ke dokumen TERBARU saja, yang lain jadi
-// tak terlihat/tak terjangkau dari Direktori (celah yang ditemukan user). Modal
-// ini dibuka dulu kalau ada >1 dokumen, supaya user memilih yang mana.
-function CategoryDocumentsModal({ category, canWrite, onClose, onAddAnother }: { category: CategoryTile; canWrite: boolean; onClose: () => void; onAddAnother: () => void }) {
+// Isi satu sub-dokumen (halaman, bukan popup): daftar dokumen di dalamnya + tombol
+// tambah. Navigasi naik lewat breadcrumb di atas.
+function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; canWrite: boolean; onAdd: () => void }) {
   const router = useRouter();
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-[#0F172A]/40 px-4 animate-backdropIn"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full max-w-[440px] max-h-[80vh] rounded-[14px] bg-white flex flex-col shadow-[0_24px_60px_-12px_rgba(15,23,42,.35)] animate-modalPop overflow-hidden">
-        <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4">
-          <div>
-            <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">{category.name}</div>
-            <h2 className="font-heading text-[17px] font-bold text-[#0F172A] leading-snug">{category.documents.length} Dokumen</h2>
+  const chapter = PSI_CHAPTERS.find((c) => c.key === category.chapter);
+  return (
+    <div>
+      <div className="mb-4">
+        {chapter && (
+          <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase mb-1">
+            {chapter.label} · {chapter.title}
           </div>
-          <button onClick={onClose} aria-label="Tutup" className="text-[#9a9da0] hover:text-[#0F172A]"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
-          {category.documents.map((d) => (
+        )}
+        <h2 className="font-heading text-[17px] font-bold text-[#0F172A] leading-snug">
+          {category.no != null && <span className="font-mono text-[#9a9da0] mr-1.5">{category.no}.</span>}
+          {category.name}
+        </h2>
+        {category.keterangan && <p className="text-[12px] text-[#6b6e72] mt-1">Keterangan: {category.keterangan}</p>}
+      </div>
+
+      <div className="bg-white border border-[#D8E1E4] rounded-[14px] overflow-hidden">
+        {category.documents.length === 0 ? (
+          <div className="py-12 px-5 text-center">
+            <FileText className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />
+            <p className="text-[13px] text-[#9a9da0]">Belum ada dokumen di sub-dokumen ini.</p>
+          </div>
+        ) : (
+          category.documents.map((d) => (
             <button
               key={d.id}
               type="button"
               onClick={() => router.push(`/document/${d.id}`)}
-              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-[8px] text-left hover:bg-[#F5F7F9] transition-colors duration-150"
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left border-b border-[#EEF2F4] last:border-b-0 hover:bg-[#F5F7F9] transition-colors duration-150"
             >
               <div className="min-w-0">
-                <div className="text-[12.5px] font-semibold text-[#0F172A] truncate">{d.title}</div>
-                <div className="text-[10.5px] font-mono text-[#9a9da0]">v{d.version} · {fmtDate(d.issueDate)}</div>
+                <div className="text-[13px] font-semibold text-[#0F172A] truncate">{d.title}</div>
+                <div className="text-[11px] font-mono text-[#9a9da0]">{d.documentNumber} · v{d.version} · terbit {fmtDate(d.issueDate)}</div>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-[#c3c6c9] flex-shrink-0" strokeWidth={2} />
+              <ChevronRight className="w-4 h-4 text-[#c3c6c9] flex-shrink-0" strokeWidth={2} />
             </button>
-          ))}
-        </div>
-        {canWrite && (
-          <div className="px-6 pb-6 pt-1">
-            <button
-              type="button"
-              onClick={onAddAnother}
-              className="w-full text-[12.5px] font-bold px-3.5 py-2.5 rounded-[8px] border border-dashed border-[#C5CED3] text-[#6b6e72] hover:border-[#0F3B59] hover:text-[#0F3B59] transition-all duration-200"
-            >
-              + Tambahkan dokumen lain di kategori ini
-            </button>
-          </div>
+          ))
         )}
       </div>
-    </div>,
-    document.body
+
+      {canWrite && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mt-3 text-[12.5px] font-bold px-3.5 py-2.5 rounded-[8px] border border-dashed border-[#C5CED3] text-[#6b6e72] hover:border-[#0F3B59] hover:text-[#0F3B59] transition-all duration-200"
+        >
+          + Tambahkan dokumen di sub-dokumen ini
+        </button>
+      )}
+    </div>
   );
 }
 
-export default function DirectoryCategoryGrid({ location, canWrite }: { location: string; canWrite: boolean }) {
-  const router = useRouter();
+function ChapterHeading({ label, title, count, total }: { label: string; title: string; count?: number; total?: number }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 mb-2.5">
+      <div>
+        <div className="text-[10.5px] font-bold tracking-[.05em] text-[#9a9da0] uppercase">{label}</div>
+        <h3 className="font-heading text-[14.5px] font-bold text-[#0F172A] leading-snug">{title}</h3>
+      </div>
+      {total != null && <span className="font-mono text-[11px] text-[#6b6e72] flex-shrink-0">{count} dari {total} ada dokumen</span>}
+    </div>
+  );
+}
+
+export default function DirectoryCategoryGrid({
+  location,
+  canWrite,
+  categoryId,
+  onSelectCategory,
+  baseCrumbs,
+}: {
+  location: string;
+  canWrite: boolean;
+  /** Sub-dokumen yang sedang dibuka (dari URL); null = tampilan daftar sub-dokumen. */
+  categoryId: string | null;
+  onSelectCategory: (id: string | null) => void;
+  /** Level di atas lokasi (mis. "Direktori"), diteruskan dari halaman. */
+  baseCrumbs: Crumb[];
+}) {
   const { categories, isLoading, mutate } = useDocumentCategories(location);
   const [openTile, setOpenTile] = useState<CategoryTile | null>(null);
-  const [listTile, setListTile] = useState<CategoryTile | null>(null);
-
-  const handleTileClick = (tile: CategoryTile) => {
-    if (tile.documents.length > 1) setListTile(tile);
-    else if (tile.document) router.push(`/document/${tile.document.id}`);
-    else if (canWrite) setOpenTile(tile);
-  };
 
   if (isLoading) {
-    return <div className="py-14 text-center text-[13px] text-[#9a9da0]">Memuat sub-kategori...</div>;
+    return <div className="py-14 text-center text-[13px] text-[#9a9da0]">Memuat sub-dokumen...</div>;
   }
 
   if (categories.length === 0) {
     return (
       <div className="py-14 px-5 text-center">
         <FileText className="w-[30px] h-[30px] text-[#c3c6c9] mx-auto mb-2.5" strokeWidth={1.5} />
-        <p className="text-[13px] text-[#9a9da0]">Belum ada sub-kategori dokumen untuk lokasi ini.</p>
+        <p className="text-[13px] text-[#9a9da0]">Belum ada sub-dokumen untuk lokasi ini.</p>
       </div>
     );
   }
 
+  const selected = categoryId ? categories.find((c) => c.id === categoryId) ?? null : null;
+  const crumbs: Crumb[] = [...baseCrumbs, { label: location, onClick: selected ? () => onSelectCategory(null) : undefined }];
+  if (selected) crumbs.push({ label: selected.name });
+
+  const upload = openTile && (
+    <UploadIntoCategoryPanel
+      location={location}
+      category={openTile}
+      onClose={() => setOpenTile(null)}
+      onUploaded={() => {
+        setOpenTile(null);
+        mutate();
+      }}
+    />
+  );
+
+  if (selected) {
+    return (
+      <>
+        <Breadcrumb crumbs={crumbs} />
+        <CategoryView category={selected} canWrite={canWrite} onAdd={() => setOpenTile(selected)} />
+        {upload}
+      </>
+    );
+  }
+
+  const others = categories.filter((c) => c.chapter === null);
+  const grid = "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
+
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {categories.map((c) => (
-          <CategoryTileCard key={c.id} tile={c} onClick={() => handleTileClick(c)} />
-        ))}
-        {canWrite && <AddCategoryTile location={location} onCreated={() => mutate()} />}
-      </div>
-      {listTile && (
-        <CategoryDocumentsModal
-          category={listTile}
-          canWrite={canWrite}
-          onClose={() => setListTile(null)}
-          onAddAnother={() => {
-            if (!canWrite) return;
-            setOpenTile(listTile);
-            setListTile(null);
-          }}
-        />
-      )}
-      {openTile && (
-        <UploadIntoCategoryPanel
-          location={location}
-          category={openTile}
-          onClose={() => setOpenTile(null)}
-          onUploaded={() => {
-            setOpenTile(null);
-            mutate();
-          }}
-        />
+      <Breadcrumb crumbs={crumbs} />
+      {PSI_CHAPTERS.map((ch) => {
+        const items = categories.filter((c) => c.chapter === ch.key);
+        if (items.length === 0) return null;
+        return (
+          <section key={ch.key} className="mt-8 first:mt-0">
+            <ChapterHeading label={ch.label} title={ch.title} count={items.filter((c) => c.documents.length > 0).length} total={items.length} />
+            <div className={grid}>
+              {items.map((c) => (
+                <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      {(others.length > 0 || canWrite) && (
+        <section className="mt-8">
+          <ChapterHeading label="Di luar daftar PSI" title="Dokumen Lainnya" />
+          <div className={grid}>
+            {others.map((c) => (
+              <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} />
+            ))}
+            {canWrite && <AddCategoryTile location={location} onCreated={() => mutate()} />}
+          </div>
+        </section>
       )}
     </>
   );

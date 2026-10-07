@@ -120,6 +120,7 @@ async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[])
     fileUrl: fileDownloadUrl(doc.primaryFileId),
     fileName: fileNameById.get(doc.primaryFileId),
     categoryName: doc.categoryId ? categoryNameById.get(doc.categoryId) : undefined,
+    categoryId: doc.categoryId ?? undefined,
     isCircular: doc.isCircular,
     routes: (routesByDoc.get(doc.id) ?? [])
       .slice()

@@ -3,6 +3,7 @@
 import React from "react";
 import useSWR from "swr";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
+import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import Link from "next/link";
 import { FileLock2 } from "lucide-react";
 import type { DocumentItem } from "@/lib/mockData";
@@ -40,5 +41,19 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // pattern) fully remounts the viewer — resetting active tab, expanded history
   // rows, and any in-progress approve/reject comment draft instead of carrying
   // them over from whatever document was last viewed.
-  return <DocumentSplitViewer document={doc} key={doc.id} />;
+  // Jalur naik ke folder induk (Direktori › Lokasi › Sub-dokumen), seperti Google Drive.
+  const loc = encodeURIComponent(doc.location);
+  const crumbs: Crumb[] = [
+    { label: "Direktori", href: "/directory" },
+    { label: doc.location, href: `/directory?location=${loc}` },
+  ];
+  if (doc.categoryId && doc.categoryName) crumbs.push({ label: doc.categoryName, href: `/directory?location=${loc}&category=${doc.categoryId}` });
+  crumbs.push({ label: doc.title });
+
+  return (
+    <>
+      <Breadcrumb crumbs={crumbs} />
+      <DocumentSplitViewer document={doc} key={doc.id} />
+    </>
+  );
 }

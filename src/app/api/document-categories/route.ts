@@ -12,6 +12,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertLocationWrite } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { categoryDocStatus } from "@/lib/domain/documentCategories";
+import { psiSortKey, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const [cats, docs] = await Promise.all([
       db.select().from(documentCategories).where(eq(documentCategories.location, location)).orderBy(documentCategories.createdAt),
       db
-        .select({ id: documents.id, title: documents.title, categoryId: documents.categoryId, issueDate: documents.issueDate, currentVersion: documents.currentVersion })
+        .select({ id: documents.id, title: documents.title, categoryId: documents.categoryId, issueDate: documents.issueDate, currentVersion: documents.currentVersion, documentNumber: documents.documentNumber, status: documents.status, expiryDate: documents.expiryDate })
         .from(documents)
         .where(and(eq(documents.location, location))),
     ]);
@@ -47,17 +48,23 @@ export async function GET(req: NextRequest) {
     const items = cats.map((c) => {
       const list = byCategory.get(c.id) ?? [];
       const doc = list[0] ?? null;
+      const excel = psiSubDocumentByName(c.name);
       return {
         id: c.id,
         name: c.name,
+        // Posisi di Excel client (cluster + nomor urut + keterangan); null = di luar Excel.
+        chapter: excel?.chapter ?? null,
+        no: excel?.no ?? null,
+        keterangan: excel?.keterangan ?? null,
         reviewCycleMonths: c.reviewCycleMonths,
         treatExpiryAsReviewOnly: c.treatExpiryAsReviewOnly,
         isCustom: c.isCustom,
         status: categoryDocStatus(c, doc),
         document: doc ? { id: doc.id, title: doc.title, version: doc.currentVersion, issueDate: doc.issueDate } : null,
-        documents: list.map((d) => ({ id: d.id, title: d.title, version: d.currentVersion, issueDate: d.issueDate })),
+        documents: list.map((d) => ({ id: d.id, title: d.title, version: d.currentVersion, issueDate: d.issueDate, documentNumber: d.documentNumber, status: d.status, expiryDate: d.expiryDate })),
       };
     });
+    items.sort((a, b) => psiSortKey(a.name) - psiSortKey(b.name) || a.name.localeCompare(b.name));
 
     return NextResponse.json({ location, categories: items });
   });
@@ -90,7 +97,7 @@ export async function POST(req: NextRequest) {
       .returning();
 
     return NextResponse.json(
-      { id: created.id, name: created.name, reviewCycleMonths: created.reviewCycleMonths, treatExpiryAsReviewOnly: created.treatExpiryAsReviewOnly, isCustom: created.isCustom, status: "missing", document: null, documents: [] },
+      { id: created.id, name: created.name, chapter: null, no: null, keterangan: null, reviewCycleMonths: created.reviewCycleMonths, treatExpiryAsReviewOnly: created.treatExpiryAsReviewOnly, isCustom: created.isCustom, status: "missing", document: null, documents: [] },
       { status: 201 }
     );
   });

@@ -71,6 +71,7 @@ export interface DocumentItem {
    * belum ditautkan ke kategori manapun. Dipakai supaya pencarian topbar bisa menemukan
    * dokumen lewat nama sub-foldernya, bukan cuma judul/nomor dokumen literal. */
   categoryName?: string;
+  categoryId?: string;
   routes: ApprovalRouteItem[];
   history: HistoryItem[];
   isCircular: boolean;

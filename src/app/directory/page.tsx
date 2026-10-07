@@ -3,8 +3,9 @@
 import React, { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
-import { Search, ChevronLeft } from "lucide-react";
+import { Search } from "lucide-react";
 import DirectoryCategoryGrid from "@/components/DirectoryCategoryGrid";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Ubin satu lokasi — bahasa visual sama persis dengan CategoryTileCard di
 // DirectoryCategoryGrid (satu level lebih dalam): kartu putih rounded-[14px],
@@ -141,7 +142,7 @@ function DirectoryContent() {
   const scopeSwitcher = canPeekOtherLocations && (
     <select
       value={scopeAll ? "ALL" : "OWN"}
-      onChange={(e) => { setScopeAll(e.target.value === "ALL"); setParam({ location: null }); }}
+      onChange={(e) => { setScopeAll(e.target.value === "ALL"); setParam({ location: null, category: null }); }}
       aria-label="Cakupan lokasi"
       className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
     >
@@ -155,24 +156,23 @@ function DirectoryContent() {
       {scopeSwitcher && <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">{scopeSwitcher}</div>}
 
       {gridLocation ? (
-        <>
-          {canBrowseMultipleLocations && (
-            <button
-              type="button"
-              onClick={() => setParam({ location: null })}
-              className="flex items-center gap-1 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] mb-4 transition-colors duration-200"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.2} /> Semua Lokasi
-            </button>
-          )}
-          <h2 className="font-heading text-[17px] font-bold text-[#0F172A] mb-3.5">{gridLocation}</h2>
-          <DirectoryCategoryGrid
-            location={gridLocation}
-            canWrite={activeUser.isRegionalAdmin || activeUser.location === gridLocation}
-          />
-        </>
+        <DirectoryCategoryGrid
+          location={gridLocation}
+          canWrite={activeUser.isRegionalAdmin || activeUser.location === gridLocation}
+          categoryId={searchParams.get("category")}
+          onSelectCategory={(id) => setParam({ category: id })}
+          baseCrumbs={[
+            {
+              label: "Direktori",
+              onClick: canBrowseMultipleLocations ? () => setParam({ location: null, category: null }) : undefined,
+            },
+          ]}
+        />
       ) : (
-        <LocationGrid onSelect={(loc) => setParam({ location: loc })} />
+        <>
+          <Breadcrumb crumbs={[{ label: "Direktori" }]} />
+          <LocationGrid onSelect={(loc) => setParam({ location: loc, category: null })} />
+        </>
       )}
     </div>
   );

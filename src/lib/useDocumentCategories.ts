@@ -11,12 +11,16 @@ export interface CategoryTile {
   reviewCycleMonths: number;
   treatExpiryAsReviewOnly: boolean;
   isCustom: boolean;
+  /** Posisi di Excel client: cluster ("A", "B.1"…), nomor urut, dan keterangannya. null = kategori di luar Excel. */
+  chapter: string | null;
+  no: number | null;
+  keterangan: string | null;
   status: CategoryDocStatus;
   /** Dokumen terbaru di kategori ini (dipakai untuk status/label ringkas). */
   document: { id: string; title: string; version: string; issueDate: string } | null;
   /** Semua dokumen di kategori ini, terbaru dulu — bisa lebih dari satu (mis. beberapa
    * produk SDS berbeda). Kosong sama artinya dengan document === null. */
-  documents: { id: string; title: string; version: string; issueDate: string }[];
+  documents: { id: string; title: string; version: string; issueDate: string; documentNumber: string; status: string; expiryDate: string }[];
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
