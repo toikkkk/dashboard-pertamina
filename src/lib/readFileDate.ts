@@ -11,7 +11,9 @@ const MAX_READ_BYTES = 40 * 1024 * 1024;
 
 async function pdfText(file: File): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+  // Worker disajikan statis dari /public (salinan versi pdfjs-dist yang sama) — kalau lewat bundler,
+  // Terser gagal meminifikasinya saat build produksi. Perbarui salinan ini bila pdfjs-dist dinaikkan.
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   let text = "";
   for (let i = 1; i <= Math.min(doc.numPages, 3); i++) {
