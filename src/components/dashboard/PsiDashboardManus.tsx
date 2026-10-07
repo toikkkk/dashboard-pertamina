@@ -394,7 +394,7 @@ function ComplianceTable({
                       {isOpen &&
                         g.children.map((row) => (
                           <tr key={row.label} className="compliance-child-row">
-                            <td><strong>{row.no != null && <span className="mono" style={{ display: "inline", marginRight: 6, color: "#9a9da0" }}>{row.no}.</span>}{row.label}</strong></td>
+                            <td><strong>{row.label}</strong></td>
                             <td className="mono">{row.approved}</td>
                             <td>
                               <div className="table-progress"><span style={{ width: `${row.pct}%`, background: barColor(row.pct) }} /></div>
