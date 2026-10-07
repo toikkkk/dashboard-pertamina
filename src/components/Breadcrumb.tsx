@@ -17,19 +17,21 @@ export interface Crumb {
 
 export default function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <nav aria-label="Jalur navigasi" className="flex items-center flex-wrap gap-x-1 gap-y-0.5 text-[12.5px] mb-4">
+    <nav aria-label="Jalur navigasi" className="flex items-center flex-wrap gap-x-2 gap-y-2 text-[12.5px] mb-4">
       {crumbs.map((c, i) => {
         const last = i === crumbs.length - 1;
-        const cls = "font-semibold text-[#0F3B59] hover:text-[#0B2C43] hover:underline underline-offset-2 transition-colors duration-150";
+        // Level yang bisa diklik tampil sebagai tombol berlatar (jelas "bisa ditekan"); posisi saat ini
+        // = teks tebal tanpa latar; level induk yang tidak bisa diklik = teks abu biasa.
+        const cls = "cursor-pointer px-2.5 py-1 -my-1 rounded-[8px] bg-white border border-[#C5CED3] hover:border-[#0F3B59] hover:bg-[#F5F7F9] font-semibold text-[#0F3B59] hover:text-[#0B2C43] shadow-[0_1px_2px_rgba(15,23,42,.05)] transition-colors duration-150";
         return (
           <React.Fragment key={`${i}-${c.label}`}>
             {i > 0 && <ChevronRight className="w-3 h-3 text-[#c3c6c9] flex-shrink-0" strokeWidth={2.2} aria-hidden />}
             {last || (!c.href && !c.onClick) ? (
               <span aria-current={last ? "page" : undefined} className={last ? "font-bold text-[#0F172A]" : "text-[#6b6e72]"}>{c.label}</span>
             ) : c.href ? (
-              <Link href={c.href} className={cls}>{c.label}</Link>
+              <Link href={c.href} className={cls} title={`Buka ${c.label}`}>{c.label}</Link>
             ) : (
-              <button type="button" onClick={c.onClick} className={cls}>{c.label}</button>
+              <button type="button" onClick={c.onClick} className={cls} title={`Buka ${c.label}`}>{c.label}</button>
             )}
           </React.Fragment>
         );
