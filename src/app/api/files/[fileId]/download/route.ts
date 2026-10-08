@@ -4,6 +4,7 @@
 // historical version snapshot), the requester needs access to that document's
 // location; an unlinked raw registry file is admin-only. 302s to a 5-minute
 // presigned GET URL rather than proxying bytes through this function.
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
@@ -43,7 +44,7 @@ function downloadName(
   return `${clean}${older ? ` v${history!.version}` : ""}${ext}`;
 }
 
-export async function GET(_req: Request, { params }: { params: { fileId: string } }) {
+export async function GET(req: Request, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
 
@@ -93,6 +94,7 @@ export async function GET(_req: Request, { params }: { params: { fileId: string 
       { expiresIn: 300 }
     );
 
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "berkas.unduh", { targetType: "berkas", targetId: file.id, targetLabel: asPrimary?.title ?? file.originalFilename, location: linkedLocation });
     return NextResponse.redirect(url, { status: 302 });
   });
 }

@@ -3,6 +3,7 @@
 // checking the password). That could never survive a real backend — password
 // hashes must never be sent to an unauthenticated client — so this route is the
 // one genuinely new piece of logic, not just a relocation of existing code.
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, and, gt, sql } from "drizzle-orm";
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
         )
       );
     if (recentFailures >= RATE_LIMIT_MAX_FAILURES) {
+      await logAudit(req, { email: normalizedEmail }, "login.diblokir", { detail: { alasan: "terlalu banyak percobaan gagal" } });
       return NextResponse.json(
         { error: `Terlalu banyak percobaan gagal. Coba lagi setelah ${RATE_LIMIT_WINDOW_MINUTES} menit.` },
         { status: 429 }
@@ -66,6 +68,7 @@ export async function POST(req: NextRequest) {
     // wrong — don't leak which case it was.
     const invalid = async () => {
       await recordAttempt(false);
+      await logAudit(req, { id: user?.id ?? null, email: normalizedEmail }, "login.gagal");
       return NextResponse.json({ error: "Email/username atau kata sandi salah." }, { status: 401 });
     };
 
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest) {
     if (!ok) return invalid();
 
     await recordAttempt(true);
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "login.berhasil", { location: user.location });
     const sessionToken = await createSession(user.id);
 
     return NextResponse.json({

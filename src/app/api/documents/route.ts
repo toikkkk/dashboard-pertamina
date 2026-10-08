@@ -1,5 +1,6 @@
 // GET: backs `documents` (RBAC-filtered, per psiStore.tsx's original client-side
 // filter — now enforced server-side). POST: backs addNewDocument(docData).
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -119,6 +120,7 @@ export async function POST(req: NextRequest) {
       version: "1.0",
     });
 
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.dibuat", { targetType: "dokumen", targetId: doc.id, targetLabel: `${doc.documentNumber} ${doc.title}`, location: body.location });
     const item = await loadDocumentItem(doc.id);
     return NextResponse.json(item, { status: 201 });
   });

@@ -5,6 +5,7 @@
 // document is circular, every route MUST reset to "Pending" — this was a real bug
 // once (status flipped to "In Routing" but stale "Approved" routes meant nobody
 // could ever act on it again). Don't drop the reset if this file is touched.
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     await db.insert(historyDiffs).values(diffRows);
 
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.direvisi", { targetType: "dokumen", targetId: params.id, targetLabel: `${docRow.documentNumber} ${docRow.title}`, location: docRow.location, detail: { versiLama: docRow.currentVersion, versiBaru: newVersion } });
     const updated = await loadDocumentItem(params.id);
     return NextResponse.json(updated);
   });

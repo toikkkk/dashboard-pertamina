@@ -9,6 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Archive,
+  ScrollText,
   ClipboardList,
   FolderOpen,
   LayoutDashboard,
@@ -186,6 +187,7 @@ export function buildNavItems({
       ? [
           { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" },
           { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
+          { name: "Log Aktivitas", path: "/admin/audit", icon: ScrollText },
         ]
       : [];
   return { primaryNavItems, adminNavItems };

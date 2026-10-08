@@ -1,6 +1,7 @@
 // Combined first-paint payload — avoids psiStore.tsx firing 4 separate requests
 // (me, documents, users, locations) in a waterfall on every page load.
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { users, locations, locationTargets } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/auth/session";
@@ -47,11 +48,19 @@ export async function GET() {
     // (audit 2026-09-30: real, present-today waste, not just a future scaling risk).
     const [allDocumentItems, userRows, locRows, targetRows] = await Promise.all([
       isPending ? Promise.resolve([]) : loadAllDocuments(),
+      // Daftar user: Admin Regional (Kelola User) menerima SEMUA kolom; user biasa hanya rekan SATU LOKASI dan
+      // tanpa email / usulan peran (dipakai untuk memilih Reviewer/Approver/Performer MOC di lokasinya) —
+      // dulu setiap user aktif menerima nama+email seluruh user di semua lokasi.
       isPending
         ? Promise.resolve([])
-        : db
-            .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation, requestedMocRoles: users.requestedMocRoles, requestedMocFunction: users.requestedMocFunction, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
-            .from(users),
+        : sessionUser.isRegionalAdmin
+          ? db
+              .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation, requestedMocRoles: users.requestedMocRoles, requestedMocFunction: users.requestedMocFunction, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
+              .from(users)
+          : db
+              .select({ id: users.id, name: users.name, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
+              .from(users)
+              .where(eq(users.location, sessionUser.location!)),
       db.select().from(locations),
       db.select().from(locationTargets),
     ]);

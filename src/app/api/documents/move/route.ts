@@ -2,6 +2,7 @@
 // Hak TULIS lokasi itu (sama dengan PATCH satu dokumen); lintas lokasi ditolak. Riwayat dicatat
 // persis seperti PATCH (aksi "Revised" + selisih "Sub-kategori") sehingga dashboard tidak
 // menghitungnya sebagai pembaruan nyata (lihat isRealUpdate di domain/dashboard.ts).
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (toMove.length > 0) await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.dipindah", { targetType: "sub-dokumen", targetId: categoryId, targetLabel: target.name, location, detail: { jumlah: toMove.length, dokumen: toMove.slice(0, 50).map((d) => d.id) } });
     return NextResponse.json({ moved: toMove.length, skipped: docs.length - toMove.length, categoryName: target.name });
   });
 }

@@ -5,6 +5,7 @@
 // because granting access still requires an admin's approval (see CLAUDE.md's
 // onboarding gate). The account itself is still created with role='Penanggung Jawab
 // PSI (Initiator)' and location=NULL until that approval happens.
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, and, gt, like, sql } from "drizzle-orm";
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
+    await logAudit(req, { id: created.id, name: created.name, email: created.email }, "akun.daftar", { targetType: "user", targetId: created.id, detail: { lokasiDiminta: requestedLocation, peranDiminta: role ?? null } });
     const sessionToken = await createSession(created.id);
 
     return NextResponse.json({

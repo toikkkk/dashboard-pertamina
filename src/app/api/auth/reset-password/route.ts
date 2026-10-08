@@ -2,6 +2,7 @@
 // password. Also revokes every existing session for the user (see sessions.ts) —
 // a password reset should force re-login everywhere, including on a device an
 // attacker may have been using with the old password.
+import { logAudit } from "@/lib/audit";
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       db.delete(sessions).where(eq(sessions.userId, resetRow.userId)),
     ]);
 
+    await logAudit(req, { id: resetRow.userId }, "sandi.diatur_ulang", { targetType: "user", targetId: resetRow.userId, detail: { sesiDicabut: true } });
     return NextResponse.json({ message: "Kata sandi berhasil diperbarui. Silakan masuk dengan kata sandi baru." });
   });
 }

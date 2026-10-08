@@ -6,6 +6,7 @@
 // is enforced HERE now, not just client-side — admin/users/page.tsx's own check is
 // only a UX nicety; a direct API call must never be able to strip the last Admin
 // Regional's access and leave the tenant with no one who can onboard/manage users.
+import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, and, ne, sql } from "drizzle-orm";
@@ -28,7 +29,7 @@ const bodySchema = z.object({
 // sudah tercatat di dokumen/MOC/riwayat/unggahan TIDAK dihapus (jejak audit harus tetap
 // menunjuk ke orangnya) — Postgres menolaknya lewat foreign key (23503) dan kita
 // jawab 409 dengan pesan yang jelas. Sesi & token atur-ulang sandi ikut terhapus (cascade).
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const admin = await requireSessionUser();
     assertRegionalAdmin(admin);
@@ -37,6 +38,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
       throw new ForbiddenError("Anda tidak dapat menghapus akun Anda sendiri.");
     }
 
+    const [victim] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, params.id)).limit(1);
     try {
       const deleted = await db.delete(users).where(eq(users.id, params.id)).returning({ id: users.id });
       if (deleted.length === 0) {
@@ -53,6 +55,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
       throw err;
     }
 
+    await logAudit(req, { id: admin.id, name: admin.name, email: admin.email }, "akun.dihapus", { targetType: "user", targetId: params.id, targetLabel: victim ? `${victim.name} <${victim.email}>` : undefined });
     return NextResponse.json({ ok: true });
   });
 }
@@ -75,6 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
+    const [before] = await db.select({ role: users.role, location: users.location }).from(users).where(eq(users.id, params.id)).limit(1);
     const [updated] = await db
       .update(users)
       .set({
@@ -93,6 +97,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
     }
 
+    await logAudit(req, { id: admin.id, name: admin.name, email: admin.email }, "akses.diubah", {
+      targetType: "user",
+      targetId: updated.id,
+      targetLabel: `${updated.name} <${updated.email}>`,
+      location: updated.location,
+      detail: { dari: before ?? null, ke: { role, location }, peranMoc: mocRoles ?? undefined },
+    });
     return NextResponse.json({
       id: updated.id,
       name: updated.name,

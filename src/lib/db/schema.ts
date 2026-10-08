@@ -5,7 +5,7 @@
 // a raw fileUrl string. Column names use snake_case to match plain-SQL conventions;
 // Drizzle maps them to camelCase JS property names automatically.
 
-import { pgTable, text, uuid, integer, boolean, timestamp, date, bigint, jsonb, primaryKey, check, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, boolean, timestamp, date, bigint, jsonb, primaryKey, check, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
@@ -113,6 +113,27 @@ export const loginAttempts = pgTable("login_attempts", {
   ipAddress: text("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Jejak audit: siapa melakukan apa, kapan, dari mana (login, perubahan akses, unduhan berkas, perubahan dokumen).
+// Hanya DITAMBAH (tidak pernah diubah/dihapus aplikasi); pembacaan dibatasi Admin Regional (/admin/audit).
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    actorName: text("actor_name"),
+    actorEmail: text("actor_email"),
+    action: text("action").notNull(),
+    targetType: text("target_type"),
+    targetId: text("target_id"),
+    targetLabel: text("target_label"),
+    location: text("location"),
+    ipAddress: text("ip_address"),
+    detail: jsonb("detail"),
+  },
+  (t) => [index("audit_log_created_idx").on(t.createdAt), index("audit_log_action_idx").on(t.action)]
+);
 
 // ---------------------------------------------------------------------------
 // File registry — every physical file, migrated or app-uploaded. No workflow
