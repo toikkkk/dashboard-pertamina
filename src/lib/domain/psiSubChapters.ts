@@ -89,6 +89,13 @@ const BY_NAME = new Map(PSI_SUB_DOCUMENTS.map((s) => [s.name, s]));
 const CHAPTER_ORDER = new Map(PSI_CHAPTERS.map((c, i) => [c.key, i]));
 
 /** Info Excel untuk sebuah nama kategori; null = kategori di luar daftar Excel (kustom). */
+// Kategori di luar Excel yang oleh client ditetapkan masuk ke Sub Chapter B (2026-10-08: "HAZID dan HAZOP
+// masuk di sub B"). Tampil sebagai ubin tambahan tanpa nomor di cluster itu; TIDAK mengubah 53 item Excel
+// dan tidak dihitung di kepatuhan (tetap kategori kustom). Kunci = nama kategori persis.
+export const PSI_EXTRA_PLACEMENT: Record<string, string> = {
+  "HAZID & HAZOP Study": "B.3",
+};
+
 export function psiSubDocumentByName(name: string): PsiSubDocument | null {
   return BY_NAME.get(name) ?? null;
 }

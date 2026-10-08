@@ -612,7 +612,7 @@ export default function DirectoryCategoryGrid({
         if (items.length === 0) return null;
         return (
           <section key={ch.key} className="mt-8 first:mt-0">
-            <ChapterHeading label={ch.label} title={ch.title} count={items.filter((c) => c.documents.length > 0).length} total={items.length} />
+            <ChapterHeading label={ch.label} title={ch.title} count={items.filter((c) => c.no != null && c.documents.length > 0).length} total={items.filter((c) => c.no != null).length} />
             <div className={grid}>
               {items.map((c) => (
                 <CategoryTileCard key={c.id} tile={c} onClick={() => onSelectCategory(c.id)} onFiles={canWrite ? (files) => openUpload(c, files) : undefined} />

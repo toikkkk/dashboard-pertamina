@@ -12,7 +12,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertLocationWrite } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { categoryDocStatus } from "@/lib/domain/documentCategories";
-import { psiSortKey, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
+import { PSI_EXTRA_PLACEMENT, psiSortKey, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
         id: c.id,
         name: c.name,
         // Posisi di Excel client (cluster + nomor urut + keterangan); null = di luar Excel.
-        chapter: excel?.chapter ?? null,
+        chapter: excel?.chapter ?? PSI_EXTRA_PLACEMENT[c.name] ?? null,
         no: excel?.no ?? null,
         keterangan: excel?.keterangan ?? null,
         reviewCycleMonths: c.reviewCycleMonths,
