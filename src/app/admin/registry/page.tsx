@@ -401,34 +401,27 @@ export default function AdminRegistryPage() {
             className="w-full min-h-[36px] pl-[32px] pr-3 py-1.5 text-[12.5px] border border-[#C5CED3] rounded-[8px]"
           />
         </form>
-        <select
-          value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setSubcategory("ALL");
-            setPage(1);
-          }}
-          className="text-[12.5px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-h-[36px]"
-        >
-          <option value="ALL">Semua Kategori</option>
+        <div className="basis-full flex flex-wrap items-center gap-1.5" role="group" aria-label="Kategori arsip">
+          <button type="button" aria-pressed={category === "ALL"} onClick={() => { setCategory("ALL"); setSubcategory("ALL"); setPage(1); }} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] font-semibold transition-colors duration-150 ${category === "ALL" ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#0F172A] hover:bg-[#F0F4F6]"}`}>
+            Semua Kategori
+          </button>
           {Object.entries(CATEGORY_LABELS).map(([slug, label]) => (
-            <option key={slug} value={slug}>{label}</option>
+            <button key={slug} type="button" aria-pressed={category === slug} onClick={() => { setCategory(slug); setSubcategory("ALL"); setPage(1); }} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] font-semibold transition-colors duration-150 ${category === slug ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#0F172A] hover:bg-[#F0F4F6]"}`}>
+              {label}
+            </button>
           ))}
-        </select>
+        </div>
         {category !== "ALL" && (data?.subcategories.length ?? 0) > 1 && (
-          <select
-            value={subcategory}
-            onChange={(e) => {
-              setSubcategory(e.target.value);
-              setPage(1);
-            }}
-            className="text-[12.5px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-h-[36px] animate-fadeIn"
-          >
-            <option value="ALL">Semua Sub-Kategori</option>
-            {data?.subcategories.map((s) => (
-              <option key={s.value} value={s.value}>{s.label} ({s.count.toLocaleString("id-ID")})</option>
+          <div className="basis-full flex flex-wrap items-center gap-1.5 animate-fadeIn" role="group" aria-label="Sub-kategori arsip">
+            <button type="button" aria-pressed={subcategory === "ALL"} onClick={() => { setSubcategory("ALL"); setPage(1); }} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] font-semibold transition-colors duration-150 ${subcategory === "ALL" ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#0F172A] hover:bg-[#F0F4F6]"}`}>
+              Semua Sub-Kategori
+            </button>
+            {data?.subcategories.map((sc) => (
+              <button key={sc.value} type="button" aria-pressed={subcategory === sc.value} onClick={() => { setSubcategory(sc.value); setPage(1); }} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] font-semibold transition-colors duration-150 ${subcategory === sc.value ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#0F172A] hover:bg-[#F0F4F6]"}`}>
+                {sc.label} <span className="font-mono text-[11px] opacity-70">{sc.count.toLocaleString("id-ID")}</span>
+              </button>
             ))}
-          </select>
+          </div>
         )}
       </div>
 

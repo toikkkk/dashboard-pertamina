@@ -7,7 +7,8 @@ import DocumentPreviewModal from "@/components/DocumentPreviewModal";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import StatusTag from "@/components/StatusTag";
 import { isDocOverdue, type DocumentItem } from "@/lib/mockData";
-import { uploadFileToR2 } from "@/lib/uploadFile";
+import { mutate as globalMutate } from "swr";
+import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
 import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 
 type SortKey = "documentNumber" | "title" | "fileType" | "location" | "expiryDate";
@@ -43,90 +44,6 @@ function fmtDate(iso: string) {
 
 // Shared between the desktop table's expand-row and the mobile card list's
 // expand-section, same as the analogous form in admin/registry.
-function ReviseForm({
-  docId,
-  docTitle,
-  suggestedVersion,
-  newVersionInput,
-  setNewVersionInput,
-  revisedFile,
-  setRevisedFile,
-  revisionNotes,
-  setRevisionNotes,
-  revisionError,
-  revising,
-  onSubmit,
-}: {
-  docId: string;
-  docTitle: string;
-  suggestedVersion: string;
-  newVersionInput: string;
-  setNewVersionInput: (v: string) => void;
-  revisedFile: File | null;
-  setRevisedFile: (f: File | null) => void;
-  revisionNotes: string;
-  setRevisionNotes: (v: string) => void;
-  revisionError: string | null;
-  revising: boolean;
-  onSubmit: (e: React.FormEvent) => void;
-}) {
-  return (
-    <form onSubmit={onSubmit}>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-3">
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Versi Baru</label>
-          <input
-            type="text"
-            placeholder={suggestedVersion}
-            value={newVersionInput}
-            onChange={(e) => setNewVersionInput(e.target.value)}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px]"
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Berkas Baru</label>
-          <input
-            id={`reviseFileInput-${docId}`}
-            type="file"
-            accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
-            onChange={(e) => setRevisedFile(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-          <label
-            htmlFor={`reviseFileInput-${docId}`}
-            className="flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 text-xs border border-[#C5CED3] rounded-[8px] bg-white cursor-pointer transition-colors duration-200 hover:bg-[#f7f8f8] hover:border-[#9a9da0]"
-            style={{ color: revisedFile ? "#0F172A" : "#9a9da0" }}
-          >
-            <UploadIcon className="w-[13px] h-[13px] text-[#6b6e72]" strokeWidth={1.7} />
-            {revisedFile ? revisedFile.name : "Pilih Berkas"}
-          </label>
-        </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Catatan Perubahan</label>
-          <input
-            type="text"
-            placeholder="Ringkas perubahan..."
-            value={revisionNotes}
-            onChange={(e) => setRevisionNotes(e.target.value)}
-            className="w-full min-h-[34px] px-2.5 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px]"
-          />
-        </div>
-      </div>
-      {revisionError && <p className="mb-2.5 text-[11.5px] font-semibold text-[#DC2626]">{revisionError}</p>}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={revising}
-          className="text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
-        >
-          {revising ? "Mengunggah…" : "Simpan Revisi"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// Helper untuk menampilkan tipe file berdasarkan ekstensi (PDF, Excel, Word, Image, dll)
 function FileTypeBadge({ fileName }: { fileName?: string }) {
   if (!fileName) return <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[8px] bg-[#F5F7F9] text-[#9a9da0]"><FileType className="w-3 h-3" /> Unknown</span>;
 
@@ -191,14 +108,9 @@ export default function ExpiringDocsTable() {
   // boleh dilihat user (baca lintas-lokasi sudah diizinkan sejak 2026-09-25, lihat
   // CLAUDE.md), sama seperti getComplianceMetrics() & grafik "Dokumen per Terminal"
   // yang sudah lebih dulu memakai allDocuments dengan alasan yang sama persis.
-  const { allDocuments, activeUser, extendValidity, reviseDocument } = usePsi();
-  const [selectedDocForRevise, setSelectedDocForRevise] = useState<string | null>(null);
-  const [newVersionInput, setNewVersionInput] = useState<string>("");
-  const [revisionNotes, setRevisionNotes] = useState<string>("");
-  const [revisedFile, setRevisedFile] = useState<File | null>(null);
+  const { allDocuments, activeUser, extendValidity } = usePsi();
+  const [replaceDoc, setReplaceDoc] = useState<DocumentItem | null>(null);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<{ text: string; closing?: boolean } | null>(null);
-  const [revisionError, setRevisionError] = useState<string | null>(null);
-  const [revising, setRevising] = useState(false);
   const [view, setView] = useState<"mine" | "other">("mine");
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "expiryDate", dir: 1 });
@@ -262,37 +174,6 @@ export default function ExpiringDocsTable() {
   const handleExtend = (docId: string) => {
     extendValidity(docId);
     flashSuccess("Validitas dokumen berhasil diperpanjang 5 tahun.");
-  };
-
-  const openRevise = (docId: string, suggestedVersion: string) => {
-    setSelectedDocForRevise(selectedDocForRevise === docId ? null : docId);
-    setNewVersionInput(suggestedVersion);
-    setRevisedFile(null);
-    setRevisionError(null);
-  };
-
-  const handleReviseSubmit = async (e: React.FormEvent, docId: string, suggestedVersion: string) => {
-    e.preventDefault();
-    if (!revisedFile || !revisionNotes.trim()) {
-      setRevisionError("Berkas baru dan catatan perubahan wajib diisi.");
-      return;
-    }
-    setRevisionError(null);
-    const version = newVersionInput.trim() || suggestedVersion;
-
-    setRevising(true);
-    try {
-      const fileId = await uploadFileToR2(revisedFile);
-      await reviseDocument(docId, version, fileId, revisionNotes);
-      setSelectedDocForRevise(null);
-      setRevisedFile(null);
-      setRevisionNotes("");
-      flashSuccess(`Dokumen berhasil direvisi ke versi ${version}.`);
-    } catch (err) {
-      setRevisionError(err instanceof Error ? err.message : "Gagal menyimpan revisi.");
-    } finally {
-      setRevising(false);
-    }
   };
 
   if (expiringDocs.length === 0) {
@@ -376,9 +257,6 @@ export default function ExpiringDocsTable() {
             );
           }
           const doc = row.doc;
-          const vNum = parseFloat(doc.currentVersion) || 1;
-          const suggestedVersion = (vNum + 1).toFixed(1);
-          const isRevising = selectedDocForRevise === doc.id;
           return (
             <div key={doc.id} className="px-3.5 py-3 animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -409,7 +287,7 @@ export default function ExpiringDocsTable() {
                     Perpanjang
                   </button>
                   <button
-                    onClick={() => openRevise(doc.id, suggestedVersion)}
+                    onClick={() => setReplaceDoc(doc)}
                     className="flex-1 justify-center text-[11.5px] font-bold px-2.5 py-2 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
                   >
                     <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
@@ -418,34 +296,6 @@ export default function ExpiringDocsTable() {
                 </div>
               ) : (
                 <p className="text-[11px] text-[#9a9da0] italic">Lokasi lain · lihat saja</p>
-              )}
-
-              {isRevising && (
-                <div className="mt-3 bg-[#f7f8f8] -mx-3.5 px-3.5 py-[18px] border-t border-[#f0f0f1] animate-fadeInUp">
-                  <p className="mb-3 text-[12.5px] font-bold text-[#3a3d40]">Revisi File — {doc.title}</p>
-                  <ReviseForm
-                    docId={doc.id}
-                    docTitle={doc.title}
-                    suggestedVersion={suggestedVersion}
-                    newVersionInput={newVersionInput}
-                    setNewVersionInput={setNewVersionInput}
-                    revisedFile={revisedFile}
-                    setRevisedFile={setRevisedFile}
-                    revisionNotes={revisionNotes}
-                    setRevisionNotes={setRevisionNotes}
-                    revisionError={revisionError}
-                    revising={revising}
-                    onSubmit={(e) => handleReviseSubmit(e, doc.id, suggestedVersion)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDocForRevise(null)}
-                    disabled={revising}
-                    className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    Batal
-                  </button>
-                </div>
               )}
             </div>
           );
@@ -480,9 +330,6 @@ export default function ExpiringDocsTable() {
             // Every row here is overdue by definition (that's the filter above) — show
             // "Expired" consistently rather than a stale stored status like "Approved"
             // that was only ever accurate before its expiryDate passed.
-            const vNum = parseFloat(doc.currentVersion) || 1;
-            const suggestedVersion = (vNum + 1).toFixed(1);
-            const isRevising = selectedDocForRevise === doc.id;
             return (
               <React.Fragment key={doc.id}>
                 <tr className="border-t border-[#f0f0f1] hover:bg-[#fafafb] hover:shadow-[inset_3px_0_0_#0F3B59] transition-all duration-200 ease-out-expo animate-fadeInUp" style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
@@ -501,7 +348,7 @@ export default function ExpiringDocsTable() {
                     <StatusTag color={DOCUMENT_STATUS_META.Expired.color} label="Expired" />
                   </td>
                   <td className="px-3.5 py-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <button
                         onClick={() => setPreviewDoc(doc)}
                         className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f7f8f8] active:scale-[0.97] flex items-center gap-1.5 transition"
@@ -519,7 +366,7 @@ export default function ExpiringDocsTable() {
                             Perpanjang Validitas
                           </button>
                           <button
-                            onClick={() => openRevise(doc.id, suggestedVersion)}
+                            onClick={() => setReplaceDoc(doc)}
                             className="text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white flex items-center gap-1.5 transition"
                           >
                             <UploadIcon className="w-3 h-3" strokeWidth={1.8} />
@@ -532,44 +379,26 @@ export default function ExpiringDocsTable() {
                     </div>
                   </td>
                 </tr>
-
-                {isRevising && (
-                  <tr>
-                    <td colSpan={7} className="p-0 border-t border-[#f0f0f1]">
-                      <div className="bg-[#f7f8f8] px-5 py-[18px] animate-fadeInUp">
-                        <p className="mb-3 text-[12.5px] font-bold text-[#3a3d40]">Revisi File — {doc.title}</p>
-                        <ReviseForm
-                          docId={doc.id}
-                          docTitle={doc.title}
-                          suggestedVersion={suggestedVersion}
-                          newVersionInput={newVersionInput}
-                          setNewVersionInput={setNewVersionInput}
-                          revisedFile={revisedFile}
-                          setRevisedFile={setRevisedFile}
-                          revisionNotes={revisionNotes}
-                          setRevisionNotes={setRevisionNotes}
-                          revisionError={revisionError}
-                          revising={revising}
-                          onSubmit={(e) => handleReviseSubmit(e, doc.id, suggestedVersion)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDocForRevise(null)}
-                          disabled={revising}
-                          className="mt-2 text-xs font-bold px-3.5 py-2 rounded-[8px] border border-[#C5CED3] bg-white hover:bg-[#f0f0f1] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </React.Fragment>
             );
           })}
         </tbody>
       </table>
       </div>
+
+      {replaceDoc && (
+        <ReplaceFileDialog
+          documentId={replaceDoc.id}
+          title={replaceDoc.title}
+          currentVersion={replaceDoc.currentVersion}
+          onClose={() => setReplaceDoc(null)}
+          onDone={() => {
+            setReplaceDoc(null);
+            flashSuccess("Berkas baru tersimpan sebagai versi terbaru.");
+            void globalMutate("/api/bootstrap");
+          }}
+        />
+      )}
     </div>
   );
 }

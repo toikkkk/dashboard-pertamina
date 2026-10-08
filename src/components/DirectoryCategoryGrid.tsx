@@ -168,18 +168,21 @@ function defaultPsiType(category: CategoryTile): PSIType {
   return category.chapter === "A" ? "Informasi Bahan Berbahaya" : "Informasi Teknologi Proses";
 }
 
-function UploadIntoCategoryPanel({
+export function UploadIntoCategoryPanel({
   location,
   category,
   initialFiles,
   onClose,
   onUploaded,
+  onQueued,
 }: {
   location: string;
   category: CategoryTile;
   initialFiles: File[];
   onClose: () => void;
   onUploaded: () => void;
+  /** Dipanggil saat berkas sudah masuk antrean unggahan (sebelum dialog ditutup). */
+  onQueued?: () => void;
 }) {
   const { addNewDocument } = usePsi();
   const todayIso = new Date().toISOString().split("T")[0];
@@ -260,6 +263,7 @@ function UploadIntoCategoryPanel({
         };
       })
     );
+    onQueued?.();
     onClose();
   };
 
