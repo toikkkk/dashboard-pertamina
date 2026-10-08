@@ -6,6 +6,7 @@ import { usePsi } from "@/lib/psiStore";
 import { psiInsights } from "@/lib/domain/dashboard";
 import { useDirectoryOverview } from "@/lib/useDocumentCategories";
 import DirectoryCategoryGrid from "@/components/DirectoryCategoryGrid";
+import { exportDirectoryXlsx } from "@/lib/exportDirectory";
 import RecentAndFavorites from "@/components/directory/RecentAndFavorites";
 import Breadcrumb from "@/components/Breadcrumb";
 import DirectoryToolbar from "@/components/directory/DirectoryToolbar";
@@ -148,6 +149,13 @@ function DirectoryContent() {
         counts={counts}
         active={searching ? null : aksi}
         onAction={(k) => { setQuery(""); setParam({ aksi: k }); }}
+        onExport={() =>
+          exportDirectoryXlsx({
+            docs: gridLocation ? sourceDocs.filter((d) => d.location === gridLocation) : sourceDocs,
+            overview,
+            label: gridLocation ?? (canBrowseMultipleLocations ? "Semua-lokasi" : activeUser.location ?? "Direktori"),
+          })
+        }
         tab={showTabs ? tab : null}
         onTab={(t) => setParam({ v: t === "matriks" ? "matriks" : null })}
       />

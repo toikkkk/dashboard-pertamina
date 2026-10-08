@@ -2,8 +2,8 @@
 
 // Bilah alat Direktori: kotak cari + chip "Perlu tindakan" (dengan jumlahnya) dan, di
 // level daftar lokasi, pengalih Per Lokasi / Matriks.
-import React from "react";
-import { Search, X, LayoutGrid, Table2, AlertTriangle, Clock, History, FileX, type LucideIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Search, X, LayoutGrid, Table2, AlertTriangle, Clock, History, FileX, FileSpreadsheet, type LucideIcon } from "lucide-react";
 import { ACTION_META, type ActionKind } from "@/components/directory/ActionList";
 
 const KINDS: ActionKind[] = ["kedaluwarsa", "segera", "stale", "kosong"];
@@ -17,6 +17,7 @@ export default function DirectoryToolbar({
   onAction,
   tab,
   onTab,
+  onExport,
 }: {
   query: string;
   onQuery: (q: string) => void;
@@ -26,7 +27,19 @@ export default function DirectoryToolbar({
   /** null = tidak tampil (level lokasi / sedang melihat hasil). */
   tab: "lokasi" | "matriks" | null;
   onTab: (t: "lokasi" | "matriks") => void;
+  /** Ekspor Excel dari data yang sedang dilihat; tombol disembunyikan bila tidak diberikan. */
+  onExport?: () => Promise<unknown>;
 }) {
+  const [exporting, setExporting] = useState(false);
+  const runExport = async () => {
+    if (!onExport || exporting) return;
+    setExporting(true);
+    try {
+      await onExport();
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <div className="mb-5 flex flex-col gap-3">
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -47,6 +60,11 @@ export default function DirectoryToolbar({
           )}
         </div>
 
+        {onExport && (
+          <button type="button" onClick={runExport} disabled={exporting} className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3.5 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] transition-colors duration-150 disabled:opacity-60">
+            <FileSpreadsheet className="w-3.5 h-3.5" strokeWidth={2.2} /> {exporting ? "Menyiapkan…" : "Ekspor Excel"}
+          </button>
+        )}
         {tab && (
           <div role="radiogroup" aria-label="Tampilan" className="flex items-center gap-1 p-0.5 rounded-[8px] bg-[#F0F2F3] border border-[#E2E8EB]">
             {([
