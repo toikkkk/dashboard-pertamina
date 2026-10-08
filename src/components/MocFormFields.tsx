@@ -294,32 +294,26 @@ export default function MocFormFields({
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Field label="Tingkat Keparahan (1–5)">
-            <select
-              className={INPUT}
+            <ScaleChips
+              label="Tingkat Keparahan"
               disabled={disabled}
-              value={value.severity ?? ""}
-              onChange={(e) => {
-                const severity = num(e.target.value);
+              value={value.severity ?? null}
+              onPick={(n) => {
+                const severity = n;
                 onChange({ severity, riskLevel: riskLevel(riskValue(severity, value.probability)) });
               }}
-            >
-              <option value="">—</option>
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
+            />
           </Field>
           <Field label="Probabilitas (1–5)">
-            <select
-              className={INPUT}
+            <ScaleChips
+              label="Probabilitas"
               disabled={disabled}
-              value={value.probability ?? ""}
-              onChange={(e) => {
-                const probability = num(e.target.value);
+              value={value.probability ?? null}
+              onPick={(n) => {
+                const probability = n;
                 onChange({ probability, riskLevel: riskLevel(riskValue(value.severity, probability)) });
               }}
-            >
-              <option value="">—</option>
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
+            />
           </Field>
           <Field label="Nilai Risiko" hint="Keparahan × Probabilitas.">
             <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>{nilai ?? "—"}</div>
@@ -347,6 +341,30 @@ export default function MocFormFields({
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.downsideLoss} onChange={(e) => onChange({ downsideLoss: e.target.value })} />
         </Field>
       </Section>
+    </div>
+  );
+}
+
+// Skala 1–5 sebagai baris tombol (klik angka yang sama lagi = kosongkan) — lebih cepat dan jelas daripada dropdown.
+function ScaleChips({ label, value, onPick, disabled }: { label: string; value: number | null; onPick: (n: number | null) => void; disabled?: boolean }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex items-center gap-1.5 min-h-[38px]">
+      {[1, 2, 3, 4, 5].map((n) => {
+        const on = value === n;
+        return (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            disabled={disabled}
+            onClick={() => onPick(on ? null : n)}
+            className={`w-9 h-9 rounded-full border text-[13px] font-mono font-bold transition-colors duration-150 disabled:opacity-60 ${on ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#3a3d40] hover:bg-[#F0F4F6]"}`}
+          >
+            {n}
+          </button>
+        );
+      })}
     </div>
   );
 }

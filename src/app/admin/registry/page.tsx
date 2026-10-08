@@ -8,6 +8,7 @@
 // most are raw evidence photos/worksheets that were never approval-workflow objects.
 // Promotion into a real curated `documents` row stays a deliberate one-at-a-time
 // admin action via POST /api/registry/:id/link, same as the backend was designed for.
+import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useState } from "react";
 import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
@@ -165,13 +166,14 @@ function LinkDocumentForm({
         </div>
         <div>
           <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Fase</label>
-          <select
+          <MenuSelect
+            ariaLabel="Fase"
+            fullWidth
+            minWidth={140}
             value={form.lifecyclePhase}
-            onChange={(e) => setForm({ ...form, lifecyclePhase: e.target.value as LifecyclePhase })}
-            className="w-full min-h-[34px] px-2 py-1 text-[12.5px] border border-[#C5CED3] rounded-[8px] bg-white"
-          >
-            {LIFECYCLE_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+            options={LIFECYCLE_PHASES.map((p) => ({ value: p, label: p }))}
+            onChange={(v) => setForm({ ...form, lifecyclePhase: v as LifecyclePhase })}
+          />
         </div>
         <div>
           <label className="block text-[11px] font-semibold text-[#6b6e72] mb-[5px]">Tanggal Terbit</label>

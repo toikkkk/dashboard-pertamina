@@ -1,5 +1,6 @@
 "use client";
 
+import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X, Paperclip } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
@@ -243,14 +244,14 @@ export default function MocActionsPanel({
               <div className="flex flex-col gap-2">
                 {reviewers.map((r, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <select className={INPUT} value={r.userId} onChange={(e) => pickReviewer(i, e.target.value)} aria-label="Reviewer">
-                      <option value="">Pilih reviewer…</option>
-                      {reviewerPool.map((u) => (
-                        <option key={u.id} value={u.id} disabled={reviewers.some((x, idx) => idx !== i && x.userId === u.id)}>
-                          {u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    <MenuSelect
+                      ariaLabel="Reviewer"
+                      fullWidth
+                      minWidth={200}
+                      value={r.userId}
+                      options={[{ value: "", label: "Pilih reviewer…" }, ...reviewerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}`, disabled: reviewers.some((x, idx) => idx !== i && x.userId === u.id) }))]}
+                      onChange={(v) => pickReviewer(i, v)}
+                    />
                     <button type="button" aria-label="Hapus reviewer" disabled={reviewers.length === 1} onClick={() => { touch(); setReviewers(reviewers.filter((_, idx) => idx !== i)); }} className="p-2 text-[#6b6e72] hover:text-[#DC2626] disabled:opacity-30">
                       <X className="w-4 h-4" strokeWidth={2} />
                     </button>
@@ -267,10 +268,14 @@ export default function MocActionsPanel({
             {approverPool.length === 0 ? (
               <EmptyPool role="Approver" />
             ) : (
-              <select className={INPUT} value={approverId} onChange={(e) => { touch(); setApproverId(e.target.value); }} aria-label="Approver">
-                <option value="">Pilih approver…</option>
-                {approverPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
-              </select>
+              <MenuSelect
+                ariaLabel="Approver"
+                fullWidth
+                minWidth={200}
+                value={approverId}
+                options={[{ value: "", label: "Pilih approver…" }, ...approverPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` }))]}
+                onChange={(v) => { touch(); setApproverId(v); }}
+              />
             )}
           </Step>
 
@@ -351,10 +356,14 @@ export default function MocActionsPanel({
               {performerPool.length === 0 ? (
                 <EmptyPool role="Performer" />
               ) : (
-                <select className={INPUT} value={performerId} onChange={(e) => setPerformerId(e.target.value)} aria-label="Performer">
-                  <option value="">Pilih performer…</option>
-                  {performerPool.map((u) => <option key={u.id} value={u.id}>{u.name}{u.mocFunction ? ` — ${u.mocFunction}` : ""}</option>)}
-                </select>
+                <MenuSelect
+                  ariaLabel="Performer"
+                  fullWidth
+                  minWidth={200}
+                  value={performerId}
+                  options={[{ value: "", label: "Pilih performer…" }, ...performerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` }))]}
+                  onChange={setPerformerId}
+                />
               )}
             </Step>
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
 import { deriveDemoEmail, SimulatedUser } from "@/lib/mockData";
@@ -220,24 +221,8 @@ export default function AdminUsersPage() {
                   </span>
                 ) : (
                   <>
-                    <select
-                      value={draftRole[u.id] ?? u.requestedRole ?? "Penanggung Jawab PSI (Initiator)"}
-                      onChange={(e) => setDraftRole((s) => ({ ...s, [u.id]: e.target.value as SimulatedUser["role"] }))}
-                      className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold"
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={draftLocation[u.id] ?? u.requestedLocation ?? locations[0].locationName}
-                      onChange={(e) => setDraftLocation((s) => ({ ...s, [u.id]: e.target.value }))}
-                      className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold"
-                    >
-                      {locations.map((l) => (
-                        <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
-                      ))}
-                    </select>
+                    <MenuSelect ariaLabel="Peran" minWidth={250} value={draftRole[u.id] ?? u.requestedRole ?? "Penanggung Jawab PSI (Initiator)"} options={ROLES.map((r) => ({ value: r, label: r }))} onChange={(v) => setDraftRole((s) => ({ ...s, [u.id]: v as SimulatedUser["role"] }))} />
+                    <MenuSelect ariaLabel="Lokasi" minWidth={190} value={draftLocation[u.id] ?? u.requestedLocation ?? locations[0].locationName} options={locations.map((l) => ({ value: l.locationName, label: l.locationName }))} onChange={(v) => setDraftLocation((s) => ({ ...s, [u.id]: v }))} />
                     <button
                       onClick={() => handleAssign(u)}
                       className="text-[11.5px] font-bold px-3 py-1.5 rounded-[8px] border border-[#0F3B59] bg-[#0F3B59] hover:bg-[#0B2C43] active:scale-[0.97] text-white transition-all duration-200"
@@ -303,24 +288,8 @@ export default function AdminUsersPage() {
 
               {editingId === u.id ? (
                 <div className="flex flex-col gap-2 mt-2">
-                  <select
-                    value={draftRole[u.id] ?? u.role}
-                    onChange={(e) => setDraftRole((s) => ({ ...s, [u.id]: e.target.value as SimulatedUser["role"] }))}
-                    className="text-[12.5px] px-2.5 py-2 border border-[#C5CED3] rounded-[8px] bg-white font-semibold w-full"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={draftLocation[u.id] ?? u.location ?? locations[0].locationName}
-                    onChange={(e) => setDraftLocation((s) => ({ ...s, [u.id]: e.target.value }))}
-                    className="text-[12.5px] px-2.5 py-2 border border-[#C5CED3] rounded-[8px] bg-white font-semibold w-full"
-                  >
-                    {locations.map((l) => (
-                      <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
-                    ))}
-                  </select>
+                  <MenuSelect ariaLabel="Peran" fullWidth minWidth={250} value={draftRole[u.id] ?? u.role} options={ROLES.map((r) => ({ value: r, label: r }))} onChange={(v) => setDraftRole((s) => ({ ...s, [u.id]: v as SimulatedUser["role"] }))} />
+                  <MenuSelect ariaLabel="Lokasi" fullWidth minWidth={190} value={draftLocation[u.id] ?? u.location ?? locations[0].locationName} options={locations.map((l) => ({ value: l.locationName, label: l.locationName }))} onChange={(v) => setDraftLocation((s) => ({ ...s, [u.id]: v }))} />
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleSaveEdit(u)}
@@ -423,26 +392,10 @@ export default function AdminUsersPage() {
                 {editingId === u.id ? (
                   <>
                     <td className="px-3.5 py-2.5">
-                      <select
-                        value={draftRole[u.id] ?? u.role}
-                        onChange={(e) => setDraftRole((s) => ({ ...s, [u.id]: e.target.value as SimulatedUser["role"] }))}
-                        className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold w-full"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
+                      <MenuSelect ariaLabel="Peran" fullWidth minWidth={250} value={draftRole[u.id] ?? u.role} options={ROLES.map((r) => ({ value: r, label: r }))} onChange={(v) => setDraftRole((s) => ({ ...s, [u.id]: v as SimulatedUser["role"] }))} />
                     </td>
                     <td className="px-3.5 py-2.5">
-                      <select
-                        value={draftLocation[u.id] ?? u.location ?? locations[0].locationName}
-                        onChange={(e) => setDraftLocation((s) => ({ ...s, [u.id]: e.target.value }))}
-                        className="text-xs px-2 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold w-full"
-                      >
-                        {locations.map((l) => (
-                          <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
-                        ))}
-                      </select>
+                      <MenuSelect ariaLabel="Lokasi" fullWidth minWidth={190} value={draftLocation[u.id] ?? u.location ?? locations[0].locationName} options={locations.map((l) => ({ value: l.locationName, label: l.locationName }))} onChange={(v) => setDraftLocation((s) => ({ ...s, [u.id]: v }))} />
                     </td>
                     <td className="px-3.5 py-2.5"><MocRoleEditor key={`${u.id}-${(u.mocRoles ?? []).join()}-${u.mocFunction ?? ""}`} user={u} /></td>
                     <td className="px-3.5 py-2.5 text-right whitespace-nowrap">

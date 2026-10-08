@@ -72,10 +72,8 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
 
       <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} />
 
-      {message && (
-        <p role="alert" className="mt-4 text-[12.5px] font-semibold text-[#DC2626]">{message}</p>
-      )}
-      <div className="mt-5 flex gap-2.5">
+      {/* Bilah aksi menempel di bawah layar: form ini panjang, tombol simpan tak perlu dicari di dasar halaman. */}
+      <div className="sticky bottom-3 z-20 mt-5 flex flex-wrap items-center gap-2.5 px-4 py-3 rounded-[14px] bg-white/95 backdrop-blur border border-[#D8E1E4] shadow-[0_8px_24px_-8px_rgba(15,23,42,.25)]">
         <button
           type="button"
           onClick={save}
@@ -87,6 +85,9 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
         <Link href={mocId ? `/moc/${mocId}` : "/moc"} className="px-4 py-2 text-[13px] font-bold text-[#0F172A] hover:underline">
           Batal
         </Link>
+        {message && (
+          <p role="alert" className="ml-auto text-[12.5px] font-semibold text-[#DC2626]">{message}</p>
+        )}
       </div>
     </div>
   );

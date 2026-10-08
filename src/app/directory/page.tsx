@@ -1,5 +1,6 @@
 "use client";
 
+import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
@@ -80,15 +81,16 @@ function DirectoryContent() {
   const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null }); };
 
   const scopeSwitcher = canPeekOtherLocations && (
-    <select
+    <MenuSelect
+      ariaLabel="Cakupan lokasi"
+      minWidth={230}
       value={canBrowseMultipleLocations ? "ALL" : "OWN"}
-      onChange={(e) => { setScopeAll(e.target.value === "ALL"); setParam({ location: null, category: null, aksi: null }); }}
-      aria-label="Cakupan lokasi"
-      className="text-[13px] px-2.5 py-1.5 border border-[#C5CED3] rounded-[8px] bg-white font-semibold min-w-[200px]"
-    >
-      <option value="OWN">Lokasi saya ({activeUser.location})</option>
-      <option value="ALL">Semua lokasi (lihat saja)</option>
-    </select>
+      options={[
+        { value: "OWN", label: `Lokasi saya (${activeUser.location})` },
+        { value: "ALL", label: "Semua lokasi (lihat saja)" },
+      ]}
+      onChange={(v) => { setScopeAll(v === "ALL"); setParam({ location: null, category: null, aksi: null }); }}
+    />
   );
 
   const searching = query.trim().length > 0;

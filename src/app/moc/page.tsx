@@ -1,5 +1,6 @@
 "use client";
 
+import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -124,20 +125,24 @@ export default function MocRegisterPage() {
             className="w-full min-h-[38px] pl-[34px] pr-3 py-1.5 text-[13px] border border-[#C5CED3] rounded-[8px]"
           />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className={`${SELECT} min-w-[170px]`} aria-label="Status perubahan">
-          <option value="ALL">Semua Status</option>
-          {MOC_REGISTER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <MenuSelect
+          ariaLabel="Status perubahan"
+          minWidth={180}
+          value={status}
+          options={[{ value: "ALL", label: "Semua Status" }, ...MOC_REGISTER_STATUSES.map((st) => ({ value: st, label: st }))]}
+          onChange={setStatus}
+        />
         {!isAdmin && !!activeUser.location && (
-          <select
+          <MenuSelect
+            ariaLabel="Cakupan lokasi"
+            minWidth={230}
             value={scopeAll ? "ALL" : "OWN"}
-            onChange={(e) => setScopeAll(e.target.value === "ALL")}
-            className={`${SELECT} min-w-[200px]`}
-            aria-label="Cakupan lokasi"
-          >
-            <option value="OWN">Lokasi saya ({activeUser.location})</option>
-            <option value="ALL">Semua lokasi (lihat saja)</option>
-          </select>
+            options={[
+              { value: "OWN", label: `Lokasi saya (${activeUser.location})` },
+              { value: "ALL", label: "Semua lokasi (lihat saja)" },
+            ]}
+            onChange={(v) => setScopeAll(v === "ALL")}
+          />
         )}
         <label className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F172A] cursor-pointer">
           <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
