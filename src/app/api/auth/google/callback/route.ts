@@ -6,7 +6,7 @@
 // /api/auth/register) — it still lands in the existing "pending Admin Regional
 // activation" state, nothing about that flow is bypassed just because sign-in was
 // via Google.
-import { emailDomainAllowed } from "@/lib/auth/sso";
+import { emailDomainAllowed } from "@/lib/auth/emailDomain";
 import { logAudit } from "@/lib/audit";
 import { uniqueUsername } from "@/lib/auth/username";
 import { randomBytes } from "crypto";

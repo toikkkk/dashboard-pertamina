@@ -73,7 +73,7 @@ export const users = pgTable("users", {
   // bagian depan email lewat migrasi 0007; unik tanpa membedakan huruf besar/kecil.
   username: text("username"),
   // Verifikasi email: NULL = belum terverifikasi. Akun sebelum fitur ini ada diisi created_at oleh migrasi 0011;
-  // akun dari login Google/SSO langsung terisi (penyedia identitas sudah memverifikasi).
+  // akun dari login Google langsung terisi (penyedia identitas sudah memverifikasi).
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   // Autentikasi dua faktor (TOTP/aplikasi authenticator). Rahasia disimpan TERENKRIPSI (AES-256-GCM, lihat
   // lib/auth/secretBox.ts); kode pemulihan hanya hash-nya. TIDAK PERNAH dikirim ke klien.

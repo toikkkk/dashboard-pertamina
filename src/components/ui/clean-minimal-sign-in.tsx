@@ -68,11 +68,6 @@ function SignIn2Content() {
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
   // Langkah 2 login ber-MFA: tantangan dari server + kode dari aplikasi authenticator (atau kode pemulihan).
-  // Penyedia login yang aktif di server (tombol SSO muncul hanya bila dikonfigurasi).
-  const [ssoLabel, setSsoLabel] = useState<string | null>(null);
-  useEffect(() => {
-    fetch("/api/auth/providers").then((r) => (r.ok ? r.json() : null)).then((p) => setSsoLabel(p?.sso?.label ?? null)).catch(() => {});
-  }, []);
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaError, setMfaError] = useState("");
@@ -414,14 +409,6 @@ function SignIn2Content() {
                   <div className="flex-grow border-t border-dashed border-[#d5dde1]" />
                 </div>
 
-                {ssoLabel && (
-                  <a
-                    href="/api/auth/sso"
-                    className="w-full flex items-center justify-center gap-2.5 bg-[#0F3B59] hover:bg-[#0B2C43] text-white font-semibold text-[13px] py-2.5 rounded-[8px] mb-2.5 active:scale-[0.98] transition-all duration-200 ease-out-expo"
-                  >
-                    <Lock className="w-4 h-4" strokeWidth={2} /> Masuk dengan {ssoLabel}
-                  </a>
-                )}
                 <a
                   href="/api/auth/google"
                   className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#F5F7F9] text-[#3a3d40] font-semibold text-[13px] py-2.5 rounded-[8px] border border-[#C5CED3] active:scale-[0.98] transition-all duration-200 ease-out-expo"
