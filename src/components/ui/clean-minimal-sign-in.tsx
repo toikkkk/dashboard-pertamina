@@ -50,7 +50,7 @@ function GoogleLogo() {
 function SignIn2Content() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, register, forgotPassword } = usePsi();
+  const { login, completeMfaLogin, register, forgotPassword } = usePsi();
 
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [forgot, setForgot] = useState(false);
@@ -67,6 +67,10 @@ function SignIn2Content() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+  // Langkah 2 login ber-MFA: tantangan dari server + kode dari aplikasi authenticator (atau kode pemulihan).
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState("");
   const [signInSuccess, setSignInSuccess] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -105,13 +109,43 @@ function SignIn2Content() {
     setSigningIn(true);
     setAuthTransition(true); // cegah redirect otomatis LoginPage memotong animasi
     try {
-      await login(identifier.trim(), password);
+      const res = await login(identifier.trim(), password);
+      if ("mfaRequired" in res) {
+        setMfaChallenge(res.challenge);
+        setMfaCode("");
+        setMfaError("");
+        setAuthTransition(false);
+        setSigningIn(false);
+        return;
+      }
       setSignInSuccess(true);
       setSuccessMsg("Login berhasil");
       setLeaving(true);
     } catch (err) {
       setAuthTransition(false);
       setError(err instanceof Error ? err.message : "Gagal masuk.");
+      setSigningIn(false);
+    }
+  };
+
+  const handleMfa = async () => {
+    if (!mfaChallenge) return;
+    if (mfaCode.trim().length < 6) {
+      setMfaError("Masukkan kode 6 digit dari aplikasi authenticator.");
+      return;
+    }
+    setMfaError("");
+    setSigningIn(true);
+    setAuthTransition(true);
+    try {
+      await completeMfaLogin(mfaChallenge, mfaCode.trim());
+      setMfaChallenge(null);
+      setSignInSuccess(true);
+      setSuccessMsg("Login berhasil");
+      setLeaving(true);
+    } catch (err) {
+      setAuthTransition(false);
+      setMfaError(err instanceof Error ? err.message : "Kode tidak valid.");
       setSigningIn(false);
     }
   };
@@ -298,6 +332,33 @@ function SignIn2Content() {
               )
             ) : (
               <div className={signInSuccess ? "hidden md:block" : ""}>
+              {mfaChallenge ? (
+                <div className="flex flex-col gap-3 animate-fadeIn">
+                  <button type="button" onClick={() => { setMfaChallenge(null); setMfaCode(""); setMfaError(""); setPassword(""); }} className="flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3B59] hover:text-[#0B2C43] transition-colors duration-200">
+                    <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} /> Kembali
+                  </button>
+                  <div>
+                    <p className="text-[14px] font-bold text-[#0F172A]">Verifikasi dua langkah</p>
+                    <p className="text-[12px] text-[#4b5560] leading-relaxed mt-1">Masukkan kode 6 digit dari aplikasi authenticator Anda, atau salah satu kode pemulihan.</p>
+                  </div>
+                  <input
+                    autoFocus
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    aria-label="Kode verifikasi"
+                    placeholder="123456"
+                    maxLength={12}
+                    value={mfaCode}
+                    className={`${inputClass} text-center tracking-[.3em] font-mono`}
+                    onChange={(e) => { setMfaCode(e.target.value); setMfaError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleMfa()}
+                  />
+                  {mfaError && <div role="alert" className="text-[11.5px] text-[#DC2626] font-medium text-center animate-fadeIn">{mfaError}</div>}
+                  <button onClick={handleMfa} disabled={signingIn} className={primaryBtn}>
+                    {signingIn ? "Memeriksa…" : "VERIFIKASI"}
+                  </button>
+                </div>
+              ) : (
               <>
                 <div className="flex flex-col gap-3 mb-2">
                   <div className="relative group">
@@ -360,6 +421,7 @@ function SignIn2Content() {
                   <button type="button" onClick={() => goMode("register")} className="font-bold text-[#0F3B59] hover:underline">Daftar</button>
                 </p>
               </>
+              )}
               </div>
             )}
           </div>

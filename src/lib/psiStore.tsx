@@ -68,7 +68,9 @@ interface PsiContextType {
   /** POSTs to /api/auth/login. Throws on failure (wrong email/password) — callers
    * show the thrown message inline rather than this returning a boolean. */
   /** identifier = email ATAU username. */
-  login: (identifier: string, password: string) => Promise<SimulatedUser>;
+  login: (identifier: string, password: string) => Promise<SimulatedUser | { mfaRequired: true; challenge: string }>;
+  /** Langkah 2 login akun ber-MFA: tukar tantangan + kode (TOTP / kode pemulihan) dengan sesi. */
+  completeMfaLogin: (challenge: string, code: string) => Promise<SimulatedUser>;
   logout: () => void;
   /** POSTs to /api/auth/register. Same pending-until-admin-assigns-location outcome
    * as the client-only prototype (server always creates with location=NULL) — the
@@ -173,8 +175,16 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // request resolves don't crash on an empty array.
   const locations = payload.locations.length > 0 ? payload.locations : REGIONAL_LOCATIONS;
 
-  const login = async (identifier: string, password: string): Promise<SimulatedUser> => {
-    const user = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) });
+  const login = async (identifier: string, password: string): Promise<SimulatedUser | { mfaRequired: true; challenge: string }> => {
+    const res = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) });
+    // Akun ber-MFA: belum ada sesi — kembalikan tantangan, jangan muat ulang data.
+    if (res && res.mfaRequired) return { mfaRequired: true, challenge: res.challenge };
+    await mutate();
+    return res;
+  };
+
+  const completeMfaLogin = async (challenge: string, code: string): Promise<SimulatedUser> => {
+    const user = await fetchJson("/api/auth/mfa/verify", { method: "POST", body: JSON.stringify({ challenge, code }) });
     await mutate();
     return user;
   };
@@ -355,6 +365,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getComplianceMetrics,
         isLoggedIn,
         login,
+        completeMfaLogin,
         logout,
         register,
         forgotPassword,

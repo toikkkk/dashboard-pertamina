@@ -1,5 +1,6 @@
 "use client";
 
+import { mutate as globalMutate } from "swr";
 import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useState } from "react";
 import { usePsi } from "@/lib/psiStore";
@@ -79,6 +80,18 @@ export default function AdminUsersPage() {
       return next;
     });
   const selectedUsers = users.filter((u) => selected.has(u.id) && canSelect(u));
+
+  // Reset MFA user yang kehilangan perangkat/kode pemulihan: MFA dimatikan & semua sesinya dicabut (tercatat di Log Aktivitas).
+  const resetMfa = async (u: SimulatedUser) => {
+    if (!window.confirm(`Reset MFA untuk ${u.name}? MFA dimatikan dan semua sesinya dikeluarkan. User dapat mengaktifkannya lagi dari Keamanan Akun.`)) return;
+    const res = await fetch(`/api/admin/users/${u.id}/mfa-reset`, { method: "POST" });
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}));
+      window.alert(b.error || "Gagal mereset MFA.");
+      return;
+    }
+    await globalMutate("/api/bootstrap");
+  };
 
   const askDelete = (list: SimulatedUser[]) => {
     setDeleteError(null);
@@ -386,7 +399,13 @@ export default function AdminUsersPage() {
                     />
                   )}
                 </td>
-                <td className="px-3.5 py-3 font-semibold text-[#0F172A]">{u.name}</td>
+                <td className="px-3.5 py-3 font-semibold text-[#0F172A]">
+                  {u.name}
+                  <div className="flex flex-wrap gap-1 mt-0.5 font-normal">
+                    {u.mfaEnabled && <span className="text-[10px] font-bold px-1.5 py-[1px] rounded-full bg-[#EAF5EE] text-[#15663A]">MFA aktif</span>}
+                    {u.emailVerifiedAt === null && <span className="text-[10px] font-bold px-1.5 py-[1px] rounded-full bg-[#FEF3C7] text-[#92400E]">Email belum diverifikasi</span>}
+                  </div>
+                </td>
                 <td className="px-3.5 py-3 text-[#6b6e72]">{u.email ?? deriveDemoEmail(u.name)}</td>
 
                 {editingId === u.id ? (
@@ -441,6 +460,14 @@ export default function AdminUsersPage() {
                             <Pencil className="w-3 h-3" strokeWidth={2} />
                             Ubah
                           </button>
+                          {u.mfaEnabled && u.id !== activeUser.id && (
+                            <button
+                              onClick={() => resetMfa(u)}
+                              className="inline-flex items-center gap-1 text-[11.5px] font-bold px-2.5 py-1.5 rounded-[8px] border border-[#C5CED3] text-[#B45309] hover:bg-[#FEF3C7] active:scale-[0.97] transition-all duration-200"
+                            >
+                              Reset MFA
+                            </button>
+                          )}
                           {u.id !== activeUser.id && (
                             <button
                               onClick={() => askDelete([u])}

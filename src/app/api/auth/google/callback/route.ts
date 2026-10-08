@@ -62,9 +62,13 @@ export async function GET(req: NextRequest) {
           role: "Penanggung Jawab PSI (Initiator)",
           location: null,
           isRegionalAdmin: false,
+          emailVerifiedAt: new Date(),
         })
         .returning();
       user = created;
+    } else if (!user.emailVerifiedAt) {
+      // Google sudah memverifikasi kepemilikan email ini.
+      await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, user.id));
     }
 
     await createSession(user.id);

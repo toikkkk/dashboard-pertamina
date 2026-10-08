@@ -6,6 +6,7 @@
 // onboarding gate). The account itself is still created with role='Penanggung Jawab
 // PSI (Initiator)' and location=NULL until that approval happens.
 import { logAudit } from "@/lib/audit";
+import { issueVerificationEmail } from "@/lib/auth/emailVerification";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, and, gt, like, sql } from "drizzle-orm";
@@ -133,6 +134,8 @@ export async function POST(req: NextRequest) {
       .returning();
 
     await logAudit(req, { id: created.id, name: created.name, email: created.email }, "akun.daftar", { targetType: "user", targetId: created.id, detail: { lokasiDiminta: requestedLocation, peranDiminta: role ?? null } });
+    // Email verifikasi (tidak menggagalkan pendaftaran bila pengiriman bermasalah — user bisa kirim ulang).
+    await issueVerificationEmail(req.nextUrl.origin, created);
     const sessionToken = await createSession(created.id);
 
     return NextResponse.json({

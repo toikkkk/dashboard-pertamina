@@ -28,6 +28,12 @@ const ROUTES = [
   ["GET", "/api/moc"],
   ["POST", "/api/moc", {}],
   ["GET", "/api/compliance-metrics"],
+  ["POST", "/api/auth/mfa/setup", {}],
+  ["POST", "/api/auth/mfa/enable", { code: "123456" }],
+  ["POST", "/api/auth/mfa/disable", { password: "x", code: "123456" }],
+  ["GET", "/api/auth/mfa/status"],
+  ["POST", `/api/admin/users/${UUID}/mfa-reset`, {}],
+  ["POST", "/api/auth/resend-verification", {}],
 ];
 
 (async () => {

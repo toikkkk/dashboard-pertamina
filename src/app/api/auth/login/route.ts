@@ -8,7 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { users, loginAttempts } from "@/lib/db/schema";
+import { users, loginAttempts, mfaChallenges } from "@/lib/db/schema";
+import { randomBytes, createHash } from "crypto";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession, SIM_MULTI_SESSION } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
@@ -75,6 +76,29 @@ export async function POST(req: NextRequest) {
     if (!user) return invalid();
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) return invalid();
+
+    // Akun ber-MFA: sandi benar BELUM cukup — terbitkan tantangan jangka pendek (tanpa sesi). Kode yang salah
+    // dicatat sebagai kegagalan atas email akun ini (lihat mfa/verify), jadi orang yang sudah tahu sandi pun
+    // tidak bisa menebak kode tanpa batas: setelah 5 kegagalan dalam 15 menit, tantangan baru ditolak.
+    if (user.mfaEnabled) {
+      const [{ count: mfaFailures }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(loginAttempts)
+        .where(and(eq(loginAttempts.email, `mfa:${user.email.toLowerCase()}`), eq(loginAttempts.success, false), gt(loginAttempts.createdAt, windowStart)));
+      if (mfaFailures >= RATE_LIMIT_MAX_FAILURES) {
+        await logAudit(req, { id: user.id, name: user.name, email: user.email }, "login.diblokir", { detail: { alasan: "terlalu banyak kode MFA salah" } });
+        return NextResponse.json({ error: `Terlalu banyak kode verifikasi yang salah. Coba lagi setelah ${RATE_LIMIT_WINDOW_MINUTES} menit.` }, { status: 429 });
+      }
+      const challenge = randomBytes(32).toString("hex");
+      await db.delete(mfaChallenges).where(eq(mfaChallenges.userId, user.id));
+      await db.insert(mfaChallenges).values({
+        userId: user.id,
+        tokenHash: createHash("sha256").update(challenge).digest("hex"),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+      await logAudit(req, { id: user.id, name: user.name, email: user.email }, "login.mfa_diminta");
+      return NextResponse.json({ mfaRequired: true, challenge });
+    }
 
     await recordAttempt(true);
     await logAudit(req, { id: user.id, name: user.name, email: user.email }, "login.berhasil", { location: user.location });

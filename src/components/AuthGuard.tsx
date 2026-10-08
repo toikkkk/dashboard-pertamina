@@ -7,7 +7,7 @@ import { usePsi } from "@/lib/psiStore";
 // Reachable without a session — /login obviously, plus /reset-password since that's
 // exactly the page someone clicking a password-reset link from email lands on while
 // signed out (the whole point of the flow is recovering access without one).
-const PUBLIC_PATHS = ["/login", "/reset-password"];
+const PUBLIC_PATHS = ["/login", "/reset-password", "/verifikasi-email"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isAuthLoaded, activeUser } = usePsi();

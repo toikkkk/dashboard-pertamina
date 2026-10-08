@@ -72,6 +72,17 @@ export const users = pgTable("users", {
   // Nama pengguna alternatif untuk masuk (selain email). Nullable: akun lama diisi dari
   // bagian depan email lewat migrasi 0007; unik tanpa membedakan huruf besar/kecil.
   username: text("username"),
+  // Verifikasi email: NULL = belum terverifikasi. Akun sebelum fitur ini ada diisi created_at oleh migrasi 0011;
+  // akun dari login Google/SSO langsung terisi (penyedia identitas sudah memverifikasi).
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  // Autentikasi dua faktor (TOTP/aplikasi authenticator). Rahasia disimpan TERENKRIPSI (AES-256-GCM, lihat
+  // lib/auth/secretBox.ts); kode pemulihan hanya hash-nya. TIDAK PERNAH dikirim ke klien.
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  mfaSecretEnc: text("mfa_secret_enc"),
+  mfaEnabledAt: timestamp("mfa_enabled_at", { withTimezone: true }),
+  mfaRecoveryHashes: jsonb("mfa_recovery_hashes").notNull().default(sql`'[]'::jsonb`),
+  // Langkah waktu (30 dtk) TOTP terakhir yang dipakai — mencegah kode yang sama dipakai dua kali (replay).
+  mfaLastStep: bigint("mfa_last_step", { mode: "number" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("users_username_lower_idx").on(sql`lower(${t.username})`)]);
@@ -99,6 +110,27 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
+// Token verifikasi email (hanya hash-nya disimpan; sekali pakai; kedaluwarsa).
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
+// Tantangan MFA: dibuat setelah sandi benar tetapi SEBELUM sesi ada. Token acak jangka pendek (hanya hash
+// disimpan) + hitungan percobaan; sesi baru dibuat setelah kode TOTP/pemulihan benar.
+export const mfaChallenges = pgTable("mfa_challenges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 // Failed/succeeded login attempts, keyed by the email that was tried — the login

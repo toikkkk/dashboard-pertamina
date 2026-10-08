@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Archive,
   ScrollText,
+  ShieldCheck,
   ClipboardList,
   FolderOpen,
   LayoutDashboard,
@@ -137,6 +138,7 @@ export default function Sidebar({
 
         <div className="sidebar-label sidebar-label-general">Umum</div>
         <nav className="sidebar-nav sidebar-nav-general" aria-label="Navigasi umum">
+          {!isPending && renderItem({ name: "Keamanan Akun", path: "/akun", icon: ShieldCheck })}
           <button className="nav-item" title={collapsed ? "Keluar" : undefined} onClick={askLogout}>
             <LogOut className="h-[16px] w-[16px]" strokeWidth={1.7} />
             <span>Keluar</span>
