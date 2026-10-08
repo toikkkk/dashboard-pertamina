@@ -6,6 +6,8 @@
 // /api/auth/register) — it still lands in the existing "pending Admin Regional
 // activation" state, nothing about that flow is bypassed just because sign-in was
 // via Google.
+import { emailDomainAllowed } from "@/lib/auth/sso";
+import { logAudit } from "@/lib/audit";
 import { uniqueUsername } from "@/lib/auth/username";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -45,6 +47,10 @@ export async function GET(req: NextRequest) {
     let [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
 
     if (!user) {
+      if (!emailDomainAllowed(normalizedEmail)) {
+        await logAudit(req, { email: normalizedEmail }, "login.ditolak_domain", { detail: { via: "google" } });
+        return fail("Domain email Anda tidak diizinkan untuk mendaftar. Hubungi administrator.");
+      }
       // Placeholder hash — this account can never log in with a password (the
       // random secret behind it is discarded immediately), only via Google. If the
       // same person later wants password login too, that needs a real "set a
@@ -66,12 +72,14 @@ export async function GET(req: NextRequest) {
         })
         .returning();
       user = created;
+      await logAudit(req, { id: user.id, name: user.name, email: user.email }, "akun.daftar", { targetType: "user", targetId: user.id, detail: { via: "google" } });
     } else if (!user.emailVerifiedAt) {
       // Google sudah memverifikasi kepemilikan email ini.
       await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, user.id));
     }
 
     await createSession(user.id);
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "login.berhasil", { location: user.location, detail: { via: "google" } });
 
     const res = NextResponse.redirect(`${req.nextUrl.origin}/`);
     res.cookies.delete(STATE_COOKIE);
