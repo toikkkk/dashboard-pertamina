@@ -1,6 +1,5 @@
 "use client";
 
-import MenuSelect from "@/components/ui/MenuSelect";
 import React, { useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
@@ -19,31 +18,21 @@ import ActionList, { ACTION_META, type ActionKind } from "@/components/directory
 const ACTIONS: ActionKind[] = ["kedaluwarsa", "segera", "stale", "kosong"];
 
 function DirectoryContent() {
-  const { activeUser, documents, allDocuments } = usePsi();
+  const { activeUser, allDocuments } = usePsi();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Non-admin: default ke lokasi sendiri; "Semua lokasi" = lihat-saja. Diinisialisasi dari
-  // URL (bukan selalu false) — kalau tidak, membuka link langsung ke lokasi lain (refresh,
-  // bookmark, kembali dari halaman dokumen) selalu dipaksa balik ke lokasi sendiri karena
-  // scopeAll cuma hidup di memori komponen (bug nyata yang dilaporkan user).
-  const [scopeAll, setScopeAll] = useState(() => {
-    const urlLocation = searchParams.get("location");
-    return !!urlLocation && urlLocation !== activeUser.location;
-  });
+  // Tab Direktori SAMA untuk semua user (Admin Regional maupun user per lokasi): selalu mulai dari daftar semua lokasi
+  // (kartu progres + tab Matriks), bisa membuka lokasi mana pun. Hanya HAK UBAH yang berbeda: unggah/pindah/ganti berkas
+  // terkunci ke lokasi sendiri (Admin Regional: semua) — dipaksa server (assertLocationWrite), bukan hanya tampilan.
   const [query, setQuery] = useState("");
-  const canPeekOtherLocations = !activeUser.isRegionalAdmin && !!activeUser.location;
   const selectedLocation = searchParams.get("location");
-  // Membuka lokasi lain lewat URL/matriks otomatis berarti mode "lihat semua lokasi" (hanya-lihat).
-  const viewingOther = !!selectedLocation && selectedLocation !== activeUser.location;
-  const canBrowseMultipleLocations = activeUser.isRegionalAdmin || (canPeekOtherLocations && (scopeAll || viewingOther));
   const aksiParam = searchParams.get("aksi");
   const aksi = (ACTIONS as string[]).includes(aksiParam ?? "") ? (aksiParam as ActionKind) : null;
   const tab = searchParams.get("v") === "matriks" ? "matriks" : "lokasi";
 
-  // Cakupan data: admin / "Semua lokasi" melihat semua; selain itu hanya lokasi sendiri.
-  const sourceDocs = canBrowseMultipleLocations ? allDocuments : documents;
-  const scope: string[] | null = canBrowseMultipleLocations ? null : activeUser.location ? [activeUser.location] : [];
+  const sourceDocs = allDocuments;
+  const scope = null as string[] | null; // semua lokasi untuk semua user
   const { overview } = useDirectoryOverview();
 
   const setParam = (updates: Record<string, string | null>) => {
@@ -55,12 +44,7 @@ function DirectoryContent() {
     router.push(`/directory?${next.toString()}`);
   };
 
-  // Lokasi efektif: dari URL kalau admin/scopeAll (boleh pilih bebas), selalu lokasi
-  // sendiri kalau non-admin dan scopeAll mati (grid satu kartu tidak berguna).
-  // Tab Matriks (semua lokasi, hanya-lihat) tersedia untuk semua user; non-admin tanpa lokasi
-  // terpilih yang membuka Matriks tidak dipaksa masuk ke grid lokasinya sendiri.
-  const matrixView = tab === "matriks" && !selectedLocation && !searchParams.get("category");
-  const gridLocation = canBrowseMultipleLocations ? selectedLocation : matrixView ? null : activeUser.location;
+  const gridLocation = selectedLocation;
 
   const counts = useMemo(() => {
     const ins = psiInsights(sourceDocs, Date.now());
@@ -74,28 +58,14 @@ function DirectoryContent() {
     }
     return { kedaluwarsa: ins.overdue.length, segera: ins.expiring.length, stale: ins.stale.length, kosong } as Record<ActionKind, number | null>;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceDocs, overview, canBrowseMultipleLocations, activeUser.location]);
+  }, [sourceDocs, overview]);
 
   const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null });
   const openLocation = (location: string) => setParam({ location, category: null, aksi: null });
   const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null }); };
 
-  const scopeSwitcher = canPeekOtherLocations && (
-    <MenuSelect
-      ariaLabel="Cakupan lokasi"
-      minWidth={230}
-      value={canBrowseMultipleLocations ? "ALL" : "OWN"}
-      options={[
-        { value: "OWN", label: `Lokasi saya (${activeUser.location})` },
-        { value: "ALL", label: "Semua lokasi (lihat saja)" },
-      ]}
-      onChange={(v) => { setScopeAll(v === "ALL"); setParam({ location: null, category: null, aksi: null }); }}
-    />
-  );
-
   const searching = query.trim().length > 0;
-  const ownGridRoot = !canBrowseMultipleLocations && gridLocation === activeUser.location && !searchParams.get("category");
-  const showTabs = (!gridLocation || ownGridRoot) && !aksi && !searching;
+  const showTabs = !gridLocation && !aksi && !searching;
 
   let content: React.ReactNode;
   if (searching) {
@@ -119,7 +89,7 @@ function DirectoryContent() {
         canWrite={activeUser.isRegionalAdmin || activeUser.location === gridLocation}
         categoryId={searchParams.get("category")}
         onSelectCategory={(id) => setParam({ category: id })}
-        baseCrumbs={[{ label: "Direktori", onClick: canBrowseMultipleLocations ? root : undefined }]}
+        baseCrumbs={[{ label: "Direktori", onClick: root }]}
       />
     );
   } else if (!overview) {
@@ -144,7 +114,6 @@ function DirectoryContent() {
 
   return (
     <div className="min-w-0 max-w-full">
-      {scopeSwitcher && <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">{scopeSwitcher}</div>}
       <DirectoryToolbar
         query={query}
         onQuery={(q) => { setQuery(q); if (q.trim() && aksi) setParam({ aksi: null }); }}
@@ -155,7 +124,7 @@ function DirectoryContent() {
           exportDirectoryXlsx({
             docs: gridLocation ? sourceDocs.filter((d) => d.location === gridLocation) : sourceDocs,
             overview,
-            label: gridLocation ?? (canBrowseMultipleLocations ? "Semua-lokasi" : activeUser.location ?? "Direktori"),
+            label: gridLocation ?? "Semua-lokasi",
           })
         }
         tab={showTabs ? tab : null}
