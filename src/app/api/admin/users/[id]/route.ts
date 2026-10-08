@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // Mengaktifkan akun yang belum punya lokasi = memberi akses. Bila saklar EMAIL_VERIFICATION_REQUIRED=true,
     // emailnya harus sudah terverifikasi dulu (akun lama & akun Google/SSO sudah terverifikasi).
     if (before && !before.location && !before.emailVerifiedAt && emailVerificationRequired()) {
-      return NextResponse.json({ error: "Email user ini belum terverifikasi. Minta user membuka tautan di emailnya (atau kirim ulang dari halaman Keamanan Akun) sebelum diaktifkan." }, { status: 409 });
+      return NextResponse.json({ error: "Email user ini belum terverifikasi. Minta user membuka tautan di emailnya (atau kirim ulang dari Pengaturan › Keamanan Akun) sebelum diaktifkan." }, { status: 409 });
     }
     const [updated] = await db
       .update(users)

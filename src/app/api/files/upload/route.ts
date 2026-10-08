@@ -21,6 +21,7 @@
 // Caveat kept deliberately visible: bytes pass through the serverless function here,
 // so this path is subject to the platform's request-body ceiling (~4.5MB on Vercel).
 // That is exactly why the direct-PUT path remains primary rather than being deleted.
+import { and, eq } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -85,6 +86,12 @@ export async function POST(req: NextRequest) {
       })
     );
 
+    // Jalur cadangan dipakai setelah unggah langsung ke R2 gagal: baris "pending" yang dibuat langkah presign tadi
+    // tidak akan pernah selesai — buang (hanya milik user ini, berstatus pending, tanpa dokumen/riwayat).
+    const abandoned = form.get("abandonedFileId");
+    if (typeof abandoned === "string" && /^[0-9a-f-]{36}$/i.test(abandoned)) {
+      await db.delete(fileRegistry).where(and(eq(fileRegistry.id, abandoned), eq(fileRegistry.uploadStatus, "pending"), eq(fileRegistry.uploadedByUserId, user.id)));
+    }
     await db.insert(fileRegistry).values({
       id,
       r2ObjectKey: key,

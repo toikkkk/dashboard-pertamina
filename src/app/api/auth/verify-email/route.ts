@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const tokenHash = createHash("sha256").update(token).digest("hex");
     const [row] = await db.select().from(emailVerificationTokens).where(eq(emailVerificationTokens.tokenHash, tokenHash)).limit(1);
     if (!row || row.usedAt || row.expiresAt < new Date()) {
-      return NextResponse.json({ error: "Tautan verifikasi tidak valid atau sudah kedaluwarsa. Minta tautan baru dari halaman Keamanan Akun." }, { status: 400 });
+      return NextResponse.json({ error: "Tautan verifikasi tidak valid atau sudah kedaluwarsa. Minta tautan baru dari Pengaturan › Keamanan Akun." }, { status: 400 });
     }
     const now = new Date();
     await Promise.all([

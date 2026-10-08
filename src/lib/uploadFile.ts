@@ -35,7 +35,7 @@ export async function uploadFileToR2(file: File, opts: UploadOptions = {}): Prom
     if (!isLikelyCorsOrNetworkFailure(err)) throw err;
     // Preflight/network-blocked: retry through the server, which has no CORS gate.
     opts.onProgress?.(0);
-    return await uploadViaServerProxy(file, opts);
+    return await uploadViaServerProxy(file, opts, err instanceof R2TransportError ? err.fileId : undefined);
   }
 }
 
@@ -63,7 +63,11 @@ function xhrSend(
   });
 }
 
-class R2TransportError extends Error {}
+class R2TransportError extends Error {
+  constructor(message: string, readonly fileId?: string) {
+    super(message);
+  }
+}
 
 function isLikelyCorsOrNetworkFailure(err: unknown): boolean {
   return err instanceof R2TransportError;
@@ -90,7 +94,7 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
 
   const put = await xhrSend("PUT", uploadUrl, file, { "Content-Type": file.type || "application/octet-stream" }, opts);
   // Status 0 (bukan respons non-2xx) = tanda CORS/preflight atau offline — kasus yang dilayani fallback.
-  if (put.status === 0) throw new R2TransportError("Unggahan langsung ke penyimpanan diblokir.");
+  if (put.status === 0) throw new R2TransportError("Unggahan langsung ke penyimpanan diblokir.", fileId);
   if (put.status < 200 || put.status >= 300) throw new Error("Gagal mengunggah berkas ke penyimpanan.");
 
   const confirmRes = await fetch(`/api/files/${fileId}/confirm`, {
@@ -109,9 +113,10 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
   return fileId as string;
 }
 
-async function uploadViaServerProxy(file: File, opts: UploadOptions): Promise<string> {
+async function uploadViaServerProxy(file: File, opts: UploadOptions, abandonedFileId?: string): Promise<string> {
   const form = new FormData();
   form.append("file", file);
+  if (abandonedFileId) form.append("abandonedFileId", abandonedFileId);
 
   const res = await xhrSend("POST", "/api/files/upload", form, {}, opts);
   let body: { error?: string; fileId?: string } = {};

@@ -83,7 +83,7 @@ export default function AdminUsersPage() {
 
   // Reset MFA user yang kehilangan perangkat/kode pemulihan: MFA dimatikan & semua sesinya dicabut (tercatat di Log Aktivitas).
   const resetMfa = async (u: SimulatedUser) => {
-    if (!window.confirm(`Reset MFA untuk ${u.name}? MFA dimatikan dan semua sesinya dikeluarkan. User dapat mengaktifkannya lagi dari Keamanan Akun.`)) return;
+    if (!window.confirm(`Reset MFA untuk ${u.name}? MFA dimatikan dan semua sesinya dikeluarkan. User dapat mengaktifkannya lagi dari Pengaturan › Keamanan Akun.`)) return;
     const res = await fetch(`/api/admin/users/${u.id}/mfa-reset`, { method: "POST" });
     if (!res.ok) {
       const b = await res.json().catch(() => ({}));

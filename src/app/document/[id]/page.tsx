@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, FileLock2, FolderInput, RefreshCw, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileLock2, FolderInput, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
 import type { DocumentItem } from "@/lib/mockData";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories } from "@/lib/useDocumentCategories";
 import { recordOpened, useDocRefs } from "@/lib/recentDocs";
 import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
 import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
+import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
+import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
+import { canDeleteDocument } from "@/lib/domain/rules";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
 // established, unfiltered exception for cross-location benchmarking widgets only —
@@ -33,6 +36,8 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   const { isFav, toggleFav } = useDocRefs(activeUser.id);
   const [moveOpen, setMoveOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Saudara satu sub-dokumen (urutan sama dengan tabel Direktori) untuk tombol sebelumnya/berikutnya.
   const siblings = categories.find((c) => c.id === doc?.categoryId)?.documents ?? [];
@@ -50,7 +55,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // Panah kiri/kanan = dokumen sebelumnya/berikutnya (tidak aktif saat mengetik atau dialog terbuka).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (moveOpen || replaceOpen || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (moveOpen || replaceOpen || editOpen || deleteOpen || e.altKey || e.ctrlKey || e.metaKey) return;
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
       if (e.key === "ArrowLeft" && prevId) router.push(`/document/${prevId}`);
@@ -58,7 +63,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [prevId, nextId, moveOpen, replaceOpen, router]);
+  }, [prevId, nextId, moveOpen, replaceOpen, editOpen, deleteOpen, router]);
 
   if (isLoading) {
     return <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat dokumen…</div>;
@@ -84,6 +89,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // them over from whatever document was last viewed.
   // Jalur naik ke folder induk (Direktori › Lokasi › Sub-dokumen), seperti Google Drive.
   const canWrite = !!activeUser.isRegionalAdmin || activeUser.location === doc.location;
+  const canDelete = canDeleteDocument(activeUser, doc.location);
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
     { label: "Direktori", href: "/directory" },
@@ -123,10 +129,18 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
                 <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Ganti berkas
               </button>
+              <button type="button" onClick={() => setEditOpen(true)} className={barBtn}>
+                <Pencil className="w-3.5 h-3.5" strokeWidth={2.2} /> Ubah data
+              </button>
               <button type="button" onClick={() => setMoveOpen(true)} className={barBtn}>
                 <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan
               </button>
             </>
+          )}
+          {canDelete && (
+            <button type="button" onClick={() => setDeleteOpen(true)} className={`${barBtn} !text-[#DC2626] hover:!bg-[#FEE2E2]`}>
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} /> Hapus
+            </button>
           )}
         </div>
       </div>
@@ -140,6 +154,31 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
             setMoveOpen(false);
             void mutate();
             void mutateCategories();
+          }}
+        />
+      )}
+      {editOpen && (
+        <EditDocumentDialog
+          documentId={doc.id}
+          cycleMonths={categories.find((c) => c.id === doc.categoryId)?.reviewCycleMonths ?? 60}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            setEditOpen(false);
+            void mutate();
+            void mutateCategories();
+            void globalMutate("/api/bootstrap");
+          }}
+        />
+      )}
+      {deleteOpen && (
+        <DeleteDocumentDialog
+          documentId={doc.id}
+          title={doc.title}
+          number={doc.documentNumber}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => {
+            void globalMutate("/api/bootstrap");
+            router.push(doc.categoryId ? `/directory?location=${loc}&category=${doc.categoryId}` : `/directory?location=${loc}`);
           }}
         />
       )}

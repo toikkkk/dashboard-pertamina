@@ -44,6 +44,15 @@ export function isDocOverdue(doc: DocumentItem): boolean {
 // This is the CLIENT-facing convenience check (controls whether the approve/reject UI
 // renders at all) — server-side API routes must call this same function again before
 // mutating, never trust that a request only arrived because the button was visible.
+/**
+ * Menghapus dokumen = tindakan tak terbalik (berkas di penyimpanan ikut hilang), jadi dibatasi: Admin Regional, atau
+ * PSI / MOC Controller di lokasi dokumen itu. Dicek ulang di server (DELETE /api/documents/[id]); ini hanya untuk
+ * menampilkan/menyembunyikan tombolnya.
+ */
+export function canDeleteDocument(user: { isRegionalAdmin?: boolean; role: string; location: string | null }, docLocation: string): boolean {
+  return !!user.isRegionalAdmin || (user.role === "PSI / MOC Controller" && user.location === docLocation);
+}
+
 export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boolean {
   if (doc.status !== 'In Routing') return false;
   // Lihat-saja lintas lokasi: user lokasi boleh MELIHAT dokumen lokasi lain, tapi

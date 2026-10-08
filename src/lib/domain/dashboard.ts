@@ -69,6 +69,8 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
       return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi:");
     }
     if (h.action === "Extended Validity") return true;
+    // Koreksi data (judul/nomor/tanggal/verifikasi) bukan pembaruan isi dokumen.
+    if (h.action === "Revised" && (h.notes ?? "").startsWith("Dikoreksi:")) return false;
     if (h.action === "Revised") return !(h.diff && h.diff.length > 0 && h.diff.every((x) => x.field === "Sub-kategori"));
     return false;
   };

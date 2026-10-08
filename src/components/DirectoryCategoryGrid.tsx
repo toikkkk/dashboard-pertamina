@@ -7,12 +7,17 @@ import { useDocumentCategories, createDocumentCategory, type CategoryTile } from
 import { CATEGORY_STATUS_META } from "@/lib/domain/documentCategories";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
 import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
+import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
+import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
+import ActionMenu from "@/components/ui/ActionMenu";
+import { canDeleteDocument } from "@/lib/domain/rules";
+import { mutate as globalMutate } from "swr";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import { enqueueUploads, type UploadJob } from "@/lib/uploadQueue";
 import { readDateSuggestion } from "@/lib/readFileDate";
 import { titleFromFilename } from "@/lib/domain/dateFromText";
 import { PSIType } from "@/lib/mockData";
-import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, FolderInput, ArrowUp, ArrowDown, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, FolderInput, Pencil, Trash2, ExternalLink, ArrowUp, ArrowDown, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
 
 const PSI_TYPES: PSIType[] = [
   "Informasi Bahan Berbahaya",
@@ -417,18 +422,24 @@ function fileIconFor(title: string): { Icon: LucideIcon; color: string } {
 // berkas ke mana saja di jendela untuk mengunggah (lapisan "Lepaskan untuk mengunggah").
 function CategoryView({
   category,
+  location,
   canWrite,
   onAdd,
   categories,
   onMoved,
 }: {
   category: CategoryTile;
+  location: string;
   canWrite: boolean;
   onAdd: (files?: File[]) => void;
   categories: CategoryTile[];
   onMoved: () => void;
 }) {
   const router = useRouter();
+  const { activeUser } = usePsi();
+  const canDelete = canDeleteDocument(activeUser, location);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteDoc, setDeleteDoc] = useState<{ id: string; title: string; number: string } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);
@@ -506,7 +517,17 @@ function CategoryView({
     };
   }, [canWrite]);
 
-  const cols = canWrite ? "grid-cols-[36px_1fr]" : "grid-cols-1";
+  const cols = canWrite ? "grid-cols-[36px_1fr_40px]" : "grid-cols-[1fr_40px]";
+  // Satu dokumen dari menu "⋮": pakai dialog Pindahkan yang sama dengan pilihan banyak.
+  const startMove = (id: string) => {
+    setSelected(new Set([id]));
+    setMoveOpen(true);
+  };
+  const afterChange = (msg: string) => {
+    setNotice(msg);
+    onMoved();
+    void globalMutate("/api/bootstrap");
+  };
   const inner = "grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_130px_120px] items-center gap-3";
 
   return (
@@ -521,6 +542,30 @@ function CategoryView({
         </div>
       )}
 
+      {editId && (
+        <EditDocumentDialog
+          documentId={editId}
+          cycleMonths={category.reviewCycleMonths}
+          onClose={() => setEditId(null)}
+          onSaved={() => {
+            setEditId(null);
+            afterChange("Data dokumen diperbarui.");
+          }}
+        />
+      )}
+      {deleteDoc && (
+        <DeleteDocumentDialog
+          documentId={deleteDoc.id}
+          title={deleteDoc.title}
+          number={deleteDoc.number}
+          onClose={() => setDeleteDoc(null)}
+          onDeleted={() => {
+            setDeleteDoc(null);
+            setSelected(new Set());
+            afterChange("Dokumen dihapus.");
+          }}
+        />
+      )}
       {moveOpen && (
         <MoveDocumentsDialog
           categories={categories}
@@ -608,6 +653,7 @@ function CategoryView({
                   <SortHead k="berlaku" sort={sort} onSort={onSort} />
                   <SortHead k="status" sort={sort} onSort={onSort} />
                 </div>
+                <span aria-hidden />
               </div>
             )}
             {sortedDocs.map((d) => {
@@ -637,6 +683,19 @@ function CategoryView({
                       {expired ? "Kedaluwarsa" : "Berlaku"}
                     </span>
                   </button>
+                  <ActionMenu
+                    ariaLabel={`Aksi untuk ${d.title}`}
+                    items={[
+                      { label: "Buka", icon: ExternalLink, onClick: () => router.push(`/document/${d.id}`) },
+                      ...(canWrite
+                        ? [
+                            { label: "Ubah data", icon: Pencil, onClick: () => setEditId(d.id) },
+                            { label: "Pindahkan ke…", icon: FolderInput, onClick: () => startMove(d.id) },
+                          ]
+                        : []),
+                      ...(canDelete ? [{ label: "Hapus", icon: Trash2, danger: true, divider: true, onClick: () => setDeleteDoc({ id: d.id, title: d.title, number: d.documentNumber }) }] : []),
+                    ]}
+                  />
                 </div>
               );
             })}
@@ -717,7 +776,7 @@ export default function DirectoryCategoryGrid({
     return (
       <>
         <Breadcrumb crumbs={crumbs} />
-        <CategoryView category={selected} canWrite={canWrite} onAdd={(files) => openUpload(selected, files)} categories={categories} onMoved={() => mutate()} />
+        <CategoryView category={selected} location={location} canWrite={canWrite} onAdd={(files) => openUpload(selected, files)} categories={categories} onMoved={() => mutate()} />
         {upload}
       </>
     );

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return withErrorHandling(async () => {
     const admin = await requireSessionUser();
     assertRegionalAdmin(admin);
-    if (params.id === admin.id) throw new ForbiddenError("Reset MFA akun sendiri lewat halaman Keamanan Akun.");
+    if (params.id === admin.id) throw new ForbiddenError("Reset MFA akun sendiri lewat Pengaturan › Keamanan Akun.");
 
     const [target] = await db.select({ name: users.name, email: users.email, mfaEnabled: users.mfaEnabled }).from(users).where(eq(users.id, params.id)).limit(1);
     if (!target) return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
