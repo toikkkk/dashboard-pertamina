@@ -1,11 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import useSWR from "swr";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import Link from "next/link";
-import { FileLock2 } from "lucide-react";
+import { FileLock2, FolderInput } from "lucide-react";
+import { usePsi } from "@/lib/psiStore";
+import { useDocumentCategories } from "@/lib/useDocumentCategories";
+import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
 import type { DocumentItem } from "@/lib/mockData";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
@@ -17,7 +20,10 @@ import type { DocumentItem } from "@/lib/mockData";
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
-  const { data: doc, isLoading } = useSWR<DocumentItem | null>(`/api/documents/${params.id}`, fetcher);
+  const { data: doc, isLoading, mutate } = useSWR<DocumentItem | null>(`/api/documents/${params.id}`, fetcher);
+  const { activeUser } = usePsi();
+  const { categories, mutate: mutateCategories } = useDocumentCategories(doc?.location ?? null);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   if (isLoading) {
     return <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat dokumen…</div>;
@@ -42,6 +48,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // rows, and any in-progress approve/reject comment draft instead of carrying
   // them over from whatever document was last viewed.
   // Jalur naik ke folder induk (Direktori › Lokasi › Sub-dokumen), seperti Google Drive.
+  const canMove = !!activeUser.isRegionalAdmin || activeUser.location === doc.location;
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
     { label: "Direktori", href: "/directory" },
@@ -53,6 +60,26 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   return (
     <>
       <Breadcrumb crumbs={crumbs} />
+      {canMove && (
+        <div className="flex justify-end -mt-1 mb-3">
+          <button type="button" onClick={() => setMoveOpen(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3.5 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] transition-colors duration-150">
+            <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan
+          </button>
+        </div>
+      )}
+      {moveOpen && (
+        <MoveDocumentsDialog
+          categories={categories}
+          ids={[doc.id]}
+          currentCategoryId={doc.categoryId ?? null}
+          onClose={() => setMoveOpen(false)}
+          onMoved={() => {
+            setMoveOpen(false);
+            void mutate();
+            void mutateCategories();
+          }}
+        />
+      )}
       <DocumentSplitViewer document={doc} key={doc.id} />
     </>
   );

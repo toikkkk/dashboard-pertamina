@@ -21,14 +21,46 @@
 // the direct path with no code change. A genuine HTTP error from R2 (403 expired
 // signature, 5xx) is NOT treated as a CORS symptom — those still throw, so a real
 // storage misconfiguration stays visible instead of being masked by the fallback.
-export async function uploadFileToR2(file: File): Promise<string> {
+export interface UploadOptions {
+  /** Dipanggil berulang dengan 0..1 selama byte berkas dikirim (progres sungguhan, bukan perkiraan). */
+  onProgress?: (fraction: number) => void;
+  /** Membatalkan unggahan yang sedang berjalan (kartu progres bergaya Drive). */
+  signal?: AbortSignal;
+}
+
+export async function uploadFileToR2(file: File, opts: UploadOptions = {}): Promise<string> {
   try {
-    return await uploadViaPresignedPut(file);
+    return await uploadViaPresignedPut(file, opts);
   } catch (err) {
     if (!isLikelyCorsOrNetworkFailure(err)) throw err;
     // Preflight/network-blocked: retry through the server, which has no CORS gate.
-    return await uploadViaServerProxy(file);
+    opts.onProgress?.(0);
+    return await uploadViaServerProxy(file, opts);
   }
+}
+
+// fetch() belum punya progres unggah, jadi byte dikirim lewat XHR. Network/CORS gagal → status 0.
+function xhrSend(
+  method: "PUT" | "POST",
+  url: string,
+  body: XMLHttpRequestBodyInit,
+  headers: Record<string, string>,
+  opts: UploadOptions
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    if (opts.signal?.aborted) return reject(new DOMException("Dibatalkan", "AbortError"));
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) opts.onProgress?.(Math.min(1, e.loaded / e.total));
+    };
+    xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+    xhr.onerror = () => resolve({ status: 0, text: "" });
+    xhr.onabort = () => reject(new DOMException("Dibatalkan", "AbortError"));
+    opts.signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(body);
+  });
 }
 
 class R2TransportError extends Error {}
@@ -37,7 +69,7 @@ function isLikelyCorsOrNetworkFailure(err: unknown): boolean {
   return err instanceof R2TransportError;
 }
 
-async function uploadViaPresignedPut(file: File): Promise<string> {
+async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<string> {
   const presignRes = await fetch("/api/files/presign-upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -56,19 +88,10 @@ async function uploadViaPresignedPut(file: File): Promise<string> {
   }
   const { fileId, uploadUrl } = await presignRes.json();
 
-  let putRes: Response;
-  try {
-    putRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-    });
-  } catch {
-    // fetch() rejecting (rather than resolving non-2xx) is the CORS/preflight or
-    // offline signature — this is the case the fallback exists for.
-    throw new R2TransportError("Unggahan langsung ke penyimpanan diblokir.");
-  }
-  if (!putRes.ok) throw new Error("Gagal mengunggah berkas ke penyimpanan.");
+  const put = await xhrSend("PUT", uploadUrl, file, { "Content-Type": file.type || "application/octet-stream" }, opts);
+  // Status 0 (bukan respons non-2xx) = tanda CORS/preflight atau offline — kasus yang dilayani fallback.
+  if (put.status === 0) throw new R2TransportError("Unggahan langsung ke penyimpanan diblokir.");
+  if (put.status < 200 || put.status >= 300) throw new Error("Gagal mengunggah berkas ke penyimpanan.");
 
   const confirmRes = await fetch(`/api/files/${fileId}/confirm`, {
     method: "POST",
@@ -86,15 +109,13 @@ async function uploadViaPresignedPut(file: File): Promise<string> {
   return fileId as string;
 }
 
-async function uploadViaServerProxy(file: File): Promise<string> {
+async function uploadViaServerProxy(file: File, opts: UploadOptions): Promise<string> {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch("/api/files/upload", { method: "POST", body: form });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Gagal mengunggah berkas.");
-  }
-  const { fileId } = await res.json();
-  return fileId as string;
+  const res = await xhrSend("POST", "/api/files/upload", form, {}, opts);
+  let body: { error?: string; fileId?: string } = {};
+  try { body = JSON.parse(res.text); } catch { /* respons bukan JSON */ }
+  if (res.status < 200 || res.status >= 300 || !body.fileId) throw new Error(body.error || "Gagal mengunggah berkas.");
+  return body.fileId;
 }

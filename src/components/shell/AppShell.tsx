@@ -12,6 +12,7 @@ import { isDocOverdue } from "@/lib/mockData";
 import { mocPendingActions } from "@/lib/domain/moc";
 import Sidebar, { buildNavItems } from "@/components/shell/Sidebar";
 import Topbar from "@/components/shell/Topbar";
+import UploadTray from "@/components/UploadTray";
 import { readPref, takeEnterFlag, writePref } from "@/lib/localPref";
 
 const COLLAPSE_KEY = "shell.sidebarCollapsed";
@@ -91,6 +92,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <UploadTray />
     </div>
   );
 }

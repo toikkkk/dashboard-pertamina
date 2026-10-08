@@ -6,12 +6,13 @@ import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories, createDocumentCategory, type CategoryTile } from "@/lib/useDocumentCategories";
 import { CATEGORY_STATUS_META } from "@/lib/domain/documentCategories";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
+import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
-import { uploadFileToR2 } from "@/lib/uploadFile";
+import { enqueueUploads, type UploadJob } from "@/lib/uploadQueue";
 import { readDateSuggestion } from "@/lib/readFileDate";
 import { titleFromFilename } from "@/lib/domain/dateFromText";
 import { PSIType } from "@/lib/mockData";
-import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, FolderInput, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
 
 const PSI_TYPES: PSIType[] = [
   "Informasi Bahan Berbahaya",
@@ -226,7 +227,8 @@ function UploadIntoCategoryPanel({
     if (initialFiles.length) addFiles(initialFiles);
   }, [initialFiles, addFiles]);
 
-  const submit = async () => {
+  // Gaya Drive: dialog langsung tutup, unggahan berjalan di latar & progresnya tampil di kartu kanan-bawah.
+  const submit = () => {
     const todo = rows.filter((r) => r.status !== "done");
     if (todo.length === 0) return;
     if (todo.some((r) => r.reading)) return setError("Tunggu sebentar, tanggal masih dibaca dari berkas.");
@@ -236,40 +238,29 @@ function UploadIntoCategoryPanel({
       return setError("Lengkapi judul dan tanggal terbit semua berkas.");
     }
     setError(null);
-    setBusy(true);
-    const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
-    let okCount = 0;
-    for (let i = 0; i < todo.length; i++) {
-      const r = todo[i];
-      patch(r.key, { status: "saving", error: null });
-      try {
+    const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)s+/i, "").toUpperCase().replace(/s+/g, "");
+    const now = Date.now();
+    enqueueUploads(
+      todo.map((r, i) => {
         // Kedaluwarsa = tanggal terbit + siklus tinjau sub-dokumen ini (5 tahun; OSCP 2 tahun).
         const expiry = new Date(`${r.date}T00:00:00`);
         expiry.setMonth(expiry.getMonth() + category.reviewCycleMonths);
-        const expiryIso = `${expiry.getFullYear()}-${String(expiry.getMonth() + 1).padStart(2, "0")}-${String(expiry.getDate()).padStart(2, "0")}`;
-        const fileId = await uploadFileToR2(r.file);
-        await addNewDocument({
-          documentNumber: `PSI-${locationCode}-${todayIso.slice(0, 4)}-${String(Date.now() + i).slice(-5)}`,
+        const expiryDate = `${expiry.getFullYear()}-${String(expiry.getMonth() + 1).padStart(2, "0")}-${String(expiry.getDate()).padStart(2, "0")}`;
+        return {
+          file: r.file,
           title: r.title.trim(),
+          issueDate: r.date,
+          expiryDate,
           psiType,
           location,
-          lifecyclePhase: "Operasi",
-          isCircular: false,
-          routes: [],
-          fileId,
-          expiryDate: expiryIso,
-          issueDate: r.date,
           categoryId: category.id,
-        });
-        patch(r.key, { status: "done" });
-        okCount += 1;
-      } catch (err) {
-        patch(r.key, { status: "error", error: err instanceof Error ? err.message : "Gagal menyimpan dokumen." });
-      }
-    }
-    setBusy(false);
-    if (okCount === todo.length) onUploaded();
-    else setError(`${okCount} dari ${todo.length} berkas tersimpan. Perbaiki yang gagal lalu simpan lagi.`);
+          categoryName: category.name,
+          documentNumber: `PSI-${locationCode}-${todayIso.slice(0, 4)}-${String(now + i).slice(-5)}`,
+          save: addNewDocument as unknown as UploadJob["save"],
+        };
+      })
+    );
+    onClose();
   };
 
   const pending = rows.filter((r) => r.status !== "done").length;
@@ -401,13 +392,52 @@ function fileIconFor(title: string): { Icon: LucideIcon; color: string } {
 // Isi satu sub-dokumen (halaman, bukan popup), gaya daftar Google Drive: judul + tombol
 // "Unggah" di kanan atas, tabel Nama / Tanggal terbit / Berlaku sampai / Status, dan seret
 // berkas ke mana saja di jendela untuk mengunggah (lapisan "Lepaskan untuk mengunggah").
-function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; canWrite: boolean; onAdd: (files?: File[]) => void }) {
+function CategoryView({
+  category,
+  canWrite,
+  onAdd,
+  categories,
+  onMoved,
+}: {
+  category: CategoryTile;
+  canWrite: boolean;
+  onAdd: (files?: File[]) => void;
+  categories: CategoryTile[];
+  onMoved: () => void;
+}) {
   const router = useRouter();
   const [dragging, setDragging] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const addRef = useRef(onAdd);
   addRef.current = onAdd;
   const chapter = PSI_CHAPTERS.find((c) => c.key === category.chapter);
   const todayIso = new Date().toISOString().split("T")[0];
+  const docs = category.documents;
+  const allSelected = docs.length > 0 && selected.size === docs.length;
+
+  // Pilihan dibersihkan bila berpindah sub-dokumen atau dokumennya sudah tidak ada di daftar.
+  useEffect(() => {
+    setSelected((prev) => {
+      const ids = new Set(docs.map((d) => d.id));
+      const next = new Set(Array.from(prev).filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [docs]);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   useEffect(() => {
     if (!canWrite) return;
@@ -436,6 +466,9 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
     };
   }, [canWrite]);
 
+  const cols = canWrite ? "grid-cols-[36px_1fr]" : "grid-cols-1";
+  const inner = "grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_130px_120px] items-center gap-3";
+
   return (
     <div>
       {dragging && (
@@ -446,6 +479,21 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
             <div className="text-[12.5px] text-[#6b6e72] mt-1 truncate">ke {category.name}</div>
           </div>
         </div>
+      )}
+
+      {moveOpen && (
+        <MoveDocumentsDialog
+          categories={categories}
+          ids={Array.from(selected)}
+          currentCategoryId={category.id}
+          onClose={() => setMoveOpen(false)}
+          onMoved={(moved, name) => {
+            setMoveOpen(false);
+            setSelected(new Set());
+            setNotice(`${moved} dokumen dipindahkan ke ${name}.`);
+            onMoved();
+          }}
+        />
       )}
 
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -473,8 +521,16 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
         )}
       </div>
 
+      {notice && (
+        <div role="status" className="mb-3 flex items-center gap-2 px-3.5 py-2.5 rounded-[8px] bg-[#EAF5EE] border border-[#BFE0CC] text-[12.5px] font-semibold text-[#15663A]">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} />
+          <span className="flex-1 min-w-0">{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Tutup pemberitahuan" className="text-[#15663A]/70 hover:text-[#15663A]"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
       <div className="bg-white border border-[#D8E1E4] rounded-[14px] overflow-hidden">
-        {category.documents.length === 0 ? (
+        {docs.length === 0 ? (
           <div className="py-14 px-5 text-center">
             <FileText className="w-[34px] h-[34px] text-[#c3c6c9] mx-auto mb-3" strokeWidth={1.4} />
             <p className="text-[13.5px] font-semibold text-[#0F172A]">Belum ada dokumen</p>
@@ -482,39 +538,54 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
           </div>
         ) : (
           <>
-            <div className="hidden sm:grid grid-cols-[1fr_130px_130px_120px] gap-3 px-4 py-2 border-b border-[#D8E1E4] bg-[#F8F9FA] text-[10.5px] font-bold tracking-[.05em] uppercase text-[#6b6e72]">
-              <span>Nama</span>
-              <span>Tanggal terbit</span>
-              <span>Berlaku sampai</span>
-              <span>Status</span>
-            </div>
-            {category.documents.map((d) => {
+            {selected.size > 0 ? (
+              <div className="flex items-center gap-3 px-4 py-2 border-b border-[#D8E1E4] bg-[#E2E8EB]">
+                <input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(docs.map((d) => d.id)))} aria-label="Pilih semua dokumen" className="w-4 h-4 accent-[#0F3B59]" />
+                <span className="text-[12.5px] font-bold text-[#0B2C43]">{selected.size} dipilih</span>
+                <button type="button" onClick={() => setMoveOpen(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3 py-1.5 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white">
+                  <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan ke…
+                </button>
+                <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-[12.5px] font-bold text-[#0F3B59] hover:underline">Batal pilihan</button>
+              </div>
+            ) : (
+              <div className={`hidden sm:grid ${cols} items-center px-4 py-2 border-b border-[#D8E1E4] bg-[#F8F9FA] text-[10.5px] font-bold tracking-[.05em] uppercase text-[#6b6e72]`}>
+                {canWrite && <input type="checkbox" checked={false} onChange={() => setSelected(new Set(docs.map((d) => d.id)))} aria-label="Pilih semua dokumen" className="w-4 h-4 accent-[#0F3B59]" />}
+                <div className={inner}>
+                  <span>Nama</span>
+                  <span>Tanggal terbit</span>
+                  <span>Berlaku sampai</span>
+                  <span>Status</span>
+                </div>
+              </div>
+            )}
+            {docs.map((d) => {
               const { Icon, color } = fileIconFor(d.title);
               const expired = d.expiryDate < todayIso;
+              const on = selected.has(d.id);
               return (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => router.push(`/document/${d.id}`)}
-                  className="w-full grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_130px_120px] items-center gap-3 px-4 py-2.5 text-left border-b border-[#EEF2F4] last:border-b-0 hover:bg-[#F0F4F6] transition-colors duration-150"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="w-[22px] h-[22px] flex-shrink-0" strokeWidth={1.6} style={{ color }} />
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-semibold text-[#0F172A] truncate">{d.title}</div>
-                      <div className="text-[11px] font-mono text-[#9a9da0] truncate">
-                        {d.documentNumber} · v{d.version}
-                        <span className="sm:hidden"> · terbit {fmtDate(d.issueDate)}</span>
+                <div key={d.id} className={`${cols} items-center px-4 border-b border-[#EEF2F4] last:border-b-0 transition-colors duration-150 ${on ? "bg-[#EEF3F6]" : "hover:bg-[#F0F4F6]"}`} style={{ display: "grid" }}>
+                  {canWrite && (
+                    <input type="checkbox" checked={on} onChange={() => toggle(d.id)} aria-label={`Pilih ${d.title}`} className="w-4 h-4 accent-[#0F3B59]" />
+                  )}
+                  <button type="button" onClick={() => router.push(`/document/${d.id}`)} className={`${inner} w-full py-2.5 text-left`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className="w-[22px] h-[22px] flex-shrink-0" strokeWidth={1.6} style={{ color }} />
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold text-[#0F172A] truncate">{d.title}</div>
+                        <div className="text-[11px] font-mono text-[#9a9da0] truncate">
+                          {d.documentNumber} · v{d.version}
+                          <span className="sm:hidden"> · terbit {fmtDate(d.issueDate)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.issueDate)}</span>
-                  <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.expiryDate)}</span>
-                  <span className="inline-flex items-center gap-1.5 text-[12px] text-[#0F172A]">
-                    <span className="w-2 h-[3px] rounded-full" style={{ background: expired ? "#DC2626" : "#15803D" }} aria-hidden />
-                    {expired ? "Kedaluwarsa" : "Berlaku"}
-                  </span>
-                </button>
+                    <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.issueDate)}</span>
+                    <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.expiryDate)}</span>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#0F172A]">
+                      <span className="w-2 h-[3px] rounded-full" style={{ background: expired ? "#DC2626" : "#15803D" }} aria-hidden />
+                      {expired ? "Kedaluwarsa" : "Berlaku"}
+                    </span>
+                  </button>
+                </div>
               );
             })}
           </>
@@ -523,7 +594,6 @@ function CategoryView({ category, canWrite, onAdd }: { category: CategoryTile; c
     </div>
   );
 }
-
 
 function ChapterHeading({ label, title, count, total }: { label: string; title: string; count?: number; total?: number }) {
   return (
@@ -595,7 +665,7 @@ export default function DirectoryCategoryGrid({
     return (
       <>
         <Breadcrumb crumbs={crumbs} />
-        <CategoryView category={selected} canWrite={canWrite} onAdd={(files) => openUpload(selected, files)} />
+        <CategoryView category={selected} canWrite={canWrite} onAdd={(files) => openUpload(selected, files)} categories={categories} onMoved={() => mutate()} />
         {upload}
       </>
     );
