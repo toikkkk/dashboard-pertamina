@@ -5,10 +5,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Bell, CheckCircle2, ClipboardList, Menu, Search } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, ClipboardList, Clock, Menu, Search } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { mocPendingActions, type MocAction, type MocRequest } from "@/lib/domain/moc";
-import type { DocumentItem } from "@/lib/mockData";
+import { isDocOverdue, type DocumentItem } from "@/lib/mockData";
 import { documentMatchScore } from "@/lib/domain/docSearch";
 
 const mocNotifText = (m: MocRequest, a: MocAction): string => {
@@ -31,7 +31,7 @@ export default function Topbar({
   mocNotifs: { m: MocRequest; acts: MocAction[] }[];
   isPending: boolean;
 }) {
-  const { allDocuments } = usePsi();
+  const { allDocuments, documents } = usePsi();
   const router = useRouter();
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -69,7 +69,22 @@ export default function Topbar({
     requestAnimationFrame(() => searchInputRef.current?.focus());
   };
 
-  const totalNotifications = overdueCount + mocNotifs.length;
+  // Pengingat kedaluwarsa (90/30 hari) untuk dokumen dalam cakupan user (lokasinya; admin = semua).
+  // Hitungan hari terhadap tanggal berlaku; yang sudah lewat masuk baris "lewat masa berlaku" di bawah.
+  const reminders = useMemo(() => {
+    const now = Date.now();
+    let d30 = 0;
+    let d90 = 0;
+    for (const d of documents) {
+      if (isDocOverdue(d)) continue;
+      const days = (Date.parse(`${d.expiryDate}T00:00:00`) - now) / 86400000;
+      if (days <= 30) d30 += 1;
+      else if (days <= 90) d90 += 1;
+    }
+    return { d30, d90 };
+  }, [documents]);
+
+  const totalNotifications = overdueCount + mocNotifs.length + reminders.d30 + reminders.d90;
 
   // Pencarian langsung (live) sambil mengetik, toleran typo — mis. mengetik "hazip"
   // tetap menampilkan dokumen "HAZOP" berkat skor kemiripan kata (bukan cuma substring
@@ -195,6 +210,18 @@ export default function Topbar({
                   {mocNotifs.length > 6 && (
                     <Link href="/moc" onClick={() => setNotifOpen(false)} className="topbar-panel-more">
                       Lihat {mocNotifs.length - 6} MOC lainnya
+                    </Link>
+                  )}
+                  {reminders.d30 > 0 && (
+                    <Link href="/directory?aksi=segera" onClick={() => setNotifOpen(false)} className="topbar-panel-row">
+                      <Clock className="h-[15px] w-[15px] text-[#DC2626] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
+                      <span><strong>{reminders.d30} dokumen</strong> berakhir dalam 30 hari</span>
+                    </Link>
+                  )}
+                  {reminders.d90 > 0 && (
+                    <Link href="/directory?aksi=segera" onClick={() => setNotifOpen(false)} className="topbar-panel-row">
+                      <Clock className="h-[15px] w-[15px] text-[#B45309] flex-shrink-0 mt-0.5" strokeWidth={1.7} />
+                      <span><strong>{reminders.d90} dokumen</strong> berakhir dalam 31–90 hari</span>
                     </Link>
                   )}
                   {overdueCount > 0 && (
