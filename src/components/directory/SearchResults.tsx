@@ -17,6 +17,13 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "berlaku", label: "Berlaku" },
   { key: "kedaluwarsa", label: "Kedaluwarsa" },
 ];
+type SortKey = "cocok" | "terbit" | "nama" | "berlaku";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "cocok", label: "Paling cocok" },
+  { key: "terbit", label: "Terbaru" },
+  { key: "nama", label: "Nama" },
+  { key: "berlaku", label: "Berlaku sampai" },
+];
 const LIMIT = 100;
 
 const fmtDate = (iso: string) => {
@@ -27,6 +34,7 @@ const fmtDate = (iso: string) => {
 export default function SearchResults({ query, docs }: { query: string; docs: DocumentItem[] }) {
   const router = useRouter();
   const [status, setStatus] = useState<StatusFilter>("semua");
+  const [sortKey, setSortKey] = useState<SortKey>("cocok");
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -38,7 +46,14 @@ export default function SearchResults({ query, docs }: { query: string; docs: Do
       .map((r) => r.doc);
   }, [query, docs]);
 
-  const filtered = results.filter((d) => status === "semua" || (status === "kedaluwarsa") === isDocOverdue(d));
+  const filtered = useMemo(() => {
+    const list = results.filter((d) => status === "semua" || (status === "kedaluwarsa") === isDocOverdue(d));
+    // "cocok" = urutan skor kemiripan dari pencarian (sudah terurut); lainnya menimpa urutan itu.
+    if (sortKey === "terbit") return [...list].sort((a, b) => (a.issueDate < b.issueDate ? 1 : a.issueDate > b.issueDate ? -1 : 0));
+    if (sortKey === "berlaku") return [...list].sort((a, b) => (a.expiryDate < b.expiryDate ? -1 : a.expiryDate > b.expiryDate ? 1 : 0));
+    if (sortKey === "nama") return [...list].sort((a, b) => a.title.localeCompare(b.title, "id", { numeric: true, sensitivity: "base" }));
+    return list;
+  }, [results, status, sortKey]);
 
   return (
     <div>
@@ -46,6 +61,20 @@ export default function SearchResults({ query, docs }: { query: string; docs: Do
         <h2 className="font-heading text-[16px] font-bold text-[#0F172A]">
           Hasil untuk “{query.trim()}” <span className="font-mono text-[12px] font-normal text-[#6b6e72]">{filtered.length}</span>
         </h2>
+        <div role="radiogroup" aria-label="Urutkan hasil" className="flex items-center gap-1 p-0.5 rounded-[8px] bg-[#F0F2F3] border border-[#E2E8EB]">
+          {SORTS.map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              role="radio"
+              aria-checked={sortKey === o.key}
+              onClick={() => setSortKey(o.key)}
+              className={`px-2.5 py-1.5 rounded-[6px] text-[11.5px] font-bold transition-colors duration-150 ${sortKey === o.key ? "bg-white text-[#0F3B59] shadow-[0_1px_2px_rgba(15,23,42,.08)]" : "text-[#6b6e72] hover:text-[#0F172A]"}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
         <div role="radiogroup" aria-label="Saring status" className="flex items-center gap-1 p-0.5 rounded-[8px] bg-[#F0F2F3] border border-[#E2E8EB]">
           {FILTERS.map((f) => (
             <button

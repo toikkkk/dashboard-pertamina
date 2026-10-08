@@ -6,6 +6,7 @@ import { usePsi } from "@/lib/psiStore";
 import { psiInsights } from "@/lib/domain/dashboard";
 import { useDirectoryOverview } from "@/lib/useDocumentCategories";
 import DirectoryCategoryGrid from "@/components/DirectoryCategoryGrid";
+import RecentAndFavorites from "@/components/directory/RecentAndFavorites";
 import Breadcrumb from "@/components/Breadcrumb";
 import DirectoryToolbar from "@/components/directory/DirectoryToolbar";
 import LocationOverview from "@/components/directory/LocationOverview";
@@ -123,6 +124,7 @@ function DirectoryContent() {
   } else if (tab === "matriks") {
     content = (
       <>
+        <RecentAndFavorites />
         <Breadcrumb crumbs={[{ label: "Direktori" }, { label: "Matriks kepatuhan" }]} />
         <ComplianceMatrix overview={overview} scope={null} onOpen={openCategory} onOpenLocation={openLocation} />
       </>
@@ -130,6 +132,7 @@ function DirectoryContent() {
   } else {
     content = (
       <>
+        <RecentAndFavorites />
         <Breadcrumb crumbs={[{ label: "Direktori" }]} />
         <LocationOverview overview={overview} scope={scope} onSelect={openLocation} />
       </>

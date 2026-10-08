@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import useSWR from "swr";
+import React, { useEffect, useState } from "react";
+import useSWR, { mutate as globalMutate } from "swr";
+import { useRouter } from "next/navigation";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import Link from "next/link";
-import { FileLock2, FolderInput } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileLock2, FolderInput, RefreshCw, Star } from "lucide-react";
+import type { DocumentItem } from "@/lib/mockData";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories } from "@/lib/useDocumentCategories";
+import { recordOpened, useDocRefs } from "@/lib/recentDocs";
 import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
-import type { DocumentItem } from "@/lib/mockData";
+import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
 // established, unfiltered exception for cross-location benchmarking widgets only —
@@ -19,11 +22,43 @@ import type { DocumentItem } from "@/lib/mockData";
 // filtered correctly.
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
+const barBtn =
+  "inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3.5 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] transition-colors duration-150";
+
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const { data: doc, isLoading, mutate } = useSWR<DocumentItem | null>(`/api/documents/${params.id}`, fetcher);
   const { activeUser } = usePsi();
   const { categories, mutate: mutateCategories } = useDocumentCategories(doc?.location ?? null);
+  const { isFav, toggleFav } = useDocRefs(activeUser.id);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
+
+  // Saudara satu sub-dokumen (urutan sama dengan tabel Direktori) untuk tombol sebelumnya/berikutnya.
+  const siblings = categories.find((c) => c.id === doc?.categoryId)?.documents ?? [];
+  const pos = doc ? siblings.findIndex((d) => d.id === doc.id) : -1;
+  const prevId = pos > 0 ? siblings[pos - 1].id : null;
+  const nextId = pos >= 0 && pos < siblings.length - 1 ? siblings[pos + 1].id : null;
+
+  // "Terakhir dibuka": dicatat sekali per dokumen yang berhasil dimuat.
+  useEffect(() => {
+    if (!doc) return;
+    recordOpened(activeUser.id, { id: doc.id, title: doc.title, location: doc.location, number: doc.documentNumber, category: doc.categoryName ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id, activeUser.id]);
+
+  // Panah kiri/kanan = dokumen sebelumnya/berikutnya (tidak aktif saat mengetik atau dialog terbuka).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (moveOpen || replaceOpen || e.altKey || e.ctrlKey || e.metaKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.key === "ArrowLeft" && prevId) router.push(`/document/${prevId}`);
+      else if (e.key === "ArrowRight" && nextId) router.push(`/document/${nextId}`);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prevId, nextId, moveOpen, replaceOpen, router]);
 
   if (isLoading) {
     return <div className="py-14 text-center text-[12.5px] text-[#9a9da0]">Memuat dokumen…</div>;
@@ -48,7 +83,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // rows, and any in-progress approve/reject comment draft instead of carrying
   // them over from whatever document was last viewed.
   // Jalur naik ke folder induk (Direktori › Lokasi › Sub-dokumen), seperti Google Drive.
-  const canMove = !!activeUser.isRegionalAdmin || activeUser.location === doc.location;
+  const canWrite = !!activeUser.isRegionalAdmin || activeUser.location === doc.location;
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
     { label: "Direktori", href: "/directory" },
@@ -57,16 +92,44 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   if (doc.categoryId && doc.categoryName) crumbs.push({ label: doc.categoryName, href: `/directory?location=${loc}&category=${doc.categoryId}` });
   crumbs.push({ label: doc.title });
 
+  const ref = { id: doc.id, title: doc.title, location: doc.location, number: doc.documentNumber, category: doc.categoryName ?? null };
+  const fav = isFav(doc.id);
+
   return (
     <>
       <Breadcrumb crumbs={crumbs} />
-      {canMove && (
-        <div className="flex justify-end -mt-1 mb-3">
-          <button type="button" onClick={() => setMoveOpen(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3.5 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] transition-colors duration-150">
-            <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 -mt-1 mb-3">
+        <div className="flex items-center gap-1.5 text-[12.5px] text-[#6b6e72]">
+          {pos >= 0 && siblings.length > 1 ? (
+            <>
+              <button type="button" disabled={!prevId} onClick={() => prevId && router.push(`/document/${prevId}`)} aria-label="Dokumen sebelumnya (←)" title="Sebelumnya (←)" className="p-1.5 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] disabled:opacity-40 disabled:hover:bg-white">
+                <ChevronLeft className="w-4 h-4" strokeWidth={2.2} />
+              </button>
+              <span className="font-mono tabular-nums px-1">{pos + 1} / {siblings.length}</span>
+              <button type="button" disabled={!nextId} onClick={() => nextId && router.push(`/document/${nextId}`)} aria-label="Dokumen berikutnya (→)" title="Berikutnya (→)" className="p-1.5 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] disabled:opacity-40 disabled:hover:bg-white">
+                <ChevronRight className="w-4 h-4" strokeWidth={2.2} />
+              </button>
+              <span className="hidden sm:inline ml-1 truncate max-w-[280px]">di {doc.categoryName}</span>
+            </>
+          ) : null}
         </div>
-      )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" onClick={() => toggleFav(ref)} aria-pressed={fav} className={barBtn}>
+            <Star className="w-3.5 h-3.5" strokeWidth={2.2} fill={fav ? "#B45309" : "none"} style={{ color: fav ? "#B45309" : undefined }} />
+            {fav ? "Favorit" : "Tandai favorit"}
+          </button>
+          {canWrite && (
+            <>
+              <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
+                <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Ganti berkas
+              </button>
+              <button type="button" onClick={() => setMoveOpen(true)} className={barBtn}>
+                <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan
+              </button>
+            </>
+          )}
+        </div>
+      </div>
       {moveOpen && (
         <MoveDocumentsDialog
           categories={categories}
@@ -77,6 +140,20 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
             setMoveOpen(false);
             void mutate();
             void mutateCategories();
+          }}
+        />
+      )}
+      {replaceOpen && (
+        <ReplaceFileDialog
+          documentId={doc.id}
+          title={doc.title}
+          currentVersion={doc.currentVersion}
+          onClose={() => setReplaceOpen(false)}
+          onDone={() => {
+            setReplaceOpen(false);
+            void mutate();
+            void mutateCategories();
+            void globalMutate("/api/bootstrap");
           }}
         />
       )}

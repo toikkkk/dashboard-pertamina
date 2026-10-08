@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories, createDocumentCategory, type CategoryTile } from "@/lib/useDocumentCategories";
@@ -12,7 +12,7 @@ import { enqueueUploads, type UploadJob } from "@/lib/uploadQueue";
 import { readDateSuggestion } from "@/lib/readFileDate";
 import { titleFromFilename } from "@/lib/domain/dateFromText";
 import { PSIType } from "@/lib/mockData";
-import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, FolderInput, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Plus, Upload as UploadIcon, X, FileText, FileSpreadsheet, FolderInput, ArrowUp, ArrowDown, CheckCircle2, AlertTriangle, Circle, ChevronRight, type LucideIcon } from "lucide-react";
 
 const PSI_TYPES: PSIType[] = [
   "Informasi Bahan Berbahaya",
@@ -238,7 +238,7 @@ function UploadIntoCategoryPanel({
       return setError("Lengkapi judul dan tanggal terbit semua berkas.");
     }
     setError(null);
-    const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)s+/i, "").toUpperCase().replace(/s+/g, "");
+    const locationCode = location.replace(/[()]/g, "").replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
     const now = Date.now();
     enqueueUploads(
       todo.map((r, i) => {
@@ -383,6 +383,25 @@ function UploadIntoCategoryPanel({
 
 
 // Ikon berkas menurut ekstensi — pola yang sudah akrab dari Google Drive/Explorer.
+type SortKey = "nama" | "terbit" | "berlaku" | "status";
+const SORT_LABEL: Record<SortKey, string> = { nama: "Nama", terbit: "Tanggal terbit", berlaku: "Berlaku sampai", status: "Status" };
+
+// Kepala kolom yang bisa diklik: klik pertama = urut kolom itu (teks A–Z / tanggal terlama dulu), klik lagi = balik arah.
+function SortHead({ k, sort, onSort, className = "" }: { k: SortKey; sort: { key: SortKey; dir: "asc" | "desc" }; onSort: (k: SortKey) => void; className?: string }) {
+  const active = sort.key === k;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(k)}
+      aria-label={`Urutkan menurut ${SORT_LABEL[k]}`}
+      className={`group inline-flex items-center gap-1 text-left uppercase tracking-[.05em] font-bold hover:text-[#0F3B59] transition-colors duration-150 ${active ? "text-[#0F3B59]" : ""} ${className}`}
+    >
+      {SORT_LABEL[k]}
+      {active ? (sort.dir === "asc" ? <ArrowUp className="w-3 h-3" strokeWidth={2.6} /> : <ArrowDown className="w-3 h-3" strokeWidth={2.6} />) : <ArrowDown className="w-3 h-3 opacity-0 group-hover:opacity-40" strokeWidth={2.6} />}
+    </button>
+  );
+}
+
 function fileIconFor(title: string): { Icon: LucideIcon; color: string } {
   const t = title.toLowerCase();
   if (/\.(xlsx?|xlsm|csv)$/.test(t)) return { Icon: FileSpreadsheet, color: "#15803D" };
@@ -415,6 +434,23 @@ function CategoryView({
   const chapter = PSI_CHAPTERS.find((c) => c.key === category.chapter);
   const todayIso = new Date().toISOString().split("T")[0];
   const docs = category.documents;
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "terbit", dir: "desc" });
+  const onSort = (key: SortKey) =>
+    setSort((cur) => (cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "nama" ? "asc" : key === "status" ? "asc" : "desc" }));
+  const sortedDocs = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const rank = (d: (typeof docs)[number]) => (d.expiryDate < today ? 0 : 1); // asc: Kedaluwarsa dulu
+    const cmp = (a: (typeof docs)[number], b: (typeof docs)[number]) => {
+      switch (sort.key) {
+        case "nama": return a.title.localeCompare(b.title, "id", { numeric: true, sensitivity: "base" });
+        case "terbit": return a.issueDate < b.issueDate ? -1 : a.issueDate > b.issueDate ? 1 : 0;
+        case "berlaku": return a.expiryDate < b.expiryDate ? -1 : a.expiryDate > b.expiryDate ? 1 : 0;
+        case "status": return rank(a) - rank(b) || (a.expiryDate < b.expiryDate ? -1 : 1);
+      }
+    };
+    const out = [...docs].sort((a, b) => cmp(a, b) || a.title.localeCompare(b.title, "id", { numeric: true }));
+    return sort.dir === "asc" ? out : out.reverse();
+  }, [docs, sort]);
   const allSelected = docs.length > 0 && selected.size === docs.length;
 
   // Pilihan dibersihkan bila berpindah sub-dokumen atau dokumennya sudah tidak ada di daftar.
@@ -529,6 +565,18 @@ function CategoryView({
         </div>
       )}
 
+      {docs.length > 1 && (
+        <div className="sm:hidden flex items-center gap-1.5 mb-2 overflow-x-auto" role="group" aria-label="Urutkan dokumen">
+          <span className="text-[11.5px] text-[#6b6e72] flex-shrink-0">Urutkan:</span>
+          {(["terbit", "nama", "berlaku", "status"] as SortKey[]).map((k) => (
+            <button key={k} type="button" onClick={() => onSort(k)} aria-pressed={sort.key === k} className={`flex-shrink-0 inline-flex items-center gap-1 px-3 py-1 rounded-full border text-[12px] font-semibold ${sort.key === k ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#3a3d40]"}`}>
+              {SORT_LABEL[k]}
+              {sort.key === k && (sort.dir === "asc" ? <ArrowUp className="w-3 h-3" strokeWidth={2.6} /> : <ArrowDown className="w-3 h-3" strokeWidth={2.6} />)}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="bg-white border border-[#D8E1E4] rounded-[14px] overflow-hidden">
         {docs.length === 0 ? (
           <div className="py-14 px-5 text-center">
@@ -551,14 +599,14 @@ function CategoryView({
               <div className={`hidden sm:grid ${cols} items-center px-4 py-2 border-b border-[#D8E1E4] bg-[#F8F9FA] text-[10.5px] font-bold tracking-[.05em] uppercase text-[#6b6e72]`}>
                 {canWrite && <input type="checkbox" checked={false} onChange={() => setSelected(new Set(docs.map((d) => d.id)))} aria-label="Pilih semua dokumen" className="w-4 h-4 accent-[#0F3B59]" />}
                 <div className={inner}>
-                  <span>Nama</span>
-                  <span>Tanggal terbit</span>
-                  <span>Berlaku sampai</span>
-                  <span>Status</span>
+                  <SortHead k="nama" sort={sort} onSort={onSort} />
+                  <SortHead k="terbit" sort={sort} onSort={onSort} />
+                  <SortHead k="berlaku" sort={sort} onSort={onSort} />
+                  <SortHead k="status" sort={sort} onSort={onSort} />
                 </div>
               </div>
             )}
-            {docs.map((d) => {
+            {sortedDocs.map((d) => {
               const { Icon, color } = fileIconFor(d.title);
               const expired = d.expiryDate < todayIso;
               const on = selected.has(d.id);
