@@ -115,7 +115,7 @@ export default function Navbar() {
     !isPending && activeUser.isRegionalAdmin
       ? [
           { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" },
-          { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
+          { name: "Arsip Registry", path: "/registry", icon: Archive },
         ]
       : [];
   const navItems = [...primaryNavItems, ...adminNavItems];

@@ -1,5 +1,5 @@
 // Promotes one raw file_registry row into a curated `documents` row — the
-// deliberate, one-at-a-time, admin-only mechanism the migration plan settled on
+// deliberate, one-at-a-time mechanism (Admin Regional, atau user terminal untuk berkas arsip TERMINALNYA sendiri) the migration plan settled on
 // instead of trying to auto-classify all ~2,965 unlinked real files into fake
 // approval workflows. Mirrors POST /api/documents' document-creation logic, just
 // sourced from an already-uploaded registry file instead of a fresh presigned
@@ -10,8 +10,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, historyItems, fileRegistry, documentCategories } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertRegionalAdmin } from "@/lib/auth/rbac";
-import { withErrorHandling } from "@/lib/api/respond";
+import { assertLocationWrite, assertOnboarded, ForbiddenError } from "@/lib/auth/rbac";
+import { logAudit } from "@/lib/audit";
+import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentItem } from "@/lib/api/documents";
 
 const bodySchema = z.object({
@@ -29,13 +30,23 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
-    const admin = await requireSessionUser();
-    assertRegionalAdmin(admin);
+    const user = await requireSessionUser();
+    assertOnboarded(user);
     const body = bodySchema.parse(await req.json());
+    assertLocationWrite(user, body.location);
 
     const [file] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, params.id)).limit(1);
     if (!file || file.uploadStatus !== "uploaded") {
       return NextResponse.json({ error: "Berkas registry tidak ditemukan atau belum selesai diunggah." }, { status: 404 });
+    }
+
+    // User terminal hanya boleh menautkan berkas arsip terminalnya sendiri (Admin Regional: bebas).
+    if (!user.isRegionalAdmin && file.locationCanonical !== user.location) throw new ForbiddenError();
+
+    // Nomor dokumen unik (termasuk yang sedang di Sampah).
+    const [numberTaken] = await db.select({ id: documents.id, deletedAt: documents.deletedAt }).from(documents).where(eq(documents.documentNumber, body.documentNumber)).limit(1);
+    if (numberTaken) {
+      throw new HttpError(409, numberTaken.deletedAt ? "Nomor dokumen itu dipakai dokumen yang ada di Sampah. Pulihkan atau hapus permanen dokumen itu dulu." : "Nomor dokumen itu sudah dipakai dokumen lain.");
     }
 
     // Cegah menautkan berkas yang sudah jadi dokumen lain (mis. dua tab admin
@@ -47,8 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     if (body.categoryId) {
-      const [cat] = await db.select({ id: documentCategories.id }).from(documentCategories).where(eq(documentCategories.id, body.categoryId)).limit(1);
+      const [cat] = await db.select({ id: documentCategories.id, location: documentCategories.location }).from(documentCategories).where(eq(documentCategories.id, body.categoryId)).limit(1);
       if (!cat) return NextResponse.json({ error: "Sub-kategori tidak ditemukan." }, { status: 404 });
+      if (cat.location !== body.location) throw new HttpError(400, "Sub-kategori itu bukan milik lokasi dokumen ini.");
     }
 
     const [doc] = await db
@@ -66,14 +78,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         primaryFileId: file.id,
         categoryId: body.categoryId,
         isCircular: false,
-        createdBy: admin.id,
+        createdBy: user.id,
       })
       .returning();
 
     await db.insert(historyItems).values({
       documentId: doc.id,
-      actorName: admin.name,
-      actorRole: admin.role,
+      actorName: user.name,
+      actorRole: user.role,
       location: body.location,
       action: "Created",
       notes: `Ditautkan dari arsip registry: ${file.originalFilename}`,
@@ -81,6 +93,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       version: "1.0",
     });
 
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.dibuat", {
+      targetType: "dokumen",
+      targetId: doc.id,
+      targetLabel: `${doc.documentNumber} ${doc.title}`,
+      location: body.location,
+      detail: { dariArsipRegistry: file.originalFilename },
+    });
     const item = await loadDocumentItem(doc.id);
     return NextResponse.json(item, { status: 201 });
   });

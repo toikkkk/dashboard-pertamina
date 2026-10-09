@@ -186,13 +186,15 @@ export function buildNavItems({
         { name: "MOC", path: "/moc", icon: ClipboardList, badge: pendingMocCount, badgeTone: "warning" },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
+        // Admin Regional memakainya dari grup Admin; user terminal melihat arsip terminalnya sendiri di menu utama.
+        ...(isRegionalAdmin ? [] : [{ name: "Arsip Registry", path: "/registry", icon: Archive } as NavItem]),
         { name: "Sampah", path: "/sampah", icon: Trash2, badge: trashUrgentCount, badgeTone: "warning" },
       ];
   const adminNavItems: NavItem[] =
     !isPending && isRegionalAdmin
       ? [
           { name: "Kelola User", path: "/admin/users", icon: UserCog, badge: pendingUserCount, badgeTone: "warning" },
-          { name: "Arsip Registry", path: "/admin/registry", icon: Archive },
+          { name: "Arsip Registry", path: "/registry", icon: Archive },
           { name: "Log Aktivitas", path: "/admin/audit", icon: ScrollText },
         ]
       : [];

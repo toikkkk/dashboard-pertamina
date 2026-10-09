@@ -84,9 +84,9 @@ export async function GET(req: Request, { params }: { params: { fileId: string }
     if (linkedLocation) {
       assertLocationRead(user);
     } else {
-      // Not part of any curated document — a raw archive file, admin-only until
-      // deliberately linked via POST /api/registry/[id]/link.
-      assertRegionalAdmin(user);
+      // Not part of any curated document — a raw archive file: Admin Regional, atau user terminal untuk berkas arsip
+      // TERMINALNYA sendiri (Arsip Registry per terminal), sampai ditautkan lewat POST /api/registry/[id]/link.
+      if (!(file.locationCanonical && file.locationCanonical === user.location)) assertRegionalAdmin(user);
     }
 
     // Tipe konten ditetapkan SERVER dari ekstensi berkas — bukan klaim klien saat unggah.
@@ -105,7 +105,7 @@ export async function GET(req: Request, { params }: { params: { fileId: string }
       { expiresIn: 300 }
     );
 
-    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "berkas.unduh", { targetType: "berkas", targetId: file.id, targetLabel: asPrimary?.title ?? file.originalFilename, location: linkedLocation });
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "berkas.unduh", { targetType: "berkas", targetId: file.id, targetLabel: asPrimary?.title ?? file.originalFilename, location: linkedLocation ?? file.locationCanonical });
     return NextResponse.redirect(url, { status: 302 });
   });
 }
