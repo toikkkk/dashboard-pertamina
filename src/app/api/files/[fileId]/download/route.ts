@@ -16,6 +16,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertRegionalAdmin } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { extOf, kindOfFilename } from "@/lib/security/fileScan";
+import { canDeleteDocument } from "@/lib/domain/rules";
 
 // Hanya PDF dan gambar (jenis yang sudah diperiksa dan aman ditampilkan) yang disajikan
 // "inline" untuk pratinjau; SEMUA jenis lain dipaksa diunduh sebagai attachment agar
@@ -53,9 +54,9 @@ export async function GET(req: Request, { params }: { params: { fileId: string }
       return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
     }
 
-    const [asPrimary] = await db.select({ location: documents.location, title: documents.title }).from(documents).where(eq(documents.primaryFileId, file.id)).limit(1);
+    const [asPrimary] = await db.select({ location: documents.location, title: documents.title, deletedAt: documents.deletedAt }).from(documents).where(eq(documents.primaryFileId, file.id)).limit(1);
     const [asHistory] = await db
-      .select({ location: documents.location, title: documents.title, version: historyItems.version, current: documents.currentVersion })
+      .select({ location: documents.location, title: documents.title, version: historyItems.version, current: documents.currentVersion, deletedAt: documents.deletedAt })
       .from(historyItems)
       .innerJoin(documents, eq(historyItems.documentId, documents.id))
       .where(eq(historyItems.fileId, file.id))
@@ -70,6 +71,16 @@ export async function GET(req: Request, { params }: { params: { fileId: string }
       .limit(1);
 
     const linkedLocation = asPrimary?.location ?? asHistory?.location ?? asMocEvidence?.location ?? null;
+    // Berkas yang HANYA dipakai dokumen di Sampah: hanya yang boleh mengelola Sampah (Admin Regional / Controller
+    // lokasinya) yang boleh mengunduh; selain itu dianggap tidak ada. Berkas yang juga dipakai dokumen aktif atau
+    // bukti MOC tetap mengikuti aturan baca biasa.
+    const inActiveUse = (asPrimary && !asPrimary.deletedAt) || (asHistory && !asHistory.deletedAt) || !!asMocEvidence;
+    if (!inActiveUse && (asPrimary || asHistory)) {
+      const trashedLocation = (asPrimary ?? asHistory)!.location;
+      if (!canDeleteDocument(user, trashedLocation)) {
+        return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 404 });
+      }
+    }
     if (linkedLocation) {
       assertLocationRead(user);
     } else {

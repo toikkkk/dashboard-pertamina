@@ -170,12 +170,14 @@ export function buildNavItems({
   pendingMocCount,
   overdueCount,
   pendingUserCount,
+  trashUrgentCount = 0,
 }: {
   isPending: boolean;
   isRegionalAdmin: boolean;
   pendingMocCount: number;
   overdueCount: number;
   pendingUserCount: number;
+  trashUrgentCount?: number;
 }): { primaryNavItems: NavItem[]; adminNavItems: NavItem[] } {
   const primaryNavItems: NavItem[] = isPending
     ? [{ name: "Dashboard", path: "/", icon: LayoutDashboard }]
@@ -184,7 +186,7 @@ export function buildNavItems({
         { name: "MOC", path: "/moc", icon: ClipboardList, badge: pendingMocCount, badgeTone: "warning" },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
-        { name: "Sampah", path: "/sampah", icon: Trash2 },
+        { name: "Sampah", path: "/sampah", icon: Trash2, badge: trashUrgentCount, badgeTone: "warning" },
       ];
   const adminNavItems: NavItem[] =
     !isPending && isRegionalAdmin

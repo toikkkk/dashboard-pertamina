@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq, and, ne, isNull } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, documentCategories, historyItems, historyDiffs } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationRead, assertLocationWrite, ForbiddenError } from "@/lib/auth/rbac";
+import { assertLocationRead, assertLocationWrite } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentItem, getDocumentLocation } from "@/lib/api/documents";
-import { canDeleteDocument } from "@/lib/domain/rules";
-import { trashPurgeAt } from "@/lib/domain/trash";
+import { moveToTrash } from "@/lib/api/trash";
 import { logAudit } from "@/lib/audit";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -145,31 +144,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
 }
 
-// Hapus dokumen = PINDAH KE SAMPAH (bisa dipulihkan 30 hari; lihat domain/trash.ts). Hanya Admin Regional atau
-// Controller lokasi itu. Berkas di penyimpanan TIDAK disentuh sampai dihapus permanen (tombol di halaman Sampah
-// atau cron setelah 30 hari — lib/api/trash.ts).
+// Hapus dokumen = PINDAH KE SAMPAH (bisa dipulihkan 30 hari; lihat domain/trash.ts dan lib/api/trash.ts). Hanya
+// Admin Regional atau Controller lokasi itu. Berkas di penyimpanan TIDAK disentuh sampai dihapus permanen
+// (tombol di halaman Sampah atau cron setelah 30 hari).
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
-    if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
-    if (!canDeleteDocument(user, docRow.location)) {
-      throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus dokumen.");
-    }
-
-    const now = new Date();
-    await db
-      .update(documents)
-      .set({ deletedAt: now, deletedById: user.id, deletedByName: user.name, updatedAt: now })
-      .where(and(eq(documents.id, docRow.id), isNull(documents.deletedAt)));
-
-    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.dihapus", {
-      targetType: "dokumen",
-      targetId: docRow.id,
-      targetLabel: `${docRow.documentNumber} ${docRow.title}`,
-      location: docRow.location,
-      detail: { keSampah: true, versi: docRow.currentVersion, terbit: docRow.issueDate, berlaku: docRow.expiryDate, hapusPermanenOtomatis: trashPurgeAt(now).toISOString().slice(0, 10) },
-    });
-    return NextResponse.json({ ok: true, movedToTrash: true, purgeAt: trashPurgeAt(now).toISOString() });
+    if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+    const purgeAt = await moveToTrash(req, user, docRow);
+    return NextResponse.json({ ok: true, movedToTrash: true, purgeAt: purgeAt.toISOString() });
   });
 }

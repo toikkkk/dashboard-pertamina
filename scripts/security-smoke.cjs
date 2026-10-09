@@ -16,6 +16,8 @@ const ROUTES = [
   ["GET", `/api/documents/${UUID}`],
   ["DELETE", `/api/documents/${UUID}`],
   ["GET", "/api/documents/trash"],
+  ["GET", "/api/documents/trash?summary=1"],
+  ["POST", "/api/documents/trash/bulk", { action: "trash", ids: [UUID] }],
   ["POST", `/api/documents/${UUID}/restore`, {}],
   ["POST", `/api/documents/${UUID}/purge`, {}],
   ["GET", "/api/cron/purge-trash"],

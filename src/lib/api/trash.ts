@@ -1,14 +1,24 @@
-// Penghapusan PERMANEN dokumen yang sudah ada di Sampah. Dipakai tombol "Hapus permanen" dan cron 30 hari.
-// Riwayat/rute ikut terhapus (cascade); berkas di penyimpanan dihapus HANYA bila tidak dipakai dokumen/
-// riwayat/bukti MOC lain. Tak terbalik — satu-satunya jalan kembali adalah cadangan.
+// Aksi Sampah dokumen yang dipakai bersama route tunggal, route massal (trash/bulk), dan cron: pindah ke
+// Sampah, pulihkan, hapus permanen. Setiap fungsi memeriksa hak (Admin Regional / Controller lokasi dokumen)
+// sendiri, jadi pemanggil tidak bisa lupa. Hapus permanen: baris dokumen + berkas di R2/registry yang tak dipakai
+// data lain ikut hilang; tak terbalik (kecuali dari cadangan).
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { documents, historyItems, fileRegistry, mocEvidence } from "@/lib/db/schema";
+import { documents, historyItems, historyDiffs, fileRegistry, mocEvidence } from "@/lib/db/schema";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { HttpError } from "@/lib/api/respond";
+import { ForbiddenError } from "@/lib/auth/rbac";
+import type { SessionUser } from "@/lib/auth/session";
+import { canDeleteDocument } from "@/lib/domain/rules";
+import { TRASH_URGENT_DAYS, trashDaysLeft, trashPurgeAt } from "@/lib/domain/trash";
+import { logAudit } from "@/lib/audit";
 
-export async function purgeDocumentRow(docRow: typeof documents.$inferSelect): Promise<{ filesRemoved: number; filesTotal: number }> {
+type DocRow = typeof documents.$inferSelect;
+const actorOf = (u: SessionUser) => ({ id: u.id, name: u.name, email: u.email });
+const label = (d: DocRow) => `${d.documentNumber} ${d.title}`;
+
+export async function purgeDocumentRow(docRow: DocRow): Promise<{ filesRemoved: number; filesTotal: number }> {
   const hist = await db.select({ fileId: historyItems.fileId }).from(historyItems).where(eq(historyItems.documentId, docRow.id));
   const fileIds = Array.from(new Set([docRow.primaryFileId, ...hist.map((h) => h.fileId)]));
 
@@ -40,4 +50,78 @@ export async function purgeDocumentRow(docRow: typeof documents.$inferSelect): P
     }
   }
   return { filesRemoved, filesTotal: fileIds.length };
+}
+
+/** Dokumen aktif → Sampah. Mengembalikan waktu hapus permanen otomatis. */
+export async function moveToTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<Date> {
+  if (docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ditemukan.");
+  if (!canDeleteDocument(user, docRow.location)) {
+    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus dokumen.");
+  }
+  const now = new Date();
+  await db
+    .update(documents)
+    .set({ deletedAt: now, deletedById: user.id, deletedByName: user.name, updatedAt: now })
+    .where(and(eq(documents.id, docRow.id), isNull(documents.deletedAt)));
+  const purgeAt = trashPurgeAt(now);
+  await logAudit(req, actorOf(user), "dokumen.dihapus", {
+    targetType: "dokumen",
+    targetId: docRow.id,
+    targetLabel: label(docRow),
+    location: docRow.location,
+    detail: { keSampah: true, versi: docRow.currentVersion, terbit: docRow.issueDate, berlaku: docRow.expiryDate, hapusPermanenOtomatis: purgeAt.toISOString().slice(0, 10) },
+  });
+  return purgeAt;
+}
+
+/** Sampah → aktif lagi. Riwayat bernada "Dikoreksi:" supaya tidak dihitung pembaruan nyata di dashboard. */
+export async function restoreFromTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<void> {
+  if (!docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ada di Sampah.");
+  if (!canDeleteDocument(user, docRow.location)) {
+    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat memulihkan dokumen.");
+  }
+  await db
+    .update(documents)
+    .set({ deletedAt: null, deletedById: null, deletedByName: null, updatedAt: new Date() })
+    .where(and(eq(documents.id, docRow.id), isNotNull(documents.deletedAt)));
+  const [history] = await db
+    .insert(historyItems)
+    .values({
+      documentId: docRow.id,
+      actorName: user.name,
+      actorRole: user.role,
+      location: docRow.location,
+      action: "Revised",
+      notes: "Dikoreksi: dokumen dipulihkan dari Sampah",
+      fileId: docRow.primaryFileId,
+      version: docRow.currentVersion,
+    })
+    .returning({ id: historyItems.id });
+  await db.insert(historyDiffs).values({ historyItemId: history.id, field: "Keberadaan", oldValue: "Di Sampah", newValue: "Aktif" });
+  await logAudit(req, actorOf(user), "dokumen.dipulihkan", { targetType: "dokumen", targetId: docRow.id, targetLabel: label(docRow), location: docRow.location });
+}
+
+/** Hapus permanen sekarang — hanya untuk dokumen yang SUDAH di Sampah. */
+export async function purgeFromTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<{ filesRemoved: number }> {
+  if (!docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ada di Sampah.");
+  if (!canDeleteDocument(user, docRow.location)) {
+    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus permanen dokumen.");
+  }
+  const { filesRemoved, filesTotal } = await purgeDocumentRow(docRow);
+  await logAudit(req, actorOf(user), "dokumen.dihapus_permanen", {
+    targetType: "dokumen",
+    targetId: docRow.id,
+    targetLabel: label(docRow),
+    location: docRow.location,
+    detail: { versi: docRow.currentVersion, berkasDihapus: filesRemoved, berkasTotal: filesTotal, dihapusDariSampah: docRow.deletedAt.toISOString() },
+  });
+  return { filesRemoved };
+}
+
+/** Ringkasan untuk lencana sidebar: hanya dokumen di Sampah yang BOLEH dikelola user ini. */
+export async function trashSummaryForUser(user: SessionUser): Promise<{ total: number; urgent: number }> {
+  const rows = await db.select({ location: documents.location, deletedAt: documents.deletedAt }).from(documents).where(isNotNull(documents.deletedAt));
+  const mine = rows.filter((r) => canDeleteDocument(user, r.location));
+  const now = new Date();
+  return { total: mine.length, urgent: mine.filter((r) => trashDaysLeft(r.deletedAt as Date, now) <= TRASH_URGENT_DAYS).length };
 }

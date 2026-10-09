@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { usePathname } from "next/navigation";
+import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
 import { useMocList } from "@/lib/useMoc";
 import { isDocOverdue } from "@/lib/mockData";
@@ -22,6 +23,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Hook harus dipanggil sebelum early-return di bawah; kunci null = tidak fetch saat logout.
   const { mocs } = useMocList(isAuthLoaded && isLoggedIn);
+  // Lencana "Sampah": dokumen yang boleh dikelola user ini dan hampir dihapus permanen. Akun menunggu aktivasi
+  // (tanpa lokasi) tidak punya hak baca, jadi tidak ikut mengambil.
+  const canSeeTrash = isAuthLoaded && isLoggedIn && (!!activeUser.isRegionalAdmin || !!activeUser.location);
+  const { data: trashSummary } = useSWR<{ total: number; urgent: number }>(
+    canSeeTrash ? "/api/documents/trash?summary=1" : null,
+    (u: string) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error("gagal")))),
+    { refreshInterval: 300000, revalidateOnFocus: false }
+  );
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -67,6 +76,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pendingMocCount: mocNotifs.length,
     overdueCount,
     pendingUserCount,
+    trashUrgentCount: trashSummary?.urgent ?? 0,
   });
 
   return (

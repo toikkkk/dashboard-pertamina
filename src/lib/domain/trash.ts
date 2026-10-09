@@ -1,6 +1,8 @@
 // Sampah dokumen: lama simpan dan bentuk data yang dikirim ke halaman Sampah. Murni (tanpa DB) supaya
 // dipakai server dan klien dengan angka yang sama.
 export const TRASH_RETENTION_DAYS = 30;
+/** Sisa hari (<=) yang ditandai mendesak: lencana sidebar dan penanda merah di halaman Sampah. */
+export const TRASH_URGENT_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

@@ -443,6 +443,7 @@ function CategoryView({
   const [dragging, setDragging] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);
+  const [bulkTrashOpen, setBulkTrashOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const addRef = useRef(onAdd);
   addRef.current = onAdd;
@@ -566,6 +567,18 @@ function CategoryView({
           }}
         />
       )}
+      {bulkTrashOpen && (
+        <DeleteDocumentDialog
+          documentIds={Array.from(selected)}
+          title={`${selected.size} dokumen`}
+          onClose={() => setBulkTrashOpen(false)}
+          onDeleted={() => {
+            setBulkTrashOpen(false);
+            setSelected(new Set());
+            afterChange("Dokumen dipindahkan ke Sampah.");
+          }}
+        />
+      )}
       {moveOpen && (
         <MoveDocumentsDialog
           categories={categories}
@@ -642,6 +655,11 @@ function CategoryView({
                 <button type="button" onClick={() => setMoveOpen(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3 py-1.5 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white">
                   <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan ke…
                 </button>
+                {canDelete && (
+                  <button type="button" onClick={() => setBulkTrashOpen(true)} className="inline-flex items-center gap-1.5 text-[12.5px] font-bold px-3 py-1.5 rounded-full border border-[#0F3B59] text-[#0F3B59] hover:bg-white">
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} /> Ke Sampah
+                  </button>
+                )}
                 <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-[12.5px] font-bold text-[#0F3B59] hover:underline">Batal pilihan</button>
               </div>
             ) : (
