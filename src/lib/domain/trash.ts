@@ -30,6 +30,6 @@ export interface TrashedDocument {
   deletedByName: string | null;
   purgeAt: string; // ISO
   daysLeft: number;
-  /** Boleh memulihkan / menghapus permanen (Admin Regional atau Controller lokasi dokumen). */
+  /** Boleh memulihkan / menghapus permanen (Admin Regional, atau user terminal dokumen itu). */
   canManage: boolean;
 }

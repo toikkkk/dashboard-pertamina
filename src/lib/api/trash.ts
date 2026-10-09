@@ -1,5 +1,5 @@
 // Aksi Sampah dokumen yang dipakai bersama route tunggal, route massal (trash/bulk), dan cron: pindah ke
-// Sampah, pulihkan, hapus permanen. Setiap fungsi memeriksa hak (Admin Regional / Controller lokasi dokumen)
+// Sampah, pulihkan, hapus permanen. Setiap fungsi memeriksa hak (Admin Regional, atau user yang punya hak tulis di lokasi dokumen)
 // sendiri, jadi pemanggil tidak bisa lupa. Hapus permanen: baris dokumen + berkas di R2/registry yang tak dipakai
 // data lain ikut hilang; tak terbalik (kecuali dari cadangan).
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
@@ -56,7 +56,7 @@ export async function purgeDocumentRow(docRow: DocRow): Promise<{ filesRemoved: 
 export async function moveToTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<Date> {
   if (docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ditemukan.");
   if (!canDeleteDocument(user, docRow.location)) {
-    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus dokumen.");
+    throw new ForbiddenError("Anda hanya dapat memindahkan ke Sampah dokumen di terminal Anda sendiri.");
   }
   const now = new Date();
   await db
@@ -78,7 +78,7 @@ export async function moveToTrash(req: Request, user: SessionUser, docRow: DocRo
 export async function restoreFromTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<void> {
   if (!docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ada di Sampah.");
   if (!canDeleteDocument(user, docRow.location)) {
-    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat memulihkan dokumen.");
+    throw new ForbiddenError("Anda hanya dapat memulihkan dokumen di terminal Anda sendiri.");
   }
   await db
     .update(documents)
@@ -105,7 +105,7 @@ export async function restoreFromTrash(req: Request, user: SessionUser, docRow: 
 export async function purgeFromTrash(req: Request, user: SessionUser, docRow: DocRow): Promise<{ filesRemoved: number }> {
   if (!docRow.deletedAt) throw new HttpError(404, "Dokumen tidak ada di Sampah.");
   if (!canDeleteDocument(user, docRow.location)) {
-    throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus permanen dokumen.");
+    throw new ForbiddenError("Anda hanya dapat menghapus permanen dokumen di terminal Anda sendiri.");
   }
   const { filesRemoved, filesTotal } = await purgeDocumentRow(docRow);
   await logAudit(req, actorOf(user), "dokumen.dihapus_permanen", {

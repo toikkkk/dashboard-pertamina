@@ -1,8 +1,8 @@
 "use client";
 
 // Sampah: dokumen yang dihapus dan masih bisa dipulihkan. Semua user yang sudah onboarded melihat semua
-// lokasi; Pulihkan / Hapus permanen (satuan maupun massal) hanya untuk Admin Regional atau Controller lokasi
-// dokumen (server memeriksa ulang per dokumen). Setelah TRASH_RETENTION_DAYS hari dokumen dihapus permanen
+// lokasi; Pulihkan / Hapus permanen (satuan maupun massal) hanya untuk Admin Regional dan user terminal dokumen
+// itu sendiri (server memeriksa ulang per dokumen). Setelah TRASH_RETENTION_DAYS hari dokumen dihapus permanen
 // oleh tugas terjadwal.
 import React, { useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";

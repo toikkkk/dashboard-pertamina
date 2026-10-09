@@ -45,12 +45,13 @@ export function isDocOverdue(doc: DocumentItem): boolean {
 // renders at all) — server-side API routes must call this same function again before
 // mutating, never trust that a request only arrived because the button was visible.
 /**
- * Menghapus dokumen = tindakan tak terbalik (berkas di penyimpanan ikut hilang), jadi dibatasi: Admin Regional, atau
- * PSI / MOC Controller di lokasi dokumen itu. Dicek ulang di server (DELETE /api/documents/[id]); ini hanya untuk
- * menampilkan/menyembunyikan tombolnya.
+ * Hak atas Sampah: memindahkan dokumen ke Sampah, memulihkan, dan menghapus permanen. Sejak 2026-10-10 berlaku untuk
+ * SEMUA user yang punya hak tulis di lokasi dokumen itu (peran apa pun: Initiator, Controller) dan Admin Regional
+ * (semua lokasi); user lokasi lain atau akun yang menunggu aktivasi tidak berhak. Dicek ulang di server
+ * (lib/api/trash.ts); ini juga dipakai menampilkan/menyembunyikan tombolnya.
  */
 export function canDeleteDocument(user: { isRegionalAdmin?: boolean; role: string; location: string | null }, docLocation: string): boolean {
-  return !!user.isRegionalAdmin || (user.role === "PSI / MOC Controller" && user.location === docLocation);
+  return !!user.isRegionalAdmin || (!!user.location && user.location === docLocation);
 }
 
 export function canUserApproveDoc(doc: DocumentItem, user: SimulatedUser): boolean {

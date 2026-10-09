@@ -1,4 +1,4 @@
-// Pulihkan dokumen dari Sampah. Hak sama dengan menghapus (Admin Regional / Controller lokasi dokumen);
+// Pulihkan dokumen dari Sampah. Hak sama dengan menghapus (Admin Regional, atau user terminal dokumen itu);
 // logikanya di lib/api/trash.ts (dipakai juga aksi massal).
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";

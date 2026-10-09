@@ -1,5 +1,5 @@
 // Aksi massal Sampah: pindah banyak dokumen ke Sampah, pulihkan, atau hapus permanen sekaligus. Tiap dokumen
-// diperiksa haknya sendiri-sendiri (Admin Regional / Controller lokasinya) dan diproses terpisah: satu yang gagal
+// diperiksa haknya sendiri-sendiri (Admin Regional, atau user terminal dokumen itu) dan diproses terpisah: satu yang gagal
 // tidak membatalkan yang lain — hasil per dokumen dikembalikan. Dibatasi 50 per panggilan (batas waktu fungsi).
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";

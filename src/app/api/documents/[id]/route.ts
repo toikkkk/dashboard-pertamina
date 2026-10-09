@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // Hapus dokumen = PINDAH KE SAMPAH (bisa dipulihkan 30 hari; lihat domain/trash.ts dan lib/api/trash.ts). Hanya
-// Admin Regional atau Controller lokasi itu. Berkas di penyimpanan TIDAK disentuh sampai dihapus permanen
+// Admin Regional atau user terminal itu (peran apa pun). Berkas di penyimpanan TIDAK disentuh sampai dihapus permanen
 // (tombol di halaman Sampah atau cron setelah 30 hari).
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
