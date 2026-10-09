@@ -127,6 +127,7 @@ function Dashboard() {
             documents={documents}
             locations={locations}
             scope={allScope ? "location" : "type"}
+            locationFilter={effectiveLocationFilter}
           />
         ) : (
           <MocDashboardManus insights={moc} nowMs={now} showLocations={effectiveLocationFilter === "ALL"} />

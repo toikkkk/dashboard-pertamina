@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { Search, X, LayoutGrid, Table2, AlertTriangle, Clock, History, FileX, FileSpreadsheet, type LucideIcon } from "lucide-react";
 import { ACTION_META, type ActionKind } from "@/components/directory/ActionList";
+import MenuSelect, { type MenuOption } from "@/components/ui/MenuSelect";
 
 const KINDS: ActionKind[] = ["kedaluwarsa", "segera", "stale", "kosong"];
 const KIND_ICON: Record<ActionKind, LucideIcon> = { kedaluwarsa: AlertTriangle, segera: Clock, stale: History, kosong: FileX };
@@ -15,6 +16,9 @@ export default function DirectoryToolbar({
   counts,
   active,
   onAction,
+  scopeValue,
+  scopeOptions,
+  onScope,
   tab,
   onTab,
   onExport,
@@ -24,6 +28,10 @@ export default function DirectoryToolbar({
   counts: Record<ActionKind, number | null>;
   active: ActionKind | null;
   onAction: (k: ActionKind | null) => void;
+  /** Cakupan chip "Perlu tindakan": "ALL" (semua terminal) atau nama satu terminal. */
+  scopeValue: string;
+  scopeOptions: MenuOption[];
+  onScope: (value: string) => void;
   /** null = tidak tampil (level lokasi / sedang melihat hasil). */
   tab: "lokasi" | "matriks" | null;
   onTab: (t: "lokasi" | "matriks") => void;
@@ -87,6 +95,7 @@ export default function DirectoryToolbar({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Perlu tindakan">
+        <MenuSelect value={scopeValue} options={scopeOptions} onChange={onScope} ariaLabel="Cakupan terminal" minWidth={190} />
         {KINDS.map((k) => {
           const meta = ACTION_META[k];
           const Icon = KIND_ICON[k];

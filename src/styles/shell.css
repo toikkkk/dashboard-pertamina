@@ -827,3 +827,11 @@
   .hsse-shell .compliance-detail-switcher { width: auto; margin: 0 14px 12px; }
   .hsse-shell .compliance-detail-switcher button { flex: 1; }
 }
+
+/* 2026-10-10 — Sidebar setinggi layar: isi menu Admin Regional (Menu + Admin + Umum + kartu user) bisa lebih tinggi dari
+   layar pendek. Dulu semua anak boleh menyusut sehingga label bagian ("MENU/ADMIN/UMUM") terpotong. Sekarang isi tidak
+   menyusut; sidebar bisa digulir dan kartu user tetap menempel di bawah. */
+.hsse-shell .sidebar { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #C5CED3 transparent; }
+.hsse-shell .sidebar > * { flex-shrink: 0; }
+.hsse-shell .sidebar > .sidebar-spacer { flex: 1 0 12px; min-height: 12px; }
+.hsse-shell .sidebar-user { position: sticky; bottom: 0; z-index: 1; background: #F7F8F8; padding-bottom: 12px; }

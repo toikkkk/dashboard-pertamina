@@ -40,13 +40,16 @@ const fmtDate = (iso: string) => {
 
 // ------------------------------------------------------------------ KPI grid
 
-function MetricGrid({ insights }: { insights: Insights }) {
+function MetricGrid({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
   const pct = (n: number) => (insights.total > 0 ? Math.round((n / insights.total) * 100) : 0);
+  // Kartu yang punya padanan "Perlu tindakan" di Direktori membuka daftar itu dengan cakupan terminal yang sama
+  // dengan angka di kartu (locationFilter = "ALL" atau satu terminal).
+  const directoryHref = (aksi: "segera" | "stale") => `/directory?aksi=${aksi}&lokasi=${encodeURIComponent(locationFilter)}`;
   const metrics: { label: string; value: number; percentage: number; severity: Severity; note: string; href: string }[] = [
     { label: "Approved", value: insights.approved, percentage: pct(insights.approved), severity: "baik", note: "masih berlaku", href: "/directory" },
     { label: "Kedaluwarsa", value: insights.overdue.length, percentage: pct(insights.overdue.length), severity: "kritis", note: "melewati 5 tahun", href: "/dilemma" },
-    { label: "Berakhir ≤ 90 hari", value: insights.expiring.length, percentage: pct(insights.expiring.length), severity: "peringatan", note: "perlu dijadwalkan", href: "#segera-kedaluwarsa" },
-    { label: "Belum diperbarui > 12 bln", value: insights.stale.length, percentage: pct(insights.stale.length), severity: "revisi", note: "perlu ditinjau", href: "#belum-diperbarui" },
+    { label: "Berakhir ≤ 90 hari", value: insights.expiring.length, percentage: pct(insights.expiring.length), severity: "peringatan", note: "perlu dijadwalkan", href: directoryHref("segera") },
+    { label: "Belum diperbarui > 12 bln", value: insights.stale.length, percentage: pct(insights.stale.length), severity: "revisi", note: "perlu ditinjau", href: directoryHref("stale") },
   ];
   return (
     <div className="metric-grid">
@@ -448,15 +451,17 @@ export default function PsiDashboardManus({
   documents,
   locations,
   scope,
+  locationFilter,
 }: {
   insights: Insights;
   documents: DocumentItem[];
   locations: { locationName: string; locationType: string; targets: Record<string, number> }[];
   scope: "type" | "location";
+  locationFilter: string;
 }) {
   return (
     <div className="dashboard-content page-enter">
-      <MetricGrid insights={insights} />
+      <MetricGrid insights={insights} locationFilter={locationFilter} />
       <div className="content-grid content-grid-psi">
         <ExpiringList items={insights.expiring} />
         <StaleList items={insights.stale} />

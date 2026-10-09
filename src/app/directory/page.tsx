@@ -31,9 +31,23 @@ function DirectoryContent() {
   const aksi = (ACTIONS as string[]).includes(aksiParam ?? "") ? (aksiParam as ActionKind) : null;
   const tab = searchParams.get("v") === "matriks" ? "matriks" : "lokasi";
 
-  const sourceDocs = allDocuments;
-  const scope = null as string[] | null; // semua lokasi untuk semua user
+  const sourceDocs = allDocuments; // pencarian & ekspor selalu lintas lokasi
   const { overview } = useDirectoryOverview();
+
+  // Cakupan chip "Perlu tindakan" (jumlah + daftar): satu terminal atau semua. Bawaan = terminal user sendiri
+  // (Admin Regional tanpa terminal = semua); tersimpan di URL (?lokasi=ALL | nama terminal) supaya bisa ditautkan
+  // dari kartu KPI dashboard dengan cakupan yang sama.
+  const lokasiParam = searchParams.get("lokasi");
+  const locationNames = useMemo(() => (overview?.locations ?? []).map((l) => l.name), [overview]);
+  let scopeValue = lokasiParam ?? activeUser.location ?? "ALL";
+  if (scopeValue !== "ALL" && overview && !locationNames.includes(scopeValue)) scopeValue = "ALL";
+  const scope: string[] | null = scopeValue === "ALL" ? null : [scopeValue];
+  const scopeLabel = scopeValue === "ALL" ? "Semua terminal" : scopeValue;
+  const scopeOptions = useMemo(
+    () => [{ value: "ALL", label: "Semua terminal" }, ...locationNames.map((n) => ({ value: n, label: n }))],
+    [locationNames]
+  );
+  const scopedDocs = useMemo(() => (scopeValue === "ALL" ? allDocuments : allDocuments.filter((d) => d.location === scopeValue)), [allDocuments, scopeValue]);
 
   const setParam = (updates: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -47,7 +61,7 @@ function DirectoryContent() {
   const gridLocation = selectedLocation;
 
   const counts = useMemo(() => {
-    const ins = psiInsights(sourceDocs, Date.now());
+    const ins = psiInsights(scopedDocs, Date.now());
     let kosong: number | null = null;
     if (overview) {
       kosong = 0;
@@ -58,7 +72,7 @@ function DirectoryContent() {
     }
     return { kedaluwarsa: ins.overdue.length, segera: ins.expiring.length, stale: ins.stale.length, kosong } as Record<ActionKind, number | null>;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceDocs, overview]);
+  }, [scopedDocs, overview, scopeValue]);
 
   const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null });
   const openLocation = (location: string) => setParam({ location, category: null, aksi: null });
@@ -78,8 +92,8 @@ function DirectoryContent() {
   } else if (aksi) {
     content = (
       <>
-        <Breadcrumb crumbs={[{ label: "Direktori", onClick: root }, { label: "Perlu tindakan" }, { label: ACTION_META[aksi].label }]} />
-        <ActionList kind={aksi} docs={sourceDocs} overview={overview} scope={scope} onOpen={openCategory} />
+        <Breadcrumb crumbs={[{ label: "Direktori", onClick: root }, { label: "Perlu tindakan" }, { label: ACTION_META[aksi].label }, { label: scopeLabel }]} />
+        <ActionList kind={aksi} docs={scopedDocs} overview={overview} scope={scope} onOpen={openCategory} />
       </>
     );
   } else if (gridLocation) {
@@ -107,7 +121,7 @@ function DirectoryContent() {
       <>
         <RecentAndFavorites />
         <Breadcrumb crumbs={[{ label: "Direktori" }]} />
-        <LocationOverview overview={overview} scope={scope} onSelect={openLocation} />
+        <LocationOverview overview={overview} scope={null} onSelect={openLocation} />
       </>
     );
   }
@@ -120,6 +134,9 @@ function DirectoryContent() {
         counts={counts}
         active={searching ? null : aksi}
         onAction={(k) => { setQuery(""); setParam({ aksi: k }); }}
+        scopeValue={scopeValue}
+        scopeOptions={scopeOptions}
+        onScope={(v) => setParam({ lokasi: v })}
         onExport={() =>
           exportDirectoryXlsx({
             docs: gridLocation ? sourceDocs.filter((d) => d.location === gridLocation) : sourceDocs,
