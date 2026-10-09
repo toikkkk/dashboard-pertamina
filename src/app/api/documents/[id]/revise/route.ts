@@ -17,7 +17,9 @@ import { withErrorHandling } from "@/lib/api/respond";
 import { loadDocumentItem } from "@/lib/api/documents";
 
 const bodySchema = z.object({
-  newVersion: z.string().trim().min(1),
+  // Opsional: tanpa newVersion = "ganti berkas" (menimpa berkas dokumen yang sama, nomor versi TETAP). Alur
+  // "Revisi File" di halaman Overdue tetap mengirim versi baru.
+  newVersion: z.string().trim().min(1).optional(),
   newFileId: z.string().uuid(),
   notes: z.string().optional(),
   // Tanggal terbit versi baru (YYYY-MM-DD, mis. dibaca dari isi berkas). Bila diisi: tanggal terbit ikut
@@ -55,11 +57,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       newExpiryDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }
     const newStatus = docRow.isCircular ? "In Routing" : "Approved";
+    const version = newVersion ?? docRow.currentVersion;
+    const [oldFile] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, docRow.primaryFileId)).limit(1);
 
     await db
       .update(documents)
       .set({
-        currentVersion: newVersion,
+        currentVersion: version,
         primaryFileId: newFileId,
         status: newStatus,
         expiryDate: newExpiryDate,
@@ -83,16 +87,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         actorRole: user.role,
         location: docRow.location,
         action: "Revised",
-        notes: notes || `Revisi dokumen ke versi ${newVersion}`,
+        notes: notes || (newVersion ? `Revisi dokumen ke versi ${newVersion}` : `Berkas diganti: ${oldFile?.originalFilename ?? "berkas lama"} → ${newFile.originalFilename}`),
         fileId: newFileId,
-        version: newVersion,
+        version,
       })
       .returning();
 
-    const [oldFile] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, docRow.primaryFileId)).limit(1);
-
     const diffRows = [
-      { historyItemId: history.id, field: "Versi Dokumen", oldValue: docRow.currentVersion, newValue: newVersion },
       {
         historyItemId: history.id,
         field: "Nama Berkas",
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { historyItemId: history.id, field: "Tanggal Kedaluwarsa", oldValue: docRow.expiryDate, newValue: newExpiryDate },
       { historyItemId: history.id, field: "Status Dokumen", oldValue: docRow.status, newValue: newStatus },
     ];
+    if (version !== docRow.currentVersion) diffRows.unshift({ historyItemId: history.id, field: "Versi Dokumen", oldValue: docRow.currentVersion, newValue: version });
     if (issueDate) diffRows.push({ historyItemId: history.id, field: "Tanggal Terbit", oldValue: docRow.issueDate, newValue: issueDate });
     if (docRow.isCircular) {
       diffRows.push({
@@ -113,7 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     await db.insert(historyDiffs).values(diffRows);
 
-    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.direvisi", { targetType: "dokumen", targetId: params.id, targetLabel: `${docRow.documentNumber} ${docRow.title}`, location: docRow.location, detail: { versiLama: docRow.currentVersion, versiBaru: newVersion } });
+    await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.direvisi", { targetType: "dokumen", targetId: params.id, targetLabel: `${docRow.documentNumber} ${docRow.title}`, location: docRow.location, detail: { versiLama: docRow.currentVersion, versiBaru: version, gantiBerkas: !newVersion } });
     const updated = await loadDocumentItem(params.id);
     return NextResponse.json(updated);
   });
