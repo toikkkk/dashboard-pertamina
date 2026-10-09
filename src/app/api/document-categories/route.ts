@@ -5,7 +5,7 @@
 // lihat catatan RBAC di CLAUDE.md soal baca-vs-tulis.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documentCategories, documents, locations } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       db
         .select({ id: documents.id, title: documents.title, categoryId: documents.categoryId, issueDate: documents.issueDate, currentVersion: documents.currentVersion, documentNumber: documents.documentNumber, status: documents.status, expiryDate: documents.expiryDate })
         .from(documents)
-        .where(and(eq(documents.location, location))),
+        .where(and(eq(documents.location, location), isNull(documents.deletedAt))),
     ]);
 
     // Satu kategori bisa punya LEBIH dari satu dokumen (mis. "SDS Produk BBM/BBK/LPG"

@@ -3,10 +3,12 @@
 // the frontend already speaks (see domain/types.ts) — this is what keeps the 16
 // `usePsi()` consumers unchanged; only psiStore.tsx's internals swap from
 // localStorage to these API responses.
-import { eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, approvalRoutes, historyItems, historyDiffs, fileRegistry, documentCategories } from "@/lib/db/schema";
 import { DocumentItem, ApprovalRouteItem, HistoryItem, SimulatedUser } from "@/lib/domain/types";
+import { canDeleteDocument } from "@/lib/domain/rules";
+import { trashDaysLeft, trashPurgeAt, type TrashedDocument } from "@/lib/domain/trash";
 import type { SessionUser } from "@/lib/auth/session";
 
 // Domain rule functions (canUserApproveDoc etc.) were written against the
@@ -133,8 +135,14 @@ async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[])
   }));
 }
 
-export async function loadDocumentItem(documentId: string): Promise<DocumentItem | null> {
-  const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+// Dokumen di Sampah (deleted_at terisi) dianggap TIDAK ADA oleh semua jalur baca/ubah biasa; hanya
+// jalur Sampah (loadTrashedDocuments, restore, purge) yang memintanya lewat includeDeleted.
+export async function loadDocumentItem(documentId: string, opts: { includeDeleted?: boolean } = {}): Promise<DocumentItem | null> {
+  const [doc] = await db
+    .select()
+    .from(documents)
+    .where(opts.includeDeleted ? eq(documents.id, documentId) : and(eq(documents.id, documentId), isNull(documents.deletedAt)))
+    .limit(1);
   if (!doc) return null;
   const [item] = await assembleDocumentItems([doc]);
   return item ?? null;
@@ -146,17 +154,73 @@ export async function loadDocumentItem(documentId: string): Promise<DocumentItem
 // never sufficient once a real server existed to call directly).
 export async function loadDocumentsForUser(user: SessionUser): Promise<DocumentItem[]> {
   const rows = user.isRegionalAdmin
-    ? await db.select().from(documents)
-    : await db.select().from(documents).where(eq(documents.location, user.location ?? ""));
+    ? await db.select().from(documents).where(isNull(documents.deletedAt))
+    : await db.select().from(documents).where(and(eq(documents.location, user.location ?? ""), isNull(documents.deletedAt)));
   return assembleDocumentItems(rows);
 }
 
 export async function loadAllDocuments(): Promise<DocumentItem[]> {
-  const rows = await db.select().from(documents);
+  const rows = await db.select().from(documents).where(isNull(documents.deletedAt));
   return assembleDocumentItems(rows);
 }
 
 export async function getDocumentLocation(documentId: string): Promise<string | null> {
-  const [doc] = await db.select({ location: documents.location }).from(documents).where(eq(documents.id, documentId)).limit(1);
+  const [doc] = await db
+    .select({ location: documents.location })
+    .from(documents)
+    .where(and(eq(documents.id, documentId), isNull(documents.deletedAt)))
+    .limit(1);
   return doc?.location ?? null;
+}
+
+// Daftar Sampah: SEMUA lokasi (lihat-saja untuk user biasa; `canManage` menentukan tombol Pulihkan/Hapus
+// permanen — keputusan aksesnya tetap dicek ulang server di route restore/purge).
+export async function loadTrashedDocuments(user: SessionUser): Promise<TrashedDocument[]> {
+  const rows = await db
+    .select({
+      id: documents.id,
+      documentNumber: documents.documentNumber,
+      title: documents.title,
+      location: documents.location,
+      categoryId: documents.categoryId,
+      currentVersion: documents.currentVersion,
+      issueDate: documents.issueDate,
+      primaryFileId: documents.primaryFileId,
+      deletedAt: documents.deletedAt,
+      deletedByName: documents.deletedByName,
+    })
+    .from(documents)
+    .where(isNotNull(documents.deletedAt))
+    .orderBy(desc(documents.deletedAt));
+  if (rows.length === 0) return [];
+
+  const fileIds = Array.from(new Set(rows.map((r) => r.primaryFileId)));
+  const catIds = Array.from(new Set(rows.map((r) => r.categoryId).filter((id): id is string => !!id)));
+  const [files, cats] = await Promise.all([
+    db.select({ id: fileRegistry.id, name: fileRegistry.originalFilename }).from(fileRegistry).where(inArray(fileRegistry.id, fileIds)),
+    catIds.length ? db.select({ id: documentCategories.id, name: documentCategories.name }).from(documentCategories).where(inArray(documentCategories.id, catIds)) : Promise.resolve([]),
+  ]);
+  const fileName = new Map(files.map((f) => [f.id, f.name]));
+  const catName = new Map(cats.map((c) => [c.id, c.name]));
+  const now = new Date();
+
+  return rows.map((r) => {
+    const deletedAt = r.deletedAt as Date;
+    return {
+      id: r.id,
+      documentNumber: r.documentNumber,
+      title: r.title,
+      location: r.location,
+      categoryName: r.categoryId ? catName.get(r.categoryId) : undefined,
+      currentVersion: r.currentVersion,
+      issueDate: r.issueDate,
+      fileUrl: fileDownloadUrl(r.primaryFileId),
+      fileName: fileName.get(r.primaryFileId),
+      deletedAt: deletedAt.toISOString(),
+      deletedByName: r.deletedByName,
+      purgeAt: trashPurgeAt(deletedAt).toISOString(),
+      daysLeft: trashDaysLeft(deletedAt, now),
+      canManage: canDeleteDocument(user, r.location),
+    };
+  });
 }

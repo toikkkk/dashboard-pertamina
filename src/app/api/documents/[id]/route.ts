@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq, and, ne, inArray, or } from "drizzle-orm";
-import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { eq, and, ne, isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { documents, documentCategories, historyItems, historyDiffs, fileRegistry, mocEvidence } from "@/lib/db/schema";
+import { documents, documentCategories, historyItems, historyDiffs } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationRead, assertLocationWrite, ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentItem, getDocumentLocation } from "@/lib/api/documents";
 import { canDeleteDocument } from "@/lib/domain/rules";
-import { r2, R2_BUCKET } from "@/lib/r2/client";
+import { trashPurgeAt } from "@/lib/domain/trash";
 import { logAudit } from "@/lib/audit";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -57,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = patchSchema.parse(await req.json());
 
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
-    if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+    if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
     assertLocationWrite(user, docRow.location);
 
     const catRows = await db.select({ id: documentCategories.id, name: documentCategories.name, months: documentCategories.reviewCycleMonths }).from(documentCategories).where(eq(documentCategories.location, docRow.location));
@@ -81,8 +80,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       diffs.push({ field: "Judul", oldValue: docRow.title, newValue: body.title });
     }
     if (body.documentNumber !== undefined && body.documentNumber !== docRow.documentNumber) {
-      const [dupe] = await db.select({ id: documents.id }).from(documents).where(and(eq(documents.documentNumber, body.documentNumber), ne(documents.id, docRow.id))).limit(1);
-      if (dupe) throw new HttpError(409, "Nomor dokumen itu sudah dipakai dokumen lain.");
+      const [dupe] = await db.select({ id: documents.id, deletedAt: documents.deletedAt }).from(documents).where(and(eq(documents.documentNumber, body.documentNumber), ne(documents.id, docRow.id))).limit(1);
+      if (dupe) throw new HttpError(409, dupe.deletedAt ? "Nomor dokumen itu dipakai dokumen yang ada di Sampah. Pulihkan atau hapus permanen dokumen itu dulu." : "Nomor dokumen itu sudah dipakai dokumen lain.");
       set.documentNumber = body.documentNumber;
       diffs.push({ field: "Nomor Dokumen", oldValue: docRow.documentNumber, newValue: body.documentNumber });
     }
@@ -146,55 +145,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
 }
 
-// Hapus dokumen: hanya Admin Regional atau Controller lokasi itu. Riwayat/rute ikut terhapus (cascade); berkas di
-// penyimpanan dihapus HANYA bila tidak dipakai dokumen/riwayat/bukti MOC lain. Tak terbalik — klien meminta konfirmasi.
+// Hapus dokumen = PINDAH KE SAMPAH (bisa dipulihkan 30 hari; lihat domain/trash.ts). Hanya Admin Regional atau
+// Controller lokasi itu. Berkas di penyimpanan TIDAK disentuh sampai dihapus permanen (tombol di halaman Sampah
+// atau cron setelah 30 hari — lib/api/trash.ts).
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
-    if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+    if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
     if (!canDeleteDocument(user, docRow.location)) {
       throw new ForbiddenError("Hanya Admin Regional atau Controller PSI lokasi ini yang dapat menghapus dokumen.");
     }
 
-    const hist = await db.select({ fileId: historyItems.fileId }).from(historyItems).where(eq(historyItems.documentId, docRow.id));
-    const fileIds = Array.from(new Set([docRow.primaryFileId, ...hist.map((h) => h.fileId)]));
-
-    try {
-      await db.delete(documents).where(eq(documents.id, docRow.id));
-    } catch (err) {
-      const code = (err as { code?: string; cause?: { code?: string } })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
-      if (code === "23503") throw new HttpError(409, "Dokumen ini masih direferensikan data lain dan tidak dapat dihapus.");
-      throw err;
-    }
-
-    // Berkas yang sudah tidak dipakai siapa pun → hapus dari R2 lalu dari registry.
-    let filesRemoved = 0;
-    for (const fid of fileIds) {
-      const [a] = await db.select({ id: documents.id }).from(documents).where(eq(documents.primaryFileId, fid)).limit(1);
-      const [b] = await db.select({ id: historyItems.id }).from(historyItems).where(eq(historyItems.fileId, fid)).limit(1);
-      const [c] = await db.select({ id: mocEvidence.id }).from(mocEvidence).where(eq(mocEvidence.fileId, fid)).limit(1);
-      if (a || b || c) continue;
-      const [f] = await db.select({ key: fileRegistry.r2ObjectKey }).from(fileRegistry).where(eq(fileRegistry.id, fid)).limit(1);
-      if (!f) continue;
-      try {
-        const res = await r2.send(new DeleteObjectsCommand({ Bucket: R2_BUCKET, Delete: { Objects: [{ Key: f.key }], Quiet: true } }));
-        if ((res.Errors ?? []).length === 0) {
-          await db.delete(fileRegistry).where(eq(fileRegistry.id, fid));
-          filesRemoved += 1;
-        }
-      } catch (err) {
-        console.error("[hapus-dokumen] gagal menghapus berkas", fid, err instanceof Error ? err.message : err);
-      }
-    }
+    const now = new Date();
+    await db
+      .update(documents)
+      .set({ deletedAt: now, deletedById: user.id, deletedByName: user.name, updatedAt: now })
+      .where(and(eq(documents.id, docRow.id), isNull(documents.deletedAt)));
 
     await logAudit(req, { id: user.id, name: user.name, email: user.email }, "dokumen.dihapus", {
       targetType: "dokumen",
       targetId: docRow.id,
       targetLabel: `${docRow.documentNumber} ${docRow.title}`,
       location: docRow.location,
-      detail: { versi: docRow.currentVersion, terbit: docRow.issueDate, berlaku: docRow.expiryDate, berkasDihapus: filesRemoved, berkasTotal: fileIds.length },
+      detail: { keSampah: true, versi: docRow.currentVersion, terbit: docRow.issueDate, berlaku: docRow.expiryDate, hapusPermanenOtomatis: trashPurgeAt(now).toISOString().slice(0, 10) },
     });
-    return NextResponse.json({ ok: true, filesRemoved });
+    return NextResponse.json({ ok: true, movedToTrash: true, purgeAt: trashPurgeAt(now).toISOString() });
   });
 }

@@ -8,7 +8,7 @@ import { db } from "@/lib/db/client";
 import { documents, historyItems, approvalRoutes, fileRegistry, documentCategories } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertLocationWrite, assertOnboarded } from "@/lib/auth/rbac";
-import { withErrorHandling } from "@/lib/api/respond";
+import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentsForUser, loadAllDocuments, loadDocumentItem } from "@/lib/api/documents";
 
 export async function GET(req: NextRequest) {
@@ -69,6 +69,21 @@ export async function POST(req: NextRequest) {
     if (body.categoryId) {
       const [cat] = await db.select({ id: documentCategories.id }).from(documentCategories).where(eq(documentCategories.id, body.categoryId)).limit(1);
       if (!cat) return NextResponse.json({ error: "Sub-kategori tidak ditemukan." }, { status: 404 });
+    }
+
+    // Nomor dokumen unik, termasuk yang sedang di Sampah (nomornya baru lepas setelah dihapus permanen).
+    const [numberTaken] = await db
+      .select({ id: documents.id, deletedAt: documents.deletedAt })
+      .from(documents)
+      .where(eq(documents.documentNumber, body.documentNumber))
+      .limit(1);
+    if (numberTaken) {
+      throw new HttpError(
+        409,
+        numberTaken.deletedAt
+          ? "Nomor dokumen itu dipakai dokumen yang ada di Sampah. Pulihkan atau hapus permanen dokumen itu dulu."
+          : "Nomor dokumen itu sudah dipakai dokumen lain."
+      );
     }
 
     const initialStatus = body.isCircular ? "In Routing" : "Approved";

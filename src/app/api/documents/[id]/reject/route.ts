@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { stepOrder, comment } = bodySchema.parse(await req.json());
 
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
-    if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+    if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
     assertLocationWrite(user, docRow.location);
 
     const actionDate = new Date().toISOString().split("T")[0];

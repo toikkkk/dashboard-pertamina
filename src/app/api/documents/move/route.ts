@@ -5,7 +5,7 @@
 import { logAudit } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, documentCategories, historyItems, historyDiffs } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const { ids, categoryId } = bodySchema.parse(await req.json());
     const uniqueIds = Array.from(new Set(ids));
 
-    const docs = await db.select().from(documents).where(inArray(documents.id, uniqueIds));
+    const docs = await db.select().from(documents).where(and(inArray(documents.id, uniqueIds), isNull(documents.deletedAt)));
     if (docs.length !== uniqueIds.length) throw new HttpError(404, "Sebagian dokumen tidak ditemukan.");
     const location = docs[0].location;
     if (docs.some((d) => d.location !== location)) throw new HttpError(400, "Dokumen harus berasal dari lokasi yang sama.");

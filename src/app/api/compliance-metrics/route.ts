@@ -4,6 +4,7 @@
 // uses). Query params `location` and `psiType` mirror selectedLocationFilter/
 // selectedTypeFilter ("ALL" or a specific value).
 import { NextRequest, NextResponse } from "next/server";
+import { isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, locations, locationTargets } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     const [allLocations, allTargets, allDocs] = await Promise.all([
       db.select().from(locations),
       db.select().from(locationTargets),
-      db.select({ psiType: documents.psiType, status: documents.status, location: documents.location }).from(documents),
+      db.select({ psiType: documents.psiType, status: documents.status, location: documents.location }).from(documents).where(isNull(documents.deletedAt)),
     ]);
 
     const targetLocations = allLocations.filter((l) => locationFilter === "ALL" || l.name === locationFilter);

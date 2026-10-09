@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  Trash2,
   UserCog,
   X,
 } from "lucide-react";
@@ -183,6 +184,7 @@ export function buildNavItems({
         { name: "MOC", path: "/moc", icon: ClipboardList, badge: pendingMocCount, badgeTone: "warning" },
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
+        { name: "Sampah", path: "/sampah", icon: Trash2 },
       ];
   const adminNavItems: NavItem[] =
     !isPending && isRegionalAdmin

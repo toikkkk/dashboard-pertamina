@@ -139,7 +139,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           )}
           {canDelete && (
             <button type="button" onClick={() => setDeleteOpen(true)} className={`${barBtn} !text-[#DC2626] hover:!bg-[#FEE2E2]`}>
-              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} /> Hapus
+              <Trash2 className="w-3.5 h-3.5" strokeWidth={2.2} /> Ke Sampah
             </button>
           )}
         </div>

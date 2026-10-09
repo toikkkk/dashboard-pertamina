@@ -562,7 +562,7 @@ function CategoryView({
           onDeleted={() => {
             setDeleteDoc(null);
             setSelected(new Set());
-            afterChange("Dokumen dihapus.");
+            afterChange("Dokumen dipindahkan ke Sampah.");
           }}
         />
       )}
@@ -693,7 +693,7 @@ function CategoryView({
                             { label: "Pindahkan ke…", icon: FolderInput, onClick: () => startMove(d.id) },
                           ]
                         : []),
-                      ...(canDelete ? [{ label: "Hapus", icon: Trash2, danger: true, divider: true, onClick: () => setDeleteDoc({ id: d.id, title: d.title, number: d.documentNumber }) }] : []),
+                      ...(canDelete ? [{ label: "Pindahkan ke Sampah", icon: Trash2, danger: true, divider: true, onClick: () => setDeleteDoc({ id: d.id, title: d.title, number: d.documentNumber }) }] : []),
                     ]}
                   />
                 </div>

@@ -257,6 +257,12 @@ export const documents = pgTable(
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // Sampah (2026-10-09): "hapus" hanya mengisi kolom ini; dokumen + berkasnya baru dihapus permanen
+    // setelah TRASH_RETENTION_DAYS (cron) atau lewat "Hapus permanen". NULL = dokumen aktif. Tanpa FK
+    // ke users supaya penghapusan akun tidak terhalang oleh jejak ini.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id"),
+    deletedByName: text("deleted_by_name"),
   },
   (t) => [
     check("lifecycle_phase_check", sql`${t.lifecyclePhase} IN ('Proyek','Operasi','Decommissioning')`),

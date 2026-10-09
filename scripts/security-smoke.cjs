@@ -14,6 +14,11 @@ const ROUTES = [
   ["PATCH", `/api/documents/${UUID}`, { categoryId: null }],
   ["POST", `/api/documents/${UUID}/revise`, {}],
   ["GET", `/api/documents/${UUID}`],
+  ["DELETE", `/api/documents/${UUID}`],
+  ["GET", "/api/documents/trash"],
+  ["POST", `/api/documents/${UUID}/restore`, {}],
+  ["POST", `/api/documents/${UUID}/purge`, {}],
+  ["GET", "/api/cron/purge-trash"],
   ["GET", `/api/files/${UUID}/download`],
   ["POST", "/api/files/presign-upload", {}],
   ["GET", "/api/users"],
@@ -40,7 +45,8 @@ const ROUTES = [
   let bad = 0;
   for (const [method, path, body] of ROUTES) {
     const res = await fetch(BASE + path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, redirect: "manual" });
-    const ok = [401, 403, 404].includes(res.status);
+    // Cron: tanpa/dengan token salah = 401; 503 = CRON_SECRET belum dipasang (tetap menolak semua panggilan).
+    const ok = [401, 403, 404].includes(res.status) || (path.startsWith("/api/cron/") && res.status === 503);
     if (!ok) bad++;
     console.log(`${ok ? "OK  " : "GAGAL"} ${String(res.status).padEnd(4)} ${method.padEnd(6)} ${path}`);
   }

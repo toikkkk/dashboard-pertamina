@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { newVersion, newFileId, notes, issueDate } = bodySchema.parse(await req.json());
 
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
-    if (!docRow) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
+    if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
     assertLocationWrite(user, docRow.location);
 
     const [newFile] = await db.select().from(fileRegistry).where(eq(fileRegistry.id, newFileId)).limit(1);

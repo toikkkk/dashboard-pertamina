@@ -8,6 +8,7 @@
 // berlaku). Baca saja, semua user yang sudah onboarded boleh lihat (sama seperti
 // Direktori lihat-saja lintas lokasi).
 import { NextResponse } from "next/server";
+import { isNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documentCategories, documents } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -22,7 +23,7 @@ export async function GET() {
 
     const [cats, docs] = await Promise.all([
       db.select().from(documentCategories),
-      db.select({ categoryId: documents.categoryId, issueDate: documents.issueDate }).from(documents),
+      db.select({ categoryId: documents.categoryId, issueDate: documents.issueDate }).from(documents).where(isNull(documents.deletedAt)),
     ]);
 
     const latestByCategory = new Map<string, { issueDate: string }>();
