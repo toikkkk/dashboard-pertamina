@@ -835,3 +835,13 @@
 .hsse-shell .sidebar > * { flex-shrink: 0; }
 .hsse-shell .sidebar > .sidebar-spacer { flex: 1 0 12px; min-height: 12px; }
 .hsse-shell .sidebar-user { position: sticky; bottom: 0; z-index: 1; background: #F7F8F8; padding-bottom: 12px; }
+
+/* 2026-10-10 — Tab cakupan dashboard ("<terminal saya>" / "Semua lokasi") dipertegas: tab aktif berlatar biru tua + teks
+   putih, tab tidak aktif tampak sebagai tombol berbingkai. Sebelumnya hanya pil putih di atas abu-abu muda sehingga user
+   tidak sadar sedang melihat semua lokasi (pilihan "Semua lokasi" diingat per browser). */
+.hsse-shell .dashboard-scope-switcher { width: fit-content; max-width: 100%; padding: 4px; gap: 4px; background: #FFFFFF; border: 1px solid #C5CED3; }
+.hsse-shell .dashboard-scope-switcher button { min-height: 34px; padding: 0 14px; border: 1px solid transparent; font-size: 12.5px; font-weight: 600; color: #3A3D40; }
+.hsse-shell .dashboard-scope-switcher button:not(.scope-active):hover { color: #0F3B59; background: #F0F4F6; }
+.hsse-shell .dashboard-scope-switcher .scope-active,
+.hsse-shell .dashboard-scope-switcher .scope-active:hover { color: #FFFFFF; background: #0F3B59; box-shadow: none; font-weight: 700; }
+.hsse-shell .dashboard-scope-switcher .scope-active .view-only { color: rgba(255, 255, 255, .78); }

@@ -110,13 +110,22 @@ function Dashboard() {
       )}
 
       {canPickScope && !isPending && (
-        <div className="scope-switcher dashboard-scope-switcher" role="group" aria-label="Cakupan lokasi">
-          <button aria-pressed={!viewAll} className={!viewAll ? "scope-active" : ""} onClick={() => { setViewAll(false); writePref(SCOPE_KEY, "own"); }}>
-            {activeUser.location}
-          </button>
-          <button aria-pressed={viewAll} className={viewAll ? "scope-active" : ""} onClick={() => { setViewAll(true); writePref(SCOPE_KEY, "all"); }}>
-            Semua lokasi <span className="view-only">lihat saja</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-x-3">
+          <div className="scope-switcher dashboard-scope-switcher" role="group" aria-label="Cakupan lokasi">
+            <button aria-pressed={!viewAll} className={!viewAll ? "scope-active" : ""} onClick={() => { setViewAll(false); writePref(SCOPE_KEY, "own"); }}>
+              {activeUser.location}
+            </button>
+            <button aria-pressed={viewAll} className={viewAll ? "scope-active" : ""} onClick={() => { setViewAll(true); writePref(SCOPE_KEY, "all"); }}>
+              Semua lokasi <span className="view-only">lihat saja</span>
+            </button>
+          </div>
+          {/* Pilihan ini diingat di browser; penanda ini mencegah salah mengira angka semua lokasi sebagai angka terminal sendiri. */}
+          {viewAll && (
+            <span role="status" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0F172A]">
+              <span className="w-2 h-[3px] rounded-full bg-[#B45309]" aria-hidden />
+              Menampilkan semua lokasi
+            </span>
+          )}
         </div>
       )}
 
