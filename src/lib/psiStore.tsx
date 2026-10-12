@@ -33,7 +33,10 @@ interface PsiContextType {
   users: SimulatedUser[];
   documents: DocumentItem[]; // RBAC-filtered server-side, plus the location/type dropdown filters applied client-side
   allDocuments: DocumentItem[]; // Deliberately unfiltered — cross-location benchmarking widgets only, see CLAUDE.md
+  /** Terminal PSI saja (unit Regional disembunyikan: PSI tidak ada di tingkat regional). */
   locations: typeof REGIONAL_LOCATIONS;
+  /** Semua unit termasuk Regional Jatimbalinus — untuk MOC dan pengelolaan akun. */
+  allLocations: typeof REGIONAL_LOCATIONS;
   selectedLocationFilter: string;
   setSelectedLocationFilter: (loc: string) => void;
   /** selectedLocationFilter, but clamped to the user's own location for anyone who
@@ -173,7 +176,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Real locations from Postgres once loaded; REGIONAL_LOCATIONS is only ever a
   // pre-load fallback so components reading `locations[0]` before the bootstrap
   // request resolves don't crash on an empty array.
-  const locations = payload.locations.length > 0 ? payload.locations : REGIONAL_LOCATIONS;
+  const allLocations = payload.locations.length > 0 ? payload.locations : REGIONAL_LOCATIONS;
+  const locations = allLocations.filter((l) => l.locationType !== "REG");
 
   const login = async (identifier: string, password: string): Promise<SimulatedUser | { mfaRequired: true; challenge: string }> => {
     const res = await fetchJson("/api/auth/login", { method: "POST", body: JSON.stringify({ identifier, password }) });
@@ -349,6 +353,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         documents,
         allDocuments: payload.allDocuments,
         locations,
+        allLocations,
         selectedLocationFilter,
         effectiveLocationFilter,
         viewAll,

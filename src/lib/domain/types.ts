@@ -81,7 +81,8 @@ export interface LocationTarget {
   locationName: string;
   // 'Plant' ditambahkan 2026-09-28 untuk "Bitumen Plant Gresik" — satu-satunya lokasi
   // yang tidak mengikuti pola nama IT/FT/AFT (lihat 28-daftar lokasi real dari client).
-  locationType: 'IT' | 'FT' | 'AFT' | 'Plant';
+  // 'REG' = unit Regional Jatimbalinus (hanya untuk MOC level regional; bukan terminal PSI — lihat regionalUnit.ts).
+  locationType: 'IT' | 'FT' | 'AFT' | 'Plant' | 'REG';
   region: string;
   targets: Record<PSIType, number>;
 }

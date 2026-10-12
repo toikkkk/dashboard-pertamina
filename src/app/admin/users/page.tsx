@@ -12,7 +12,7 @@ import MocRoleEditor from "@/components/MocRoleEditor";
 const ROLES: SimulatedUser["role"][] = ["Penanggung Jawab PSI (Initiator)", "PSI / MOC Controller", "Admin Regional"];
 
 export default function AdminUsersPage() {
-  const { activeUser, users, locations, assignUserAccess, deleteUsers } = usePsi();
+  const { activeUser, users, allLocations: locations, assignUserAccess, deleteUsers } = usePsi();
 
   const [draftRole, setDraftRole] = useState<Record<string, SimulatedUser["role"]>>({});
   const [draftLocation, setDraftLocation] = useState<Record<string, string>>({});

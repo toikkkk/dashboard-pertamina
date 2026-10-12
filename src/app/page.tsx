@@ -1,5 +1,6 @@
 "use client";
 
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Hourglass } from "lucide-react";
@@ -16,7 +17,7 @@ const VIEW_KEY = "dashboard.view";
 const SCOPE_KEY = "dashboard.scope";
 
 function Dashboard() {
-  const { activeUser, documents, locations, effectiveLocationFilter, selectedLocationFilter, setSelectedLocationFilter, setViewAll: setStoreViewAll } = usePsi();
+  const { activeUser, documents, locations, allLocations, effectiveLocationFilter, selectedLocationFilter, setSelectedLocationFilter, setViewAll: setStoreViewAll } = usePsi();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -40,7 +41,12 @@ function Dashboard() {
   // hak ubah tidak berubah sama sekali. Diletakkan di kartu ringkasan (bukan topbar
   // global) karena hanya dashboard yang tahu apa artinya "lihat semua lokasi".
   const [viewAll, setViewAll] = useState(false);
-  useEffect(() => { if (canPickScope && readPref(SCOPE_KEY) === "all") setViewAll(true); }, [canPickScope]);
+  useEffect(() => {
+    if (!canPickScope) return;
+    const stored = readPref(SCOPE_KEY);
+    // Unit Regional tidak punya dokumen PSI: bawaannya melihat semua lokasi supaya dashboard tidak kosong.
+    if (stored === "all" || (stored !== "own" && isRegionalUnit(activeUser.location))) setViewAll(true);
+  }, [canPickScope, activeUser.location]);
   useEffect(() => {
     setStoreViewAll(canPickScope && viewAll);
     return () => setStoreViewAll(false);
@@ -102,7 +108,7 @@ function Dashboard() {
             onChange={(e) => setSelectedLocationFilter(e.target.value)}
           >
             <option value="ALL">Semua terminal</option>
-            {locations.map((l) => (
+            {allLocations.map((l) => (
               <option key={l.locationName} value={l.locationName}>{l.locationName}</option>
             ))}
           </select>

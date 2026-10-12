@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 src, dst = sys.argv[1], sys.argv[2]
 rows = json.load(open(src, encoding="utf-8"))
 
-ROLE_ORDER = ["Initiator", "Controller", "Reviewer Maintenance", "Reviewer HSSE", "Approver", "Performer", "Admin Regional"]
+ROLE_ORDER = ["Initiator", "Controller", "Reviewer Maintenance", "Reviewer HSSE", "Approver", "Performer", "Initiator Regional", "Controller HSSE Regional", "Reviewer RPD", "Reviewer HSSE Regional", "Reviewer Fungsi IT", "Approver Manager Fungsi Regional", "Performer Regional", "Admin Regional"]
 rows.sort(key=lambda r: (r["terminal"] == "Semua terminal", r["terminal"], ROLE_ORDER.index(r["peran"]) if r["peran"] in ROLE_ORDER else 99))
 
 NAVY = "0F3B59"
@@ -57,12 +57,13 @@ def block(title, items):
 block("Cara masuk", [
     ("Alamat", "https://dashboard-pertamina.vercel.app"),
     ("Masuk dengan", "Username ATAU email pada lembar \"Akun Demo\", lalu kata sandinya. Huruf kecil semua pada username."),
-    ("Isi kata sandi", "Salin-tempel dari kolom Kata sandi. Format: tiga blok empat karakter dipisah tanda strip."),
+    ("Isi kata sandi", "Semua akun demo memakai kata sandi yang sama: Demo123 (huruf D besar). Username berbeda per akun."),
     ("Autentikasi dua faktor", "Tidak aktif pada akun demo. Pengguna boleh mengaktifkannya sendiri di Pengaturan > Keamanan Akun."),
 ])
 block("Isi lembar \"Akun Demo\"", [
     ("Per terminal", "Setiap terminal (29) memiliki 6 akun: Initiator, Controller, Reviewer Maintenance, Reviewer HSSE, Approver, dan Performer."),
-    ("Admin Regional", "Satu akun (demo-regional) untuk seluruh terminal."),
+    ("Unit Regional Jatimbalinus", "7 akun fungsi regional (Initiator, Controller HSSE Regional, Reviewer RPD / HSSE Regional / Fungsi IT, Approver Manager Fungsi Regional, Performer) untuk MOC level regional, sesuai TKO Tabel 3 kolom Region/AP."),
+    ("Admin Regional", "Satu akun (demo-regional) untuk seluruh terminal. Ini akun pengelola aplikasi, bukan staf fungsi regional."),
     ("Total", f"{len(rows)} akun. Tanda pengenal akun demo: username berawalan \"demo-\" dan email berakhiran @demo.invalid."),
 ])
 block("Hak setiap peran", [
@@ -71,14 +72,15 @@ block("Hak setiap peran", [
     ("Reviewer Maintenance / HSSE", "Peran MOC: memberi review pada pengajuan MOC terminalnya. Muncul di pilihan Reviewer saat Initiator mengajukan MOC. Hak dokumen sama dengan Initiator."),
     ("Approver", "Peran MOC (Terminal Manager): memutuskan pengajuan MOC dan menunjuk Performer."),
     ("Performer", "Peran MOC: pelaksana perubahan yang ditunjuk Approver."),
-    ("Admin Regional", "Melihat dan mengunggah dokumen semua terminal; Kelola User; Log Aktivitas; Arsip Registry semua terminal. MOC hanya dapat DILIHAT (keputusan rapat 18 September 2026): tidak mengajukan atau menyetujui MOC."),
+    ("Fungsi regional", "Akun unit Regional Jatimbalinus: mengajukan, mereview, menyetujui, dan mendaftarkan MOC level regional dengan alur yang sama seperti terminal. Tidak memiliki dokumen PSI (menu Arsip Registry dan Dokumen Baru tidak tampil)."),
+    ("Admin Regional", "Melihat dan mengunggah dokumen semua terminal; Kelola User; Log Aktivitas; Arsip Registry semua terminal. MOC hanya dapat DILIHAT: pengajuan dan persetujuan dilakukan akun terminal atau akun unit regional."),
 ])
 block("Mencoba alur MOC lengkap di satu terminal", [
     ("Langkah", "1) Masuk sebagai Initiator terminal itu, buka MOC > MOC Baru, isi formulir, Simpan Draf. 2) Buka MOC itu, pilih Reviewer dan Approver dari terminal yang sama, lalu Ajukan. 3) Masuk sebagai tiap Reviewer: Beri review (Sesuai). 4) Masuk sebagai Approver: Putuskan > setujui dan tunjuk Performer. 5) Masuk sebagai Controller: Daftarkan (beri Nomor MoC)."),
     ("Catatan", "Reviewer, Approver, dan Performer hanya muncul untuk terminal yang sama dengan MOC-nya."),
 ])
 block("Perhatian", [
-    ("Akun sementara", "Akun demo dibuat untuk uji coba dan akan dihapus sebelum sistem dipakai sungguhan."),
+    ("Akun sementara", "Akun demo dibuat untuk uji coba dan akan dihapus sebelum sistem dipakai sungguhan. Karena kata sandinya seragam dan mudah ditebak, JANGAN dipakai untuk data sungguhan."),
     ("Data bersama", "Data yang dibuat dengan akun demo tersimpan di database yang sama dengan data lain. Hati-hati dengan Hapus permanen: semua pengguna terminal dapat melakukannya dan tidak dapat dibatalkan."),
     ("Sampah", "Dokumen yang dipindahkan ke Sampah dapat dipulihkan selama 30 hari."),
 ])

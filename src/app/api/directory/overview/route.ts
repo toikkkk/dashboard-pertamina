@@ -3,7 +3,7 @@
 // (progres), matriks kepatuhan, dan chip "Belum ada dokumen". Baca saja — semua user yang
 // sudah onboarded boleh (sama seperti Direktori lihat-saja lintas lokasi).
 import { NextResponse } from "next/server";
-import { isNull } from "drizzle-orm";
+import { isNull, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documentCategories, documents, locations } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -18,7 +18,7 @@ export async function GET() {
     assertLocationRead(user);
 
     const [locs, cats, docs] = await Promise.all([
-      db.select().from(locations),
+      db.select().from(locations).where(ne(locations.locationType, "REG")), // unit Regional tidak punya PSI
       db.select().from(documentCategories),
       db.select({ categoryId: documents.categoryId, issueDate: documents.issueDate, location: documents.location }).from(documents).where(isNull(documents.deletedAt)),
     ]);

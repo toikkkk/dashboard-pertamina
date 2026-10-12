@@ -8,6 +8,7 @@ import gsap from "gsap";
 import { usePathname } from "next/navigation";
 import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import { useMocList } from "@/lib/useMoc";
 import { isDocOverdue } from "@/lib/mockData";
 import { mocPendingActions } from "@/lib/domain/moc";
@@ -77,6 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     overdueCount,
     pendingUserCount,
     trashUrgentCount: trashSummary?.urgent ?? 0,
+    isRegionalUnitUser: isRegionalUnit(activeUser.location),
   });
 
   return (

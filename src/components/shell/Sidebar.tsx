@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import { userRoleLabel } from "@/lib/domain/roleLabel";
 import LogoutConfirm from "@/components/shell/LogoutConfirm";
 
@@ -115,7 +116,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        {!isPending && (
+        {!isPending && !isRegionalUnit(activeUser.location) && (
           <Link href="/upload" aria-label="Buat dokumen baru" title={collapsed ? "Dokumen Baru" : undefined} className="new-document-button" onClick={() => setMobileOpen(false)}>
             <Plus className="h-4 w-4" />
             <span className="new-document-label">Dokumen Baru</span>
@@ -171,6 +172,7 @@ export function buildNavItems({
   overdueCount,
   pendingUserCount,
   trashUrgentCount = 0,
+  isRegionalUnitUser = false,
 }: {
   isPending: boolean;
   isRegionalAdmin: boolean;
@@ -178,6 +180,8 @@ export function buildNavItems({
   overdueCount: number;
   pendingUserCount: number;
   trashUrgentCount?: number;
+  /** Akun unit Regional Jatimbalinus: tidak punya PSI/arsip terminal, jadi menu Arsip Registry disembunyikan. */
+  isRegionalUnitUser?: boolean;
 }): { primaryNavItems: NavItem[]; adminNavItems: NavItem[] } {
   const primaryNavItems: NavItem[] = isPending
     ? [{ name: "Dashboard", path: "/", icon: LayoutDashboard }]
@@ -187,7 +191,7 @@ export function buildNavItems({
         { name: "Overdue", path: "/dilemma", icon: AlertTriangle, badge: overdueCount, badgeTone: "danger" },
         { name: "Direktori", path: "/directory", icon: FolderOpen },
         // Admin Regional memakainya dari grup Admin; user terminal melihat arsip terminalnya sendiri di menu utama.
-        ...(isRegionalAdmin ? [] : [{ name: "Arsip Registry", path: "/registry", icon: Archive } as NavItem]),
+        ...(isRegionalAdmin || isRegionalUnitUser ? [] : [{ name: "Arsip Registry", path: "/registry", icon: Archive } as NavItem]),
         { name: "Sampah", path: "/sampah", icon: Trash2, badge: trashUrgentCount, badgeTone: "warning" },
       ];
   const adminNavItems: NavItem[] =

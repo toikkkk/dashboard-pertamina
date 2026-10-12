@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { CheckCircle2, UserCog } from "lucide-react";
 import LocationPickerField from "@/components/LocationPickerField";
-import { MOC_FUNCTION_SUGGESTIONS, MOC_ROLE_FLAGS, MOC_ROLES_NEED_FUNCTION, type MocRoleFlag } from "@/lib/domain/moc";
+import { mocFunctionSuggestions, MOC_ROLE_FLAGS, MOC_ROLES_NEED_FUNCTION, type MocRoleFlag } from "@/lib/domain/moc";
 
 // Peran dasar akun (nilai = yang tersimpan di DB) dengan nama menurut TKO B6.2-08 (PSI) dan
 // B13.3-07 (MoC): Initiator/Penanggung Jawab PSI, Controller (HSSE), Admin Regional.
@@ -23,7 +23,7 @@ const ROLES: { value: string; label: string }[] = [
 // signs in with Google) first, then lands here with nothing but a name/email/password
 // behind them, and fills in role + terminal as a second, self-contained step.
 export default function OnboardingPreferencesModal() {
-  const { activeUser, locations, saveOnboardingPreferences, isLoggedIn } = usePsi();
+  const { activeUser, allLocations: locations, saveOnboardingPreferences, isLoggedIn } = usePsi();
   const [role, setRole] = useState<string>("Penanggung Jawab PSI (Initiator)");
   const [location, setLocation] = useState<string>(locations[0]?.locationName ?? "");
   const [mocRoles, setMocRoles] = useState<MocRoleFlag[]>([]);
@@ -65,7 +65,7 @@ export default function OnboardingPreferencesModal() {
   const isAdminRole = role === "Admin Regional";
   const effectiveMocRoles = isAdminRole ? [] : mocRoles;
   const needsFunction = effectiveMocRoles.some((r) => MOC_ROLES_NEED_FUNCTION.includes(r));
-  const suggestions = Array.from(new Set(effectiveMocRoles.flatMap((r) => MOC_FUNCTION_SUGGESTIONS[r])));
+  const suggestions = Array.from(new Set(effectiveMocRoles.flatMap((r) => mocFunctionSuggestions(r, location))));
 
   const toggleMocRole = (r: MocRoleFlag) =>
     setMocRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));

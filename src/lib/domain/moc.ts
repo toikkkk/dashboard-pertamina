@@ -4,6 +4,8 @@
 // B Penilaian Risiko, dan C Validasi; tahap D-H (Komunikasi..Penutupan) belum
 // jelas alurnya dan hanya dimajukan manual lewat `advance` sampai ada kejelasan.
 
+import { isRegionalUnit } from "./regionalUnit";
+
 // 13 kotak "Aktivitas / Ruang Lingkup Perubahan" pada Formulir Lampiran 5, urutan
 // sesuai formulir. (Sama dengan 13 baris Tabel 1 TKO; "Sistem/aplikasi teknologi"
 // adalah Scope 13 pada Tabel 3 — menambah Fungsi IT sebagai reviewer.)
@@ -124,6 +126,19 @@ export const MOC_FUNCTION_SUGGESTIONS: Record<MocRoleFlag, readonly string[]> = 
 };
 // Reviewer/Approver wajib punya fungsi/jabatan (dipakai di dropdown & lembar cetak).
 export const MOC_ROLES_NEED_FUNCTION: readonly MocRoleFlag[] = ["Reviewer", "Approver"];
+
+// Tingkat Region/AP (TKO B13.3-07 Tabel 3, kolom "Region / AP"): Reviewer = RPD dan HSSE Regional/AP (+ Fungsi IT untuk
+// scope 13), Approver = Manager Fungsi Regional/AP atau EGM/GHO/SMOM, Controller = HSSE Regional. Performer ditunjuk
+// Approver. Dipakai untuk akun yang terikat ke unit Regional Jatimbalinus (lihat regionalUnit.ts).
+export const MOC_FUNCTION_SUGGESTIONS_REGIONAL: Record<MocRoleFlag, readonly string[]> = {
+  Reviewer: ["RPD", "HSSE Regional", "Fungsi IT"],
+  Approver: ["Manager Fungsi Regional", "EGM/GHO/SMOM"],
+  Performer: [],
+};
+
+export function mocFunctionSuggestions(role: MocRoleFlag, location?: string | null): readonly string[] {
+  return (isRegionalUnit(location) ? MOC_FUNCTION_SUGGESTIONS_REGIONAL : MOC_FUNCTION_SUGGESTIONS)[role];
+}
 
 export function hasMocRole(user: { mocRoles?: string[] | null }, flag: MocRoleFlag): boolean {
   return !!user.mocRoles && user.mocRoles.includes(flag);
@@ -362,7 +377,7 @@ export function nextRegisterStatus(current: MocRegisterStatus): MocRegisterStatu
 // Usulan Nomor MoC — TKO tidak mendefinisikan format; ini hanya usulan yang dapat
 // diubah Controller saat registrasi.
 export function suggestMocNumber(location: string, year: number, sequence: number): string {
-  const code = location.replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
+  const code = isRegionalUnit(location) ? "REG" : location.replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
   return `MOC-${code}-${year}-${String(sequence).padStart(3, "0")}`;
 }
 

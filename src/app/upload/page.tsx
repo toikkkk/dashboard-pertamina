@@ -8,6 +8,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, ChevronRight, Upload as UploadIcon, X } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import { useDocumentCategories } from "@/lib/useDocumentCategories";
 import CategoryPicker from "@/components/directory/CategoryPicker";
 import { UploadIntoCategoryPanel } from "@/components/DirectoryCategoryGrid";
@@ -39,6 +40,18 @@ export default function UploadPage() {
     const arr = Array.from(list ?? []);
     if (arr.length && category) setFiles(arr);
   };
+
+  // Unit Regional tidak mengunggah dokumen PSI (PSI hanya di terminal); MOC regional dibuat dari menu MOC.
+  if (isRegionalUnit(activeUser.location)) {
+    return (
+      <div className="max-w-[860px] bg-white border border-[#D8E1E4] rounded-[14px] py-14 px-6 text-center">
+        <p className="text-[14px] font-bold text-[#0F172A] mb-1">Unit Regional tidak mengunggah dokumen PSI.</p>
+        <p className="text-[12.5px] text-[#6b6e72]">
+          Dokumen PSI hanya ada di terminal. Untuk pengajuan perubahan, buka menu <Link href="/moc" className="font-bold text-[#0F3B59] underline">MOC</Link>.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[860px]">

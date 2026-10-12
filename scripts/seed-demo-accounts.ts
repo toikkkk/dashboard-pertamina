@@ -16,6 +16,7 @@ import { db } from "../src/lib/db/client";
 import { locations, users, auditLog } from "../src/lib/db/schema";
 import { hashPassword } from "../src/lib/auth/password";
 import { isPasswordStrong } from "../src/lib/domain/rules";
+import { REGIONAL_UNIT_NAME } from "../src/lib/domain/regionalUnit";
 
 const DRY = process.argv.includes("--dry-run");
 const OUT = process.env.DEMO_ACCOUNTS_OUT ?? "";
@@ -39,6 +40,17 @@ const ROLES: RoleSpec[] = [
   { code: "rvh", label: "Reviewer HSSE", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "HSSE", keterangan: "Mereview MOC (fungsi HSSE)" },
   { code: "apv", label: "Approver", role: INITIATOR, mocRoles: ["Approver"], mocFunction: "Terminal Manager", keterangan: "Menyetujui / menolak MOC dan menunjuk Performer" },
   { code: "prf", label: "Performer", role: INITIATOR, mocRoles: ["Performer"], mocFunction: null, keterangan: "Pelaksana perubahan MOC yang ditunjuk Approver" },
+];
+
+// Unit Regional Jatimbalinus (MOC level regional): fungsi menurut TKO B13.3-07 Tabel 3 kolom "Region / AP".
+const REGIONAL_ROLES: RoleSpec[] = [
+  { code: "ini", label: "Initiator Regional", role: INITIATOR, mocRoles: [], mocFunction: null, keterangan: "Mengajukan MOC level regional" },
+  { code: "ctl", label: "Controller HSSE Regional", role: CONTROLLER, mocRoles: [], mocFunction: null, keterangan: "Mendaftarkan MOC regional (memberi Nomor MoC)" },
+  { code: "rvr", label: "Reviewer RPD", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "RPD", keterangan: "Mereview MOC regional (fungsi RPD)" },
+  { code: "rvh", label: "Reviewer HSSE Regional", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "HSSE Regional", keterangan: "Mereview MOC regional (fungsi HSSE Regional)" },
+  { code: "rvi", label: "Reviewer Fungsi IT", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "Fungsi IT", keterangan: "Mereview MOC regional untuk perubahan sistem/aplikasi (scope 13)" },
+  { code: "apv", label: "Approver Manager Fungsi Regional", role: INITIATOR, mocRoles: ["Approver"], mocFunction: "Manager Fungsi Regional", keterangan: "Menyetujui / menolak MOC regional dan menunjuk Performer" },
+  { code: "prf", label: "Performer Regional", role: INITIATOR, mocRoles: ["Performer"], mocFunction: null, keterangan: "Pelaksana perubahan MOC regional yang ditunjuk Approver" },
 ];
 
 const slug = (s: string) => s.toLowerCase().replace(/[()]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -75,11 +87,11 @@ async function main() {
   const locs = (await db.select({ name: locations.name }).from(locations)).map((l) => l.name).sort();
   const plan: Planned[] = [];
   for (const terminal of locs) {
-    for (const r of ROLES) {
+    for (const r of terminal === REGIONAL_UNIT_NAME ? REGIONAL_ROLES : ROLES) {
       plan.push({
         terminal,
         peran: r.label,
-        nama: `${r.label} ${terminal}`,
+        nama: terminal === REGIONAL_UNIT_NAME ? r.label : `${r.label} ${terminal}`,
         username: `demo-${r.code}.${slug(terminal)}`,
         email: `demo-${r.code}.${slug(terminal)}@${DOMAIN}`,
         role: r.role,
@@ -143,7 +155,7 @@ async function main() {
     actorName: "Skrip seed-demo-accounts",
     targetType: "akun",
     targetLabel: `${created.length} akun demo (@${DOMAIN})`,
-    detail: { jumlah: created.length, terminal: locs.length, peranPerTerminal: ROLES.length },
+    detail: { jumlah: created.length, unit: locs.length, peranPerTerminal: ROLES.length, peranRegional: REGIONAL_ROLES.length },
   });
   console.log(`Selesai: ${created.length} akun dibuat. Kata sandi disimpan di berkas keluaran (di luar repo).`);
 }
