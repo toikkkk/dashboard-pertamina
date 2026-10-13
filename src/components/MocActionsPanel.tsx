@@ -7,14 +7,35 @@ import { usePsi } from "@/lib/psiStore";
 import { mocApi } from "@/lib/useMoc";
 import { uploadFileToR2 } from "@/lib/uploadFile";
 import {
-  MOC_LATER_STAGE_INFO,
+  MOC_COMMUNICATION_ITEMS,
+  MOC_COMMUNICATION_MEDIA,
   hasMocRole,
+  mocAdvanceIssues,
+  mocCommunicationIssues,
+  mocImplementationPlanIssues,
   nextRegisterStatus,
   reviewsOfCurrentRound,
   type MocAction,
+  type MocCommunicationInput,
+  type MocImplementationPlanInput,
   type MocPlannedReviewer,
   type MocRequest,
 } from "@/lib/domain/moc";
+
+const toggle = <T,>(arr: T[], v: T): T[] => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+
+function CheckList<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T[]; onChange: (v: T[]) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+      {options.map((o) => (
+        <label key={o} className="flex items-start gap-2 text-[12.5px] text-[#0F172A] cursor-pointer">
+          <input type="checkbox" className="mt-[3px] accent-[#0F3B59]" checked={value.includes(o)} onChange={() => onChange(toggle(value, o))} />
+          {o}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 const INPUT = "w-full min-h-[38px] px-3 py-2 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white focus:outline-none focus:border-[#0F3B59]";
 const BTN =
@@ -119,6 +140,15 @@ function EvidenceInput({ onFileId, disabled }: { onFileId: (id: string | undefin
   );
 }
 
+// Catatan tahap yang sudah tersimpan tidak lagi "giliran Anda" — cukup bisa dibuka untuk diubah.
+function EditRecorded({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-[14px] border border-[#C5CED3] px-5 py-3.5">
+      <Optional label={label}><div className="flex flex-col gap-4">{children}</div></Optional>
+    </section>
+  );
+}
+
 function EmptyPool({ role }: { role: string }) {
   return (
     <p className="text-[12.5px] text-[#B45309] font-semibold">
@@ -197,12 +227,30 @@ export default function MocActionsPanel({
   const [advanceNotes, setAdvanceNotes] = useState("");
   const [confirmAdvance, setConfirmAdvance] = useState(false);
 
+  // Komunikasi & Rencana Implementasi: diisi awal dari catatan tersimpan (bisa diubah sampai Implementasi dimulai).
+  const [comm, setComm] = useState<MocCommunicationInput>(() => {
+    const c = moc.communication;
+    return c
+      ? { items: c.items, media: c.media, mediaOther: c.mediaOther, date: c.date, audience: c.audience, notes: c.notes }
+      : { items: [], media: [], mediaOther: "", date: "", audience: "", notes: "" };
+  });
+  const [plan, setPlan] = useState<MocImplementationPlanInput>(() => {
+    const p = moc.implementationPlan;
+    return p
+      ? { technicalPlan: p.technicalPlan, monitoringPlan: p.monitoringPlan, milestones: p.milestones, documentationPlan: p.documentationPlan }
+      : { technicalPlan: "", monitoringPlan: "", milestones: [{ label: "", targetDate: "" }], documentationPlan: "" };
+  });
+  const [stageFile, setStageFile] = useState<string | undefined>();
+  const setMilestone = (i: number, patch: Partial<MocImplementationPlanInput["milestones"][number]>) =>
+    setPlan((p) => ({ ...p, milestones: p.milestones.map((m, idx) => (idx === i ? { ...m, ...patch } : m)) }));
+
   const run = async (fn: () => Promise<MocRequest>, message: (saved: MocRequest) => string) => {
     setBusy(true);
     setError(null);
     try {
       const saved = await fn();
       setEvidence(undefined);
+      setStageFile(undefined);
       onNotice(message(saved));
     } catch (e) {
       const issues = (e as Error & { issues?: unknown }).issues;
@@ -220,6 +268,83 @@ export default function MocActionsPanel({
   const startsImplementation = moc.registerStatus === "Inisiasi & Validasi";
   const canSubmit = !busy && !!approverId && reviewers.length > 0 && reviewers.every((r) => r.userId && r.functionLabel.trim());
   const reviseNotes = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Perlu Perubahan");
+  const commIssues = mocCommunicationIssues(comm);
+  const planIssues = mocImplementationPlanIssues({ ...plan, milestones: plan.milestones.filter((m) => m.label.trim() || m.targetDate) });
+  const advanceIssues = mocAdvanceIssues(moc);
+  const attachments = stageFile ? [stageFile] : [];
+
+  const commForm = (
+    <>
+      <Step n={1} label="Apa yang dikomunikasikan?">
+        <CheckList options={MOC_COMMUNICATION_ITEMS} value={comm.items} onChange={(items) => setComm({ ...comm, items })} />
+      </Step>
+      <Step n={2} label="Lewat media apa?">
+        <CheckList options={MOC_COMMUNICATION_MEDIA} value={comm.media} onChange={(media) => setComm({ ...comm, media })} />
+        {comm.media.includes("Lainnya") && (
+          <input className={`${INPUT} mt-2`} value={comm.mediaOther} onChange={(e) => setComm({ ...comm, mediaOther: e.target.value })} placeholder="Sebutkan media lainnya…" />
+        )}
+      </Step>
+      <Step n={3} label="Kapan?">
+        <input type="date" className={`${INPUT} max-w-[220px]`} value={comm.date} onChange={(e) => setComm({ ...comm, date: e.target.value })} />
+      </Step>
+      <NoteField label="Kepada pekerja / kontraktor mana?" value={comm.audience} onChange={(audience) => setComm({ ...comm, audience })} placeholder="Mis. operator shift A-D, tim maintenance, kontraktor PT …" rows={2} />
+      <Optional label="Catatan tambahan (opsional)">
+        <textarea className={INPUT} rows={2} value={comm.notes} onChange={(e) => setComm({ ...comm, notes: e.target.value })} />
+      </Optional>
+      <Optional label="Lampirkan bukti komunikasi, mis. notulen / daftar hadir (opsional)"><EvidenceInput onFileId={setStageFile} disabled={busy} /></Optional>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          className={BTN}
+          disabled={busy || commIssues.length > 0}
+          onClick={() => run(() => mocApi.communicate(moc.id, { ...comm, attachmentFileIds: attachments }), () => "Komunikasi tercatat. Langkah berikutnya: rencana implementasi.")}
+        >
+          {busy ? "Menyimpan…" : moc.communication ? "Simpan perubahan" : "Simpan catatan komunikasi"}
+        </button>
+        {commIssues.length > 0 && !busy && <span className="text-[11.5px] text-[#6b6e72]">{commIssues[0]}</span>}
+      </div>
+    </>
+  );
+
+  const planForm = (
+    <>
+      <NoteField label="Rencana teknis pekerjaan" value={plan.technicalPlan} onChange={(technicalPlan) => setPlan({ ...plan, technicalPlan })} placeholder="Lingkup pekerjaan, metode kerja, persyaratan MoC Performer…" />
+      <NoteField label="Rencana pemantauan & pengukuran kinerja" value={plan.monitoringPlan} onChange={(monitoringPlan) => setPlan({ ...plan, monitoringPlan })} placeholder="Apa yang dipantau, seberapa sering, oleh siapa…" />
+      <Step n={1} label="Milestone / jadwal">
+        <div className="flex flex-col gap-2">
+          {plan.milestones.map((m, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input className={INPUT} value={m.label} onChange={(e) => setMilestone(i, { label: e.target.value })} placeholder="Mis. Pre-Start-Up Safety Review selesai" aria-label="Milestone" />
+              <input type="date" className={`${INPUT} max-w-[170px]`} value={m.targetDate} onChange={(e) => setMilestone(i, { targetDate: e.target.value })} aria-label="Tanggal target" />
+              <button type="button" aria-label="Hapus milestone" disabled={plan.milestones.length === 1} onClick={() => setPlan({ ...plan, milestones: plan.milestones.filter((_, idx) => idx !== i) })} className="p-2 text-[#6b6e72] hover:text-[#DC2626] disabled:opacity-30">
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+          ))}
+          {plan.milestones.length < 20 && (
+            <button type="button" onClick={() => setPlan({ ...plan, milestones: [...plan.milestones, { label: "", targetDate: "" }] })} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah milestone
+            </button>
+          )}
+        </div>
+      </Step>
+      <Optional label="Rencana dokumentasi / rekaman (opsional)">
+        <textarea className={INPUT} rows={2} value={plan.documentationPlan} onChange={(e) => setPlan({ ...plan, documentationPlan: e.target.value })} placeholder="Dokumen/rekaman yang perlu dimutakhirkan: HIRADC, P&ID, drawing, job description…" />
+      </Optional>
+      <Optional label="Lampirkan dokumen rencana (opsional)"><EvidenceInput onFileId={setStageFile} disabled={busy} /></Optional>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          className={BTN}
+          disabled={busy || planIssues.length > 0}
+          onClick={() => run(() => mocApi.planImplementation(moc.id, { ...plan, attachmentFileIds: attachments }), () => "Rencana implementasi tercatat.")}
+        >
+          {busy ? "Menyimpan…" : moc.implementationPlan ? "Simpan perubahan" : "Simpan rencana implementasi"}
+        </button>
+        {planIssues.length > 0 && !busy && <span className="text-[11.5px] text-[#6b6e72]">{planIssues[0]}</span>}
+      </div>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -412,14 +537,41 @@ export default function MocActionsPanel({
         </Panel>
       )}
 
+      {actions.includes("communicate") &&
+        (moc.communication ? (
+          <EditRecorded label={`Ubah catatan Komunikasi (dicatat ${moc.communication.recordedByName})`}>{commForm}</EditRecorded>
+        ) : (
+          <Panel title="Catat Komunikasi MOC">{commForm}</Panel>
+        ))}
+
+      {actions.includes("planImplementation") &&
+        (moc.implementationPlan ? (
+          <EditRecorded label={`Ubah Rencana Implementasi (dicatat ${moc.implementationPlan.recordedByName})`}>{planForm}</EditRecorded>
+        ) : (
+          <Panel title={`Susun Rencana Implementasi untuk ${moc.performerName ?? "MoC Performer"}`}>{planForm}</Panel>
+        ))}
+
       {actions.includes("advance") && next && (
         <Panel
-          title={startsImplementation ? "Mulai tahap Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjutkan ke tahap ${next}`}
+          title={startsImplementation ? "Serahkan ke Performer & mulai Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjutkan ke tahap ${next}`}
         >
-          <NoteField label="Catatan" value={advanceNotes} onChange={setAdvanceNotes} placeholder="Tuliskan catatan untuk tahap ini…" rows={2} />
+          {startsImplementation && (
+            <ul className="flex flex-col gap-1 text-[12.5px]">
+              {[
+                { ok: !!moc.communication, label: "Komunikasi dicatat" },
+                { ok: !!moc.implementationPlan, label: "Rencana implementasi dicatat" },
+                { ok: !!moc.performerName, label: `MoC Performer ditunjuk${moc.performerName ? `: ${moc.performerName}` : ""}` },
+              ].map((r) => (
+                <li key={r.label} className="font-semibold" style={{ color: r.ok ? "#15803D" : "#6b6e72" }}>
+                  {r.ok ? "✓" : "○"} {r.label}
+                </li>
+              ))}
+            </ul>
+          )}
+          <NoteField label={startsImplementation ? "Catatan serah terima" : "Catatan"} value={advanceNotes} onChange={setAdvanceNotes} placeholder="Tuliskan catatan untuk tahap ini…" rows={2} />
           {!confirmAdvance ? (
             <div>
-              <button type="button" className={BTN} disabled={busy || !advanceNotes.trim()} onClick={() => setConfirmAdvance(true)}>
+              <button type="button" className={BTN} disabled={busy || !advanceNotes.trim() || advanceIssues.length > 0} onClick={() => setConfirmAdvance(true)}>
                 {startsImplementation ? "Mulai Implementasi" : next === "Closed" ? "Tutup MOC" : `Lanjut ke ${next}`}
               </button>
             </div>

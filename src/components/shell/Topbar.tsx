@@ -15,6 +15,8 @@ const mocNotifText = (m: MocRequest, a: MocAction): string => {
   if (a === "review") return `MOC "${m.judul || "tanpa judul"}" diajukan kepada Anda untuk direview`;
   if (a === "decide") return `MOC "${m.judul || "tanpa judul"}" menunggu keputusan Anda sebagai Approver`;
   if (a === "register") return `MOC "${m.judul || "tanpa judul"}" sudah disetujui dan menunggu registrasi Anda`;
+  if (a === "communicate") return `MOC "${m.judul || "tanpa judul"}" sudah terdaftar — catat komunikasinya`;
+  if (a === "planImplementation") return `MOC "${m.judul || "tanpa judul"}" menunggu rencana implementasi untuk Performer`;
   return m.validationState === "draft"
     ? `Draf MOC "${m.judul || "tanpa judul"}" belum diajukan`
     : `MOC "${m.judul || "tanpa judul"}" dikembalikan — perbaiki lalu ajukan ulang`;

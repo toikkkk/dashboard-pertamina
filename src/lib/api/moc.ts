@@ -7,10 +7,12 @@ import { db } from "@/lib/db/client";
 import { mocRequests, mocReviews, mocHistory, mocEvidence, fileRegistry, users } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { ForbiddenError } from "@/lib/auth/rbac";
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPE_ERROR, isAttachmentKind } from "@/lib/security/fileScan";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_COUNT, ATTACHMENT_TYPE_ERROR, isAttachmentKind } from "@/lib/security/fileScan";
 import { HttpError } from "@/lib/api/respond";
 import {
   MOC_CHANGE_CATEGORIES,
+  MOC_COMMUNICATION_ITEMS,
+  MOC_COMMUNICATION_MEDIA,
   MOC_REQUIRE_SIGNED_EVIDENCE,
   mocActionsFor,
   type MocAction,
@@ -120,6 +122,8 @@ function toRequest(
     approverNote: row.approverNote,
     plannedReviewers: row.plannedReviewers as MocRequest["plannedReviewers"],
     plannedApproverId: row.plannedApproverId,
+    communication: (row.communication as MocRequest["communication"]) ?? null,
+    implementationPlan: (row.implementationPlan as MocRequest["implementationPlan"]) ?? null,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
     createdAt: fmtTs(row.createdAt),
     updatedAt: fmtTs(row.updatedAt),
@@ -325,3 +329,34 @@ export const mocFormPatchSchema = z
     downsideLoss: text(5000),
   })
   .partial();
+
+// Tahap D Komunikasi & E.1 Rencana Implementasi. Kelengkapan isian dicek terpisah oleh
+// mocCommunicationIssues / mocImplementationPlanIssues (pesan yang sama dengan klien).
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal(""));
+const attachmentFileIds = z.array(z.string().uuid()).max(ATTACHMENT_MAX_COUNT).default([]);
+
+export const mocCommunicationSchema = z.object({
+  items: z.array(z.enum(MOC_COMMUNICATION_ITEMS)).max(MOC_COMMUNICATION_ITEMS.length),
+  media: z.array(z.enum(MOC_COMMUNICATION_MEDIA)).max(MOC_COMMUNICATION_MEDIA.length),
+  mediaOther: text(200).default(""),
+  date: ymd,
+  audience: text(2000),
+  notes: text(5000).default(""),
+  attachmentFileIds,
+});
+
+export const mocImplementationPlanSchema = z.object({
+  technicalPlan: text(10000),
+  monitoringPlan: text(10000),
+  milestones: z.array(z.object({ label: text(300), targetDate: ymd })).max(20),
+  documentationPlan: text(10000).default(""),
+  attachmentFileIds,
+});
+
+// Lampiran tahap (gambar/PDF) yang ikut dikirim bersama catatan tahap.
+export async function attachStageFiles(mocId: string, fileIds: string[], user: SessionUser, stage: string): Promise<void> {
+  for (const fileId of fileIds) {
+    const ok = await attachMocEvidence(mocId, "lampiran", fileId, user, undefined, stage);
+    if (!ok) throw new HttpError(400, "Lampiran tidak valid atau bukan unggahan Anda.");
+  }
+}

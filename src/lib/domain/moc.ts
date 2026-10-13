@@ -1,8 +1,9 @@
 // Management of Change (MOC) — tipe, konstanta, dan aturan murni. Tanpa React/DOM,
 // aman diimpor klien maupun API route (pola yang sama dengan rules.ts).
-// Sumber: TKO B13.3-07/PNA400000/2025-S9. Fase 1 hanya mencakup Tahap A Inisiasi,
-// B Penilaian Risiko, dan C Validasi; tahap D-H (Komunikasi..Penutupan) belum
-// jelas alurnya dan hanya dimajukan manual lewat `advance` sampai ada kejelasan.
+// Sumber: TKO B13.3-07/PNA400000/2025-S9. Tahap A-C (Inisiasi, Penilaian Risiko,
+// Validasi) lengkap; D Komunikasi + E.1 Rencana Implementasi menjadi gerbang sebelum
+// Implementasi (PRD .claude/prds/moc-tahap-lanjut.prd.md, milestone 1). Tahap E-H
+// sesudahnya masih dimajukan manual lewat `advance` sampai milestone berikutnya.
 
 import { isRegionalUnit } from "./regionalUnit";
 
@@ -102,6 +103,8 @@ export const MOC_HISTORY_ACTIONS = [
   "Disetujui",
   "Ditolak",
   "Diregistrasi",
+  "Komunikasi Dicatat",
+  "Rencana Implementasi Dicatat",
   "Tahap Dimajukan",
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
@@ -166,6 +169,50 @@ export interface MocBarrier {
   text: string;
   pic: string; // kolom PENANGGUNG JAWAB di samping tiap barrier pada formulir
 }
+
+// Tahap D Komunikasi (TKO V-D.1.a): isi rencana komunikasi & pelatihan, urutan sesuai TKO.
+export const MOC_COMMUNICATION_ITEMS = [
+  "Tujuan dan sasaran MoC",
+  "Dokumen informasi keselamatan (hasil penilaian risiko)",
+  "Rekaman / catatan",
+  "Prosedur",
+  "Gambar-gambar",
+  "Aplikasi penyimpanan & pemutakhiran untuk pekerja/kontraktor",
+] as const;
+export type MocCommunicationItem = (typeof MOC_COMMUNICATION_ITEMS)[number];
+
+// Media komunikasi (TKO III.2.d).
+export const MOC_COMMUNICATION_MEDIA = ["Email", "Forum / rapat rutin", "Presentasi / video induksi", "Lainnya"] as const;
+export type MocCommunicationMedium = (typeof MOC_COMMUNICATION_MEDIA)[number];
+
+// Isian yang diketik user; siapa/kapan dicatat server.
+export interface MocCommunicationInput {
+  items: MocCommunicationItem[];
+  media: MocCommunicationMedium[];
+  mediaOther: string;
+  date: string; // YYYY-MM-DD
+  audience: string; // pekerja / kontraktor yang diberi tahu
+  notes: string;
+}
+export interface MocRecordedBy {
+  recordedById: string;
+  recordedByName: string;
+  recordedAt: string; // ISO
+}
+export type MocCommunication = MocCommunicationInput & MocRecordedBy;
+
+export interface MocMilestone {
+  label: string;
+  targetDate: string; // YYYY-MM-DD
+}
+// Tahap E langkah 1 (TKO V-E.1.b): rencana implementasi yang diserahkan ke Performer.
+export interface MocImplementationPlanInput {
+  technicalPlan: string;
+  monitoringPlan: string;
+  milestones: MocMilestone[];
+  documentationPlan: string;
+}
+export type MocImplementationPlan = MocImplementationPlanInput & MocRecordedBy;
 
 export interface MocReview {
   id: string;
@@ -253,6 +300,9 @@ export interface MocRequest extends MocFormContent {
   approverNote: string | null;
   plannedReviewers: MocPlannedReviewer[];
   plannedApproverId: string | null;
+  // null = belum dicatat. Diisi setelah registrasi, sebelum Implementasi dimulai.
+  communication: MocCommunication | null;
+  implementationPlan: MocImplementationPlan | null;
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -269,7 +319,7 @@ export interface MocActor {
   isRegionalAdmin?: boolean;
 }
 
-export type MocAction = "edit" | "submit" | "review" | "decide" | "register" | "advance";
+export type MocAction = "edit" | "submit" | "review" | "decide" | "register" | "communicate" | "planImplementation" | "advance";
 
 export const MOC_INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
 
@@ -333,8 +383,53 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
   }
   if (moc.validationState === "pending_approval" && moc.approverUserId === user.id) actions.push("decide");
   if (moc.validationState === "approved" && isController) actions.push("register");
-  if (moc.validationState === "registered" && moc.registerStatus !== "Closed" && isController) actions.push("advance");
+
+  // Setelah registrasi, sebelum Implementasi: Komunikasi (D) lalu Rencana Implementasi (E.1), diisi
+  // pembuat MOC atau Controller lokasi (atas nama Initiator). Initiator juga yang menyerahkan ke
+  // Performer (TKO E.1.c), jadi ia boleh memulai Implementasi; tahap sesudahnya tetap Controller.
+  if (moc.validationState === "registered" && moc.registerStatus === "Inisiasi & Validasi") {
+    const isOwner = user.role === MOC_INITIATOR_ROLE && moc.createdBy === user.id;
+    if (isOwner || isController) {
+      actions.push("communicate");
+      if (moc.communication) actions.push("planImplementation");
+      actions.push("advance");
+    }
+  } else if (moc.validationState === "registered" && moc.registerStatus !== "Closed" && isController) {
+    actions.push("advance");
+  }
   return actions;
+}
+
+// Isian minimum catatan Komunikasi. Mengembalikan daftar masalah (kosong = lengkap).
+export function mocCommunicationIssues(c: MocCommunicationInput): string[] {
+  const issues: string[] = [];
+  if (c.items.length === 0) issues.push("Pilih minimal satu hal yang dikomunikasikan.");
+  if (c.media.length === 0) issues.push("Pilih minimal satu media komunikasi.");
+  if (c.media.includes("Lainnya") && !c.mediaOther.trim()) issues.push("Sebutkan media lainnya.");
+  if (!c.date) issues.push("Tanggal komunikasi wajib diisi.");
+  if (!c.audience.trim()) issues.push("Sebutkan pekerja/kontraktor yang diberi tahu.");
+  return issues;
+}
+
+// ASUMSI (TKO V-E.1.b menyebut 3 bagian tanpa menyatakan mana yang wajib): rencana teknis,
+// rencana pemantauan, dan minimal satu milestone wajib; rencana dokumentasi opsional.
+export function mocImplementationPlanIssues(p: MocImplementationPlanInput): string[] {
+  const issues: string[] = [];
+  if (!p.technicalPlan.trim()) issues.push("Rencana teknis pekerjaan wajib diisi.");
+  if (!p.monitoringPlan.trim()) issues.push("Rencana pemantauan wajib diisi.");
+  if (!p.milestones.some((m) => m.label.trim() && m.targetDate)) issues.push("Isi minimal satu milestone beserta tanggal targetnya.");
+  return issues;
+}
+
+// Syarat memajukan tahap. Gerbang hanya pada langkah masuk Implementasi; MOC yang sudah
+// lebih jauh (termasuk yang dimajukan manual sebelum fitur ini) tidak terdampak.
+export function mocAdvanceIssues(moc: Pick<MocRequest, "registerStatus" | "communication" | "implementationPlan" | "performerName">): string[] {
+  if (moc.registerStatus !== "Inisiasi & Validasi") return [];
+  const issues: string[] = [];
+  if (!moc.communication) issues.push("Komunikasi belum dicatat.");
+  if (!moc.implementationPlan) issues.push("Rencana implementasi belum dicatat.");
+  if (!moc.performerName) issues.push("MoC Performer belum ditunjuk.");
+  return issues;
 }
 
 // Boleh menambah lampiran gambar/PDF (opsional) pada tahap Implementasi dst.: MOC sudah
@@ -347,7 +442,7 @@ export function mocCanAttach(moc: MocRequest, user: MocActor): boolean {
 
 // Delapan tahap MOC (TKO) untuk bilah progres dan dashboard. Tahap A-C diturunkan dari
 // validationState; sesudahnya mengikuti status Register (Lampiran 8).
-export const MOC_STAGES = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi", "Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
+export const MOC_STAGES = ["Inisiasi & Risiko", "Review", "Persetujuan", "Registrasi & Komunikasi", "Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
 const MOC_LATER_STAGES = ["Implementasi", "Pemantauan", "Tinjauan Akhir", "Closed"] as const;
 
 export function mocStageIndex(moc: Pick<MocRequest, "validationState" | "registerStatus">): number {
@@ -363,8 +458,9 @@ export function mocStageIndex(moc: Pick<MocRequest, "validationState" | "registe
     case "approved":
       return 3;
     case "registered": {
+      // Terdaftar tapi belum Implementasi = masih di tahap Registrasi & Komunikasi.
       const later = MOC_LATER_STAGES.indexOf(moc.registerStatus as (typeof MOC_LATER_STAGES)[number]);
-      return 4 + Math.max(0, later);
+      return later < 0 ? 3 : 4 + later;
     }
   }
 }
@@ -438,7 +534,13 @@ export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; 
     case "registered":
       if (moc.registerStatus === "Closed") return { title: "MOC selesai (Closed)", detail: MOC_LATER_STAGE_INFO.Closed, done: true };
       if (moc.registerStatus === "Inisiasi & Validasi") {
-        return { title: "Terdaftar — siap masuk Implementasi", detail: "MoC Controller memajukan MOC ke tahap Implementasi.", done: false };
+        if (!moc.communication) {
+          return { title: "Terdaftar — menunggu Komunikasi", detail: `${owner} mencatat komunikasi MOC (hasil penilaian risiko, prosedur, gambar, dst.) kepada pekerja/kontraktor terkait.`, done: false };
+        }
+        if (!moc.implementationPlan) {
+          return { title: "Menunggu Rencana Implementasi", detail: `${owner} menyusun rencana teknis, rencana pemantauan, dan milestone untuk MoC Performer.`, done: false };
+        }
+        return { title: "Siap diserahkan ke Performer", detail: `${owner} atau MoC Controller menyerahkan rencana ke ${moc.performerName ?? "MoC Performer"} dan memulai Implementasi.`, done: false };
       }
       return {
         title: `Tahap ${moc.registerStatus}`,
@@ -467,11 +569,22 @@ export const MOC_ACTION_LABEL: Record<MocAction, string> = {
   review: "Beri review",
   decide: "Putuskan",
   register: "Daftarkan",
+  communicate: "Catat komunikasi",
+  planImplementation: "Catat rencana implementasi",
   advance: "Majukan tahap",
 };
 
 // Tindakan yang benar-benar "menunggu" user (tanpa 'edit' dan 'advance' yang selalu
 // tersedia) — dasar lencana Navbar, notifikasi, dan kelompok "Perlu tindakan Anda".
+// Komunikasi/rencana hanya "menunggu" selama belum dicatat (setelahnya tinggal ubah).
 export function mocPendingActions(moc: MocRequest, actor: MocActor): MocAction[] {
-  return mocActionsFor(moc, actor).filter((a) => a === "submit" || a === "review" || a === "decide" || a === "register");
+  return mocActionsFor(moc, actor).filter(
+    (a) =>
+      a === "submit" ||
+      a === "review" ||
+      a === "decide" ||
+      a === "register" ||
+      (a === "communicate" && !moc.communication) ||
+      (a === "planImplementation" && !moc.implementationPlan)
+  );
 }

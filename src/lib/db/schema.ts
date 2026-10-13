@@ -369,6 +369,9 @@ export const mocRequests = pgTable(
     // tidak hilang saat berpindah halaman / mengubah formulir.
     plannedReviewers: jsonb("planned_reviewers").notNull().default(sql`'[]'::jsonb`),
     plannedApproverId: uuid("planned_approver_id").references(() => users.id),
+    // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
+    communication: jsonb("communication"),
+    implementationPlan: jsonb("implementation_plan"),
     approverNote: text("approver_note"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id),

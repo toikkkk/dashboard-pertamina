@@ -12,6 +12,7 @@ import MocFormViewer from "@/components/MocFormViewer";
 import MocActionsPanel from "@/components/MocActionsPanel";
 import SuccessPopup from "@/components/SuccessPopup";
 import MocAttachments from "@/components/MocAttachments";
+import MocImplementationPrep from "@/components/MocImplementationPrep";
 
 const CARD =
   "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
@@ -187,6 +188,8 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
               </ul>
             )}
           </div>
+
+          <MocImplementationPrep moc={moc} />
 
           <MocAttachments moc={moc} canAttach={mocCanAttach(moc, actor)} />
         </div>
