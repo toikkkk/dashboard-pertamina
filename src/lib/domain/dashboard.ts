@@ -140,7 +140,11 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
           ? "Menunggu keputusan Anda"
           : acts.includes("register")
             ? "Menunggu registrasi Anda"
-            : m.validationState === "draft"
+            : acts.includes("communicate")
+              ? "Catat komunikasi MOC"
+              : acts.includes("planImplementation")
+                ? "Catat rencana implementasi"
+                : m.validationState === "draft"
               ? "Draf belum diajukan"
               : "Perlu diperbaiki lalu diajukan ulang";
       push(m, "mine", label);

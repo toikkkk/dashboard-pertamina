@@ -6,7 +6,15 @@
 // fungsi yang sama yang dicek ulang server.
 import useSWR, { mutate as globalMutate } from "swr";
 import { usePsi } from "@/lib/psiStore";
-import { mocActionsFor, type MocAction, type MocActor, type MocFormContent, type MocRequest } from "@/lib/domain/moc";
+import {
+  mocActionsFor,
+  type MocAction,
+  type MocActor,
+  type MocCommunicationInput,
+  type MocFormContent,
+  type MocImplementationPlanInput,
+  type MocRequest,
+} from "@/lib/domain/moc";
 
 async function mocFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -96,6 +104,9 @@ export const mocApi = {
     }
   ) => post(`/api/moc/${id}/decision`, body),
   register: (id: string, body: { mocNumber?: string; evidenceFileId?: string }) => post(`/api/moc/${id}/register`, body),
+  communicate: (id: string, body: MocCommunicationInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/communication`, body),
+  planImplementation: (id: string, body: MocImplementationPlanInput & { attachmentFileIds?: string[] }) =>
+    post(`/api/moc/${id}/implementation-plan`, body),
   advance: (id: string, body: { notes: string }) => post(`/api/moc/${id}/advance`, body),
   attachEvidence: (id: string, body: { slot: "initiator" | "reviewer" | "approver" | "controller" | "lampiran"; fileId: string; reviewId?: string }) =>
     post(`/api/moc/${id}/evidence`, body),
