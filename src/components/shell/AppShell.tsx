@@ -99,7 +99,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="main-inner">
             {children}
             <footer className="page-footer">
-              <span>© 2026 PT Pertamina (Persero) · Direktorat Logistik &amp; Infrastruktur</span>
+              <span>© 2026 PT Pertamina Patra Niaga - Direktorat Optimasi Hilir &amp; Distribusi</span>
             </footer>
           </div>
         </main>

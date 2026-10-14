@@ -32,7 +32,7 @@ function buildHtml({ name, verifyUrl, expiresInHours }: Args): string {
       <p style="margin:16px 0 0;color:#9a9da0;font-size:11px;line-height:1.5;word-break:break-all;">Atau salin tautan ini ke browser Anda:<br/>${verifyUrl}</p>
     </div>
     <div style="padding:14px 28px;border-top:1px solid #eceded;">
-      <p style="margin:0;color:#9a9da0;font-size:10.5px;">© PT Pertamina (Persero) — Direktorat Logistik &amp; Infrastruktur.</p>
+      <p style="margin:0;color:#9a9da0;font-size:10.5px;">© 2026 PT Pertamina Patra Niaga - Direktorat Optimasi Hilir &amp; Distribusi</p>
     </div>
   </div>
 </div>`.trim();

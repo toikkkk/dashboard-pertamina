@@ -37,7 +37,7 @@ function buildHtml({ name, resetUrl, expiresInMinutes }: SendPasswordResetEmailA
       </p>
     </div>
     <div style="padding:14px 28px;border-top:1px solid #eceded;">
-      <p style="margin:0;color:#9a9da0;font-size:10.5px;">© PT Pertamina (Persero) — Direktorat Logistik &amp; Infrastruktur.</p>
+      <p style="margin:0;color:#9a9da0;font-size:10.5px;">© 2026 PT Pertamina Patra Niaga - Direktorat Optimasi Hilir &amp; Distribusi</p>
     </div>
   </div>
 </div>`.trim();
