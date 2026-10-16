@@ -77,9 +77,9 @@ function DirectoryContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopedDocs, overview, scopeValue]);
 
-  const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null, tahun: null });
-  const openLocation = (location: string) => setParam({ location, category: null, aksi: null, tahun: null });
-  const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null, tahun: null }); };
+  const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null, tahun: null, bab: null });
+  const openLocation = (location: string) => setParam({ location, category: null, aksi: null, tahun: null, bab: null });
+  const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null, tahun: null, bab: null }); };
 
   const searching = query.trim().length > 0;
   const showTabs = !gridLocation && !aksi && !tahunParam && !searching;
@@ -103,7 +103,7 @@ function DirectoryContent() {
     content = (
       <>
         <Breadcrumb crumbs={[{ label: "Direktori", onClick: root }, { label: "Perlu tindakan" }, { label: ACTION_META[aksi].label }, { label: scopeLabel }]} />
-        <ActionList kind={aksi} docs={scopedDocs} overview={overview} scope={scope} onOpen={openCategory} />
+        <ActionList kind={aksi} docs={scopedDocs} overview={overview} scope={scope} chapter={searchParams.get("bab")} onOpen={openCategory} />
       </>
     );
   } else if (gridLocation) {
@@ -143,7 +143,7 @@ function DirectoryContent() {
         onQuery={(q) => { setQuery(q); if (q.trim() && aksi) setParam({ aksi: null }); }}
         counts={counts}
         active={searching || tahunParam ? null : aksi}
-        onAction={(k) => { setQuery(""); setParam({ aksi: k, tahun: null }); }}
+        onAction={(k) => { setQuery(""); setParam({ aksi: k, tahun: null, bab: null }); }}
         scopeValue={scopeValue}
         scopeOptions={scopeOptions}
         onScope={(v) => setParam({ lokasi: v })}

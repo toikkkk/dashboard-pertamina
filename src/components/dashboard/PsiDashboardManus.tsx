@@ -7,8 +7,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ChevronRight, ChevronDown, FileClock, ArrowDownRight, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import type { DocumentItem } from "@/lib/domain/types";
-import { EXPIRING_WITHIN_DAYS, psiInsights } from "@/lib/domain/dashboard";
-import { useDocumentCategorySummary } from "@/lib/useDocumentCategories";
+import { EXPIRING_WITHIN_DAYS, completenessByChapter, completenessByLocation, psiInsights } from "@/lib/domain/dashboard";
+import { useDirectoryOverview, useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
@@ -446,81 +446,111 @@ function ComplianceTable({
 
 // ------------------------------------------------------------------ infografik
 
-const STATUS_COLORS = { berlaku: "#15803D", segera: "#B45309", lewat: "#DC2626" };
+const COMPLETENESS_COLORS = { ok: "#15803D", review: "#B45309", missing: "#E3A3A3" };
 
-// Komposisi status dokumen: donat + daftar angka yang bisa diklik ke daftar yang sama.
-function StatusDonut({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
-  const segera = insights.expiring.length;
-  const lewat = insights.overdue.length;
-  const berlaku = Math.max(0, insights.total - segera - lewat);
-  const items = [
-    { label: "Berlaku", count: berlaku, color: STATUS_COLORS.berlaku, href: "/directory" },
-    { label: "Berakhir ≤ 90 hari", count: segera, color: STATUS_COLORS.segera, href: `/directory?aksi=segera&lokasi=${encodeURIComponent(locationFilter)}` },
-    { label: "Kedaluwarsa", count: lewat, color: STATUS_COLORS.lewat, href: "/dilemma" },
-  ];
-  let acc = 0;
-  const stops = items
-    .filter((i) => i.count > 0)
-    .map((i) => {
-      const from = acc;
-      acc += (i.count / insights.total) * 100;
-      return `${i.color} ${from}% ${acc}%`;
-    });
+// Nama ringkas sub chapter untuk baris grafik: "B.1 Design & Technology" (label Excel semuanya "Sub Chapter B").
+function chapterShortName(ch: { key: string; title: string }): string {
+  const name = ch.title.replace(/^\d+\.\s*/, "").replace(/^Dokumen\s+/, "").replace(/\s*\(.*\)\s*$/, "");
+  return `${ch.key} ${name}`;
+}
+
+function CompletenessLegend() {
   return (
-    <SectionCard title="Status dokumen" className="span-4 insight-card" state={insights.total > 0 ? "ready" : "empty"} emptyLabel="status dokumen">
-      <div className="donut-breakdown">
-        <div className="donut" style={{ background: stops.length > 0 ? `conic-gradient(${stops.join(", ")})` : "#E9EEF0" }} role="img" aria-label={`Status ${insights.total} dokumen`}>
-          <div className="donut-hole"><strong>{insights.total}</strong><span>dokumen</span></div>
-        </div>
-        <div className="breakdown-list">
-          {items.map((item) => (
-            <Link key={item.label} href={item.href} className="insight-link-row">
-              <span className="breakdown-mark" style={{ background: item.color }} />
-              <span>{item.label}</span>
-              <b>{item.count}</b>
-              <small>{insights.total > 0 ? Math.round((item.count / insights.total) * 100) : 0}%</small>
-            </Link>
-          ))}
-        </div>
+    <div className="completeness-legend">
+      <span><i style={{ background: COMPLETENESS_COLORS.ok }} /> Terpenuhi</span>
+      <span><i style={{ background: COMPLETENESS_COLORS.review }} /> Perlu ditinjau</span>
+      <span><i style={{ background: COMPLETENESS_COLORS.missing }} /> Belum ada dokumen</span>
+    </div>
+  );
+}
+
+function StackedBar({ ok, review, missing }: { ok: number; review: number; missing: number }) {
+  const total = Math.max(1, ok + review + missing);
+  return (
+    <div className="stack-track" role="img" aria-label={`${ok} terpenuhi, ${review} perlu ditinjau, ${missing} belum ada dokumen`}>
+      <i style={{ width: `${(ok / total) * 100}%`, background: COMPLETENESS_COLORS.ok }} />
+      <i style={{ width: `${(review / total) * 100}%`, background: COMPLETENESS_COLORS.review }} />
+      <i style={{ width: `${(missing / total) * 100}%`, background: COMPLETENESS_COLORS.missing }} />
+    </div>
+  );
+}
+
+// Kelengkapan per Sub Chapter: bagian PSI mana yang paling bolong. Baris yang masih punya sub-dokumen
+// kosong bisa diklik ke daftar kosong di sub chapter itu.
+function ChapterCompleteness({ locationFilter, span }: { locationFilter: string; span: string }) {
+  const { overview } = useDirectoryOverview();
+  const scope = locationFilter === "ALL" ? null : locationFilter;
+  const byChapter = overview ? completenessByChapter(overview, scope) : null;
+  const rows = byChapter ? PSI_CHAPTERS.map((ch) => ({ ch, c: byChapter[ch.key] })).filter((r) => r.c && r.c.total > 0) : [];
+  const sum = rows.reduce((a, r) => ({ ok: a.ok + r.c.ok, total: a.total + r.c.total }), { ok: 0, total: 0 });
+  return (
+    <SectionCard
+      title="Kelengkapan per sub chapter"
+      className={`${span} insight-card`}
+      state={!overview ? "loading" : rows.length > 0 ? "ready" : "empty"}
+      emptyLabel="kelengkapan sub chapter"
+    >
+      <CompletenessLegend />
+      <div className="completeness-rows">
+        {rows.map(({ ch, c }) => {
+          const body = (
+            <>
+              <span className="completeness-name" title={ch.title}>{chapterShortName(ch)}</span>
+              <StackedBar ok={c.ok} review={c.review} missing={c.missing} />
+              <strong>{c.ok}<small>/{c.total}</small></strong>
+            </>
+          );
+          return c.missing > 0 ? (
+            <Link key={ch.key} href={`/directory?aksi=kosong&lokasi=${encodeURIComponent(locationFilter)}&bab=${encodeURIComponent(ch.key)}`} className="completeness-row insight-link-row">{body}</Link>
+          ) : (
+            <div key={ch.key} className="completeness-row">{body}</div>
+          );
+        })}
       </div>
+      <div className="completeness-foot">{sum.ok} dari {sum.total} sub-dokumen terpenuhi</div>
     </SectionCard>
   );
 }
 
-// Umur pembaruan dokumen berlaku: dua batang terakhir = daftar "Belum diperbarui > 12 bln".
-function AgeBars({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
-  const total = insights.ageBuckets.reduce((sum, b) => sum + b.count, 0);
-  const max = Math.max(1, ...insights.ageBuckets.map((b) => b.count));
-  const href = `/directory?aksi=stale&lokasi=${encodeURIComponent(locationFilter)}`;
+// Terminal yang paling perlu perhatian (kelengkapan terendah dulu). Hanya untuk tampilan semua terminal.
+function TerminalAttention() {
+  const { overview } = useDirectoryOverview();
+  const [all, setAll] = useState(false);
+  const rows = overview ? completenessByLocation(overview) : [];
+  const shown = all ? rows : rows.slice(0, 8);
   return (
-    <SectionCard title="Umur pembaruan" className="span-4 insight-card" state={total > 0 ? "ready" : "empty"} emptyLabel="umur pembaruan dokumen">
-      <div className="insight-bars">
-        {insights.ageBuckets.map((b) => {
-          const row = (
-            <>
-              <span>{b.label}</span>
-              <div className="insight-track"><i style={{ width: `${(b.count / max) * 100}%`, background: b.stale ? "#6D28D9" : "#0F3B59" }} /></div>
-              <strong>{b.count}</strong>
-            </>
-          );
-          return b.stale ? (
-            <Link key={b.key} href={href} className="insight-bar-row insight-link-row">{row}</Link>
-          ) : (
-            <div key={b.key} className="insight-bar-row">{row}</div>
-          );
-        })}
+    <SectionCard
+      title="Terminal yang perlu perhatian"
+      className="span-4 insight-card"
+      state={!overview ? "loading" : rows.length > 0 ? "ready" : "empty"}
+      emptyLabel="kelengkapan terminal"
+    >
+      <CompletenessLegend />
+      <div className="completeness-rows">
+        {shown.map((r) => (
+          <Link key={r.name} href={`/directory?location=${encodeURIComponent(r.name)}`} className="completeness-row insight-link-row">
+            <span className="completeness-name" title={r.name}>{r.name}</span>
+            <StackedBar ok={r.ok} review={r.review} missing={r.missing} />
+            <strong>{r.pct}<small>%</small></strong>
+          </Link>
+        ))}
       </div>
+      {rows.length > 8 && (
+        <button type="button" className="completeness-more" onClick={() => setAll((v) => !v)}>
+          {all ? "Tampilkan lebih sedikit" : `Tampilkan semua ${rows.length} terminal`}
+        </button>
+      )}
     </SectionCard>
   );
 }
 
 // Jadwal kedaluwarsa per tahun: beban kerja pembaruan ke depan.
-function ExpiryColumns({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
+function ExpiryColumns({ insights, locationFilter, span }: { insights: Insights; locationFilter: string; span: string }) {
   const max = Math.max(1, ...insights.expiryYears.map((e) => e.count));
   const total = insights.expiryYears.reduce((sum, e) => sum + e.count, 0);
   const toneColor = { lewat: "#DC2626", dekat: "#B45309", jauh: "#0F3B59" } as const;
   return (
-    <SectionCard title="Jadwal kedaluwarsa" className="span-4 insight-card" state={total > 0 ? "ready" : "empty"} emptyLabel="jadwal kedaluwarsa">
+    <SectionCard title="Jadwal kedaluwarsa" className={`${span} insight-card`} state={total > 0 ? "ready" : "empty"} emptyLabel="jadwal kedaluwarsa">
       <div className="insight-columns" aria-label="Jumlah dokumen yang berakhir per tahun, klik untuk membuka daftarnya">
         {insights.expiryYears.map((e) => {
           // "Lewat" memakai daftar Kedaluwarsa yang sudah ada; tahun lain membuka daftar per tahun.
@@ -564,9 +594,9 @@ export default function PsiDashboardManus({
     <div className="dashboard-content page-enter">
       <MetricGrid insights={insights} locationFilter={locationFilter} />
       <div className="content-grid insight-grid">
-        <StatusDonut insights={insights} locationFilter={locationFilter} />
-        <AgeBars insights={insights} locationFilter={locationFilter} />
-        <ExpiryColumns insights={insights} locationFilter={locationFilter} />
+        <ChapterCompleteness locationFilter={locationFilter} span={locationFilter === "ALL" ? "span-4" : "span-6"} />
+        {locationFilter === "ALL" && <TerminalAttention />}
+        <ExpiryColumns insights={insights} locationFilter={locationFilter} span={locationFilter === "ALL" ? "span-4" : "span-6"} />
       </div>
       <div className="content-grid content-grid-psi">
         <ExpiringList items={insights.expiring} />

@@ -100,23 +100,6 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
     .filter((x) => x.at > 0)
     .sort((a, b) => b.at - a.at);
 
-  // Umur pembaruan dokumen yang masih berlaku (dasar infografik dashboard). Batas 12 bulan sama dengan
-  // `stale`, jadi dua bucket terakhir berjumlah persis sama dengan daftar "Belum diperbarui".
-  const ageBuckets = [
-    { key: "u3", label: "≤ 3 bln", maxDays: 90, stale: false, count: 0 },
-    { key: "u6", label: "3–6 bln", maxDays: 180, stale: false, count: 0 },
-    { key: "u12", label: "6–12 bln", maxDays: STALE_AFTER_DAYS, stale: false, count: 0 },
-    { key: "u24", label: "1–2 thn", maxDays: 730, stale: true, count: 0 },
-    { key: "o24", label: "> 2 thn", maxDays: Infinity, stale: true, count: 0 },
-  ];
-  for (const doc of live) {
-    const last = lastUpdateOf(doc);
-    if (last <= 0) continue;
-    const ageDays = (nowMs - last) / DAY;
-    const b = ageBuckets.find((x) => ageDays <= x.maxDays);
-    if (b) b.count++;
-  }
-
   // Jadwal kedaluwarsa: berapa dokumen berakhir per tahun (yang sudah lewat dihitung terpisah).
   const thisYear = new Date(nowMs).getFullYear();
   const expiryYears: { key: string; label: string; count: number; tone: "lewat" | "dekat" | "jauh" }[] = [
@@ -138,7 +121,6 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
     expiring,
     stale,
     recent,
-    ageBuckets,
     expiryYears,
     total: docs.length,
     approved: live.filter((d) => d.status === "Approved").length,
@@ -158,6 +140,48 @@ export function docsByExpiryBucket(docs: DocumentItem[], key: string, nowMs: num
       return key === "later" ? y > thisYear + 4 : String(y) === key;
     })
     .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
+}
+
+// Kelengkapan sub-dokumen PSI (53 item Excel x terminal) dari ringkasan Direktori. Satu sel = satu sub-dokumen di
+// satu terminal: terpenuhi (ada dan berlaku), perlu ditinjau (ada tapi lewat siklus), atau kosong (belum ada dokumen).
+export interface CompletenessOverview {
+  locations: { name: string; type: string }[];
+  items: { name: string; chapter: string }[];
+  cells: Record<string, Record<string, { n: number; s: string }>>;
+}
+export interface CompletenessCount {
+  ok: number;
+  review: number;
+  missing: number;
+  total: number;
+}
+const zeroCount = (): CompletenessCount => ({ ok: 0, review: 0, missing: 0, total: 0 });
+function addCell(c: CompletenessCount, cell: { n: number; s: string } | undefined) {
+  c.total++;
+  if (!cell || cell.n === 0) c.missing++;
+  else if (cell.s === "ok") c.ok++;
+  else c.review++;
+}
+
+// Per Sub Chapter; `scope` = satu terminal, atau null untuk semua terminal.
+export function completenessByChapter(o: CompletenessOverview, scope: string | null): Record<string, CompletenessCount> {
+  const out: Record<string, CompletenessCount> = {};
+  for (const loc of o.locations) {
+    if (scope && loc.name !== scope) continue;
+    for (const it of o.items) addCell((out[it.chapter] ??= zeroCount()), o.cells[loc.name]?.[it.name]);
+  }
+  return out;
+}
+
+// Per terminal, yang paling bolong dulu.
+export function completenessByLocation(o: CompletenessOverview): (CompletenessCount & { name: string; type: string; pct: number })[] {
+  return o.locations
+    .map((loc) => {
+      const c = zeroCount();
+      for (const it of o.items) addCell(c, o.cells[loc.name]?.[it.name]);
+      return { name: loc.name, type: loc.type, ...c, pct: c.total > 0 ? Math.round((c.ok / c.total) * 100) : 0 };
+    })
+    .sort((a, b) => a.pct - b.pct || b.missing - a.missing || a.name.localeCompare(b.name));
 }
 
 // ---------------------------------------------------------------- MOC

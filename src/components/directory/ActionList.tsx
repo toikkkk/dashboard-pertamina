@@ -86,7 +86,7 @@ function DocRows({ rows }: { rows: Row[] }) {
   );
 }
 
-function EmptyCells({ overview, scope, onOpen }: { overview: DirectoryOverview; scope: string[] | null; onOpen: (location: string, categoryId: string) => void }) {
+function EmptyCells({ overview, scope, chapter, onOpen }: { overview: DirectoryOverview; scope: string[] | null; chapter: string | null; onOpen: (location: string, categoryId: string) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const groups = useMemo(
     () =>
@@ -94,11 +94,11 @@ function EmptyCells({ overview, scope, onOpen }: { overview: DirectoryOverview; 
         .filter((l) => !scope || scope.includes(l.name))
         .map((l) => ({
           name: l.name,
-          empty: overview.items.filter((it) => (overview.cells[l.name]?.[it.name]?.n ?? 0) === 0),
+          empty: overview.items.filter((it) => (!chapter || it.chapter === chapter) && (overview.cells[l.name]?.[it.name]?.n ?? 0) === 0),
         }))
         .filter((g) => g.empty.length > 0)
         .sort((a, b) => b.empty.length - a.empty.length || a.name.localeCompare(b.name)),
-    [overview, scope]
+    [overview, scope, chapter]
   );
   if (groups.length === 0) return <p className="py-14 text-center text-[13px] text-[#9a9da0]">Semua sub-dokumen sudah terisi.</p>;
   return (
@@ -150,12 +150,14 @@ export default function ActionList({
   docs,
   overview,
   scope,
+  chapter = null,
   onOpen,
 }: {
   kind: ActionKind;
   docs: DocumentItem[];
   overview: DirectoryOverview | null;
   scope: string[] | null;
+  chapter?: string | null;
   onOpen: (location: string, categoryId: string) => void;
 }) {
   const rows = useMemo(() => (kind === "kosong" ? [] : rowsFor(kind, docs)), [kind, docs]);
@@ -165,10 +167,11 @@ export default function ActionList({
       <h2 className="font-heading text-[16px] font-bold text-[#0F172A] mb-3 flex items-center gap-2">
         <span className="w-2.5 h-[3px] rounded-full" style={{ background: meta.color }} aria-hidden />
         {meta.label}
+        {kind === "kosong" && chapter && <span className="font-normal text-[#6b6e72]">· {PSI_CHAPTERS.find((c) => c.key === chapter)?.title ?? chapter}</span>}
         {kind !== "kosong" && <span className="font-mono text-[12px] font-normal text-[#6b6e72]">{rows.length}</span>}
       </h2>
       {kind === "kosong" ? (
-        overview ? <EmptyCells overview={overview} scope={scope} onOpen={onOpen} /> : <p className="py-14 text-center text-[13px] text-[#9a9da0]">Memuat…</p>
+        overview ? <EmptyCells overview={overview} scope={scope} chapter={chapter} onOpen={onOpen} /> : <p className="py-14 text-center text-[13px] text-[#9a9da0]">Memuat…</p>
       ) : rows.length === 0 ? (
         <p className="py-14 text-center text-[13px] text-[#9a9da0]">Tidak ada dokumen dalam kategori ini.</p>
       ) : (
