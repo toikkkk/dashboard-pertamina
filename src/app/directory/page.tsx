@@ -112,6 +112,7 @@ function DirectoryContent() {
         location={gridLocation}
         canWrite={activeUser.isRegionalAdmin || activeUser.location === gridLocation}
         categoryId={searchParams.get("category")}
+        focusChapter={searchParams.get("bab")}
         onSelectCategory={(id) => setParam({ category: id })}
         baseCrumbs={[{ label: "Direktori", onClick: root }]}
       />
@@ -123,7 +124,7 @@ function DirectoryContent() {
       <>
         <RecentAndFavorites />
         <Breadcrumb crumbs={[{ label: "Direktori" }, { label: "Matriks kepatuhan" }]} />
-        <ComplianceMatrix overview={overview} scope={null} onOpen={openCategory} onOpenLocation={openLocation} />
+        <ComplianceMatrix overview={overview} scope={null} onOpen={openCategory} onOpenLocation={openLocation} focusChapter={searchParams.get("bab")} />
       </>
     );
   } else {

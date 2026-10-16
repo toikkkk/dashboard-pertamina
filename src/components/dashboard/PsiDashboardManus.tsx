@@ -475,8 +475,8 @@ function StackedBar({ ok, review, missing }: { ok: number; review: number; missi
   );
 }
 
-// Kelengkapan per Sub Chapter: bagian PSI mana yang paling bolong. Baris yang masih punya sub-dokumen
-// kosong bisa diklik ke daftar kosong di sub chapter itu.
+// Kelengkapan per Sub Chapter: bagian PSI mana yang paling bolong. Tiap baris bisa diklik untuk masuk ke
+// isi sub chapter itu (semua sub-dokumennya, bukan hanya yang kosong).
 function ChapterCompleteness({ locationFilter, span }: { locationFilter: string; span: string }) {
   const { overview } = useDirectoryOverview();
   const scope = locationFilter === "ALL" ? null : locationFilter;
@@ -500,10 +500,13 @@ function ChapterCompleteness({ locationFilter, span }: { locationFilter: string;
               <strong>{c.ok}<small>/{c.total}</small></strong>
             </>
           );
-          return c.missing > 0 ? (
-            <Link key={ch.key} href={`/directory?aksi=kosong&lokasi=${encodeURIComponent(locationFilter)}&bab=${encodeURIComponent(ch.key)}`} className="completeness-row insight-link-row">{body}</Link>
-          ) : (
-            <div key={ch.key} className="completeness-row">{body}</div>
+          // Semua terminal: Matriks dengan sub chapter ini terbuka. Satu terminal: kartu sub-dokumen terminal itu
+          // pada sub chapter ini.
+          const href = scope
+            ? `/directory?location=${encodeURIComponent(scope)}&bab=${encodeURIComponent(ch.key)}`
+            : `/directory?v=matriks&bab=${encodeURIComponent(ch.key)}`;
+          return (
+            <Link key={ch.key} href={href} className="completeness-row insight-link-row">{body}</Link>
           );
         })}
       </div>

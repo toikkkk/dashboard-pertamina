@@ -3,7 +3,7 @@
 // Matriks kepatuhan: 53 sub-dokumen Excel (baris, dikelompokkan per cluster) × lokasi
 // (kolom). Tiap sel: ✅ berlaku, 🟡 kedaluwarsa/perlu tinjau, ● belum ada dokumen.
 // Klik sel membuka sub-dokumen itu di lokasi tersebut; klik judul kolom membuka lokasinya.
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
 import type { DirectoryOverview } from "@/lib/useDocumentCategories";
@@ -38,13 +38,26 @@ export default function ComplianceMatrix({
   scope,
   onOpen,
   onOpenLocation,
+  focusChapter = null,
 }: {
   overview: DirectoryOverview;
   scope: string[] | null;
   onOpen: (location: string, categoryId: string) => void;
   onOpenLocation: (location: string) => void;
+  /** Sub chapter yang dibuka; sub chapter lain ditutup (tujuan klik dari dashboard). */
+  focusChapter?: string | null;
 }) {
-  const [closed, setClosed] = useState<Set<string>>(new Set());
+  const focusValid = focusChapter && PSI_CHAPTERS.some((c) => c.key === focusChapter) ? focusChapter : null;
+  const [closed, setClosed] = useState<Set<string>>(
+    () => new Set(focusValid ? PSI_CHAPTERS.filter((c) => c.key !== focusValid).map((c) => c.key) : [])
+  );
+  const focusRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (focusValid) setClosed(new Set(PSI_CHAPTERS.filter((c) => c.key !== focusValid).map((c) => c.key)));
+  }, [focusValid]);
+  useEffect(() => {
+    if (focusValid) focusRef.current?.scrollIntoView({ block: "nearest" });
+  }, [focusValid]);
   const cols = overview.locations
     .filter((l) => !scope || scope.includes(l.name))
     .sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type) || a.name.localeCompare(b.name));
@@ -89,7 +102,7 @@ export default function ComplianceMatrix({
               const isClosed = closed.has(ch.key);
               return (
                 <React.Fragment key={ch.key}>
-                  <tr className="cursor-pointer bg-[#F2F5F7] hover:bg-[#EAEFF2]" onClick={() => toggle(ch.key)}>
+                  <tr ref={ch.key === focusValid ? focusRef : undefined} className="cursor-pointer bg-[#F2F5F7] hover:bg-[#EAEFF2]" onClick={() => toggle(ch.key)}>
                     <td colSpan={cols.length + 2} className="sticky left-0 px-3 py-2 border-b border-[#E2E8EB]">
                       <span className="inline-flex items-center gap-1.5 font-bold text-[#0F172A]">
                         {isClosed ? <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.2} /> : <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.2} />}

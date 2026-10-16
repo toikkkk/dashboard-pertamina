@@ -742,9 +742,12 @@ export default function DirectoryCategoryGrid({
   categoryId,
   onSelectCategory,
   baseCrumbs,
+  focusChapter = null,
 }: {
   location: string;
   canWrite: boolean;
+  /** Sub chapter yang digulir ke tampilan (tujuan klik dari dashboard). */
+  focusChapter?: string | null;
   /** Sub-dokumen yang sedang dibuka (dari URL); null = tampilan daftar sub-dokumen. */
   categoryId: string | null;
   onSelectCategory: (id: string | null) => void;
@@ -753,6 +756,10 @@ export default function DirectoryCategoryGrid({
 }) {
   const { categories, isLoading, mutate } = useDocumentCategories(location);
   const [openTile, setOpenTile] = useState<CategoryTile | null>(null);
+  useEffect(() => {
+    if (!focusChapter || isLoading) return;
+    document.getElementById(`bab-${focusChapter}`)?.scrollIntoView({ block: "start" });
+  }, [focusChapter, isLoading, categories.length]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const openUpload = (tile: CategoryTile, files: File[] = []) => {
     setPendingFiles(files);
@@ -810,7 +817,7 @@ export default function DirectoryCategoryGrid({
         const items = categories.filter((c) => c.chapter === ch.key);
         if (items.length === 0) return null;
         return (
-          <section key={ch.key} className="mt-8 first:mt-0">
+          <section key={ch.key} id={`bab-${ch.key}`} className="mt-8 first:mt-0 scroll-mt-4">
             <ChapterHeading label={ch.label} title={ch.title} count={items.filter((c) => c.no != null && c.documents.length > 0).length} total={items.filter((c) => c.no != null).length} />
             <div className={grid}>
               {items.map((c) => (
