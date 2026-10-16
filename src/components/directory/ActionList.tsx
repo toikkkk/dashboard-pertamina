@@ -7,7 +7,7 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import type { DocumentItem } from "@/lib/domain/types";
-import { psiInsights } from "@/lib/domain/dashboard";
+import { docsByExpiryBucket, psiInsights } from "@/lib/domain/dashboard";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
 import type { DirectoryOverview } from "@/lib/useDocumentCategories";
 
@@ -174,6 +174,38 @@ export default function ActionList({
       ) : (
         <DocRows rows={rows} />
       )}
+    </div>
+  );
+}
+
+// Daftar dokumen yang berakhir pada satu tahun (tujuan klik kolom "Jadwal kedaluwarsa" di dashboard).
+export function ExpiryYearList({ bucket, docs }: { bucket: string; docs: DocumentItem[] }) {
+  const now = Date.now();
+  const thisYear = new Date(now).getFullYear();
+  const rows = useMemo(
+    () =>
+      docsByExpiryBucket(docs, bucket, now).map((d) => {
+        const daysLeft = Math.ceil((new Date(`${d.expiryDate}T00:00:00`).getTime() - now) / 86_400_000);
+        return {
+          id: d.id,
+          title: d.title,
+          path: `${d.location}${d.categoryName ? ` › ${d.categoryName}` : ""}`,
+          note: `Berakhir ${fmtDate(d.expiryDate)} · ${daysLeft} hari lagi`,
+          noteColor: daysLeft <= 90 ? "#B45309" : "#0F3B59",
+        };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bucket, docs]
+  );
+  const label = bucket === "later" ? `Berakhir ${thisYear + 5} ke atas` : `Berakhir tahun ${bucket}`;
+  return (
+    <div>
+      <h2 className="font-heading text-[16px] font-bold text-[#0F172A] mb-3 flex items-center gap-2">
+        <span className="w-2.5 h-[3px] rounded-full" style={{ background: "#0F3B59" }} aria-hidden />
+        {label}
+        <span className="font-mono text-[12px] font-normal text-[#6b6e72]">{rows.length}</span>
+      </h2>
+      {rows.length === 0 ? <p className="py-14 text-center text-[13px] text-[#9a9da0]">Tidak ada dokumen yang berakhir pada periode ini.</p> : <DocRows rows={rows} />}
     </div>
   );
 }

@@ -515,20 +515,31 @@ function AgeBars({ insights, locationFilter }: { insights: Insights; locationFil
 }
 
 // Jadwal kedaluwarsa per tahun: beban kerja pembaruan ke depan.
-function ExpiryColumns({ insights }: { insights: Insights }) {
+function ExpiryColumns({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
   const max = Math.max(1, ...insights.expiryYears.map((e) => e.count));
   const total = insights.expiryYears.reduce((sum, e) => sum + e.count, 0);
   const toneColor = { lewat: "#DC2626", dekat: "#B45309", jauh: "#0F3B59" } as const;
   return (
     <SectionCard title="Jadwal kedaluwarsa" className="span-4 insight-card" state={total > 0 ? "ready" : "empty"} emptyLabel="jadwal kedaluwarsa">
-      <div className="insight-columns" role="img" aria-label="Jumlah dokumen yang berakhir per tahun">
-        {insights.expiryYears.map((e) => (
-          <div key={e.key} className="insight-column">
-            <strong>{e.count}</strong>
-            <div className="insight-column-track"><i style={{ height: `${Math.max(e.count > 0 ? 4 : 0, (e.count / max) * 100)}%`, background: toneColor[e.tone] }} /></div>
-            <span>{e.label}</span>
-          </div>
-        ))}
+      <div className="insight-columns" aria-label="Jumlah dokumen yang berakhir per tahun, klik untuk membuka daftarnya">
+        {insights.expiryYears.map((e) => {
+          // "Lewat" memakai daftar Kedaluwarsa yang sudah ada; tahun lain membuka daftar per tahun.
+          const href = e.tone === "lewat"
+            ? `/directory?aksi=kedaluwarsa&lokasi=${encodeURIComponent(locationFilter)}`
+            : `/directory?tahun=${e.key}&lokasi=${encodeURIComponent(locationFilter)}`;
+          const body = (
+            <>
+              <strong>{e.count}</strong>
+              <div className="insight-column-track"><i style={{ height: `${Math.max(e.count > 0 ? 4 : 0, (e.count / max) * 100)}%`, background: toneColor[e.tone] }} /></div>
+              <span>{e.label}</span>
+            </>
+          );
+          return e.count > 0 ? (
+            <Link key={e.key} href={href} className="insight-column insight-column-link" aria-label={`${e.label}: ${e.count} dokumen`}>{body}</Link>
+          ) : (
+            <div key={e.key} className="insight-column">{body}</div>
+          );
+        })}
       </div>
     </SectionCard>
   );
@@ -555,7 +566,7 @@ export default function PsiDashboardManus({
       <div className="content-grid insight-grid">
         <StatusDonut insights={insights} locationFilter={locationFilter} />
         <AgeBars insights={insights} locationFilter={locationFilter} />
-        <ExpiryColumns insights={insights} />
+        <ExpiryColumns insights={insights} locationFilter={locationFilter} />
       </div>
       <div className="content-grid content-grid-psi">
         <ExpiringList items={insights.expiring} />

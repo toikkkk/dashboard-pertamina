@@ -145,6 +145,21 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   };
 }
 
+// Dokumen yang masih berlaku dan berakhir pada tahun tertentu (kunci = "2026", "2027", ... atau "later" untuk
+// tahun ke-6 dan sesudahnya). Dipakai kolom "Jadwal kedaluwarsa" dan daftar tujuannya di Direktori, supaya angka
+// di kolom selalu sama dengan jumlah baris daftar.
+export function docsByExpiryBucket(docs: DocumentItem[], key: string, nowMs: number): DocumentItem[] {
+  const thisYear = new Date(nowMs).getFullYear();
+  return docs
+    .filter((d) => !isDocOverdue(d))
+    .filter((d) => {
+      const y = new Date(d.expiryDate + "T00:00:00").getFullYear();
+      if (Number.isNaN(y)) return false;
+      return key === "later" ? y > thisYear + 4 : String(y) === key;
+    })
+    .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
+}
+
 // ---------------------------------------------------------------- MOC
 
 export type MocAttentionKind = "mine" | "sla" | "temp" | "waiting";

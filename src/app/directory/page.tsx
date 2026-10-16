@@ -13,7 +13,7 @@ import DirectoryToolbar from "@/components/directory/DirectoryToolbar";
 import LocationOverview from "@/components/directory/LocationOverview";
 import ComplianceMatrix from "@/components/directory/ComplianceMatrix";
 import SearchResults from "@/components/directory/SearchResults";
-import ActionList, { ACTION_META, type ActionKind } from "@/components/directory/ActionList";
+import ActionList, { ACTION_META, ExpiryYearList, type ActionKind } from "@/components/directory/ActionList";
 
 const ACTIONS: ActionKind[] = ["kedaluwarsa", "segera", "stale", "kosong"];
 
@@ -30,6 +30,9 @@ function DirectoryContent() {
   const aksiParam = searchParams.get("aksi");
   const aksi = (ACTIONS as string[]).includes(aksiParam ?? "") ? (aksiParam as ActionKind) : null;
   const tab = searchParams.get("v") === "matriks" ? "matriks" : "lokasi";
+  // Tujuan klik kolom "Jadwal kedaluwarsa" di dashboard: daftar dokumen yang berakhir pada satu tahun.
+  const tahunRaw = searchParams.get("tahun");
+  const tahunParam = tahunRaw && (tahunRaw === "later" || /^\d{4}$/.test(tahunRaw)) ? tahunRaw : null;
 
   const sourceDocs = allDocuments; // pencarian & ekspor selalu lintas lokasi
   const { overview } = useDirectoryOverview();
@@ -74,12 +77,12 @@ function DirectoryContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopedDocs, overview, scopeValue]);
 
-  const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null });
-  const openLocation = (location: string) => setParam({ location, category: null, aksi: null });
-  const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null }); };
+  const openCategory = (location: string, categoryId: string) => setParam({ location, category: categoryId, aksi: null, tahun: null });
+  const openLocation = (location: string) => setParam({ location, category: null, aksi: null, tahun: null });
+  const root = () => { setQuery(""); setParam({ location: null, category: null, aksi: null, tahun: null }); };
 
   const searching = query.trim().length > 0;
-  const showTabs = !gridLocation && !aksi && !searching;
+  const showTabs = !gridLocation && !aksi && !tahunParam && !searching;
 
   let content: React.ReactNode;
   if (searching) {
@@ -87,6 +90,13 @@ function DirectoryContent() {
       <>
         <Breadcrumb crumbs={[{ label: "Direktori", onClick: () => setQuery("") }, { label: "Hasil pencarian" }]} />
         <SearchResults query={query} docs={sourceDocs} />
+      </>
+    );
+  } else if (tahunParam) {
+    content = (
+      <>
+        <Breadcrumb crumbs={[{ label: "Direktori", onClick: root }, { label: "Jadwal kedaluwarsa" }, { label: tahunParam === "later" ? "Tahun-tahun berikutnya" : tahunParam }, { label: scopeLabel }]} />
+        <ExpiryYearList bucket={tahunParam} docs={scopedDocs} />
       </>
     );
   } else if (aksi) {
@@ -132,8 +142,8 @@ function DirectoryContent() {
         query={query}
         onQuery={(q) => { setQuery(q); if (q.trim() && aksi) setParam({ aksi: null }); }}
         counts={counts}
-        active={searching ? null : aksi}
-        onAction={(k) => { setQuery(""); setParam({ aksi: k }); }}
+        active={searching || tahunParam ? null : aksi}
+        onAction={(k) => { setQuery(""); setParam({ aksi: k, tahun: null }); }}
         scopeValue={scopeValue}
         scopeOptions={scopeOptions}
         onScope={(v) => setParam({ lokasi: v })}
