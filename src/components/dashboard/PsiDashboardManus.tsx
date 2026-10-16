@@ -10,6 +10,7 @@ import type { DocumentItem } from "@/lib/domain/types";
 import { EXPIRING_WITHIN_DAYS, completenessByChapter, completenessByLocation, psiInsights } from "@/lib/domain/dashboard";
 import { useDirectoryOverview, useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
+import ReviewButton from "@/components/ReviewButton";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
 import { PSI_CHAPTERS, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
@@ -49,7 +50,7 @@ function MetricGrid({ insights, locationFilter }: { insights: Insights; location
     { label: "Approved", value: insights.approved, percentage: pct(insights.approved), severity: "baik", note: "masih berlaku", href: "/directory" },
     { label: "Kedaluwarsa", value: insights.overdue.length, percentage: pct(insights.overdue.length), severity: "kritis", note: "melewati 5 tahun", href: "/dilemma" },
     { label: "Berakhir ≤ 90 hari", value: insights.expiring.length, percentage: pct(insights.expiring.length), severity: "peringatan", note: "perlu dijadwalkan", href: directoryHref("segera") },
-    { label: "Belum diperbarui > 12 bln", value: insights.stale.length, percentage: pct(insights.stale.length), severity: "revisi", note: "perlu ditinjau", href: directoryHref("stale") },
+    { label: "Perlu evaluasi tahunan", value: insights.stale.length, percentage: pct(insights.stale.length), severity: "revisi", note: "belum ditinjau > 12 bln", href: directoryHref("stale") },
   ];
   return (
     <div className="metric-grid">
@@ -127,27 +128,33 @@ function StaleList({ items }: { items: Insights["stale"] }) {
   const shown = items.slice(0, 5);
   return (
     <SectionCard
-      title="Belum diperbarui > 12 bulan"
+      title="Perlu evaluasi tahunan"
       action={items.length > 5 ? <button type="button" onClick={() => setModalOpen(true)} className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></button> : undefined}
       className="span-4"
       state={shown.length > 0 ? "ready" : "empty"}
-      emptyLabel="dokumen yang belum diperbarui"
+      emptyLabel="dokumen yang perlu evaluasi tahunan"
     >
       <div className="list-stack compact-list">
-        {shown.map(({ doc, lastUpdate, months }) => (
-          <Link className="stale-row" key={doc.id} href={`/document/${doc.id}`}>
-            <div className="stale-mark"><ArrowDownRight className="h-3.5 w-3.5" /></div>
-            <div className="row-main"><strong>{doc.title}</strong><span>{doc.location} <i /> {new Date(lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-            <span className="months-badge">{months} bln</span>
-          </Link>
-        ))}
+        {shown.map(({ doc, lastUpdate, months }) => {
+          const tone = staleTone(months);
+          return (
+            <div className="stale-row" key={doc.id}>
+              <Link className="stale-link" href={`/document/${doc.id}`}>
+                <div className="stale-mark" style={{ color: tone.color, borderLeftColor: tone.color }}><ArrowDownRight className="h-3.5 w-3.5" /></div>
+                <div className="row-main"><strong>{doc.title}</strong><span>{doc.location} <i /> {new Date(lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+                <span className="months-badge" style={{ color: tone.color, background: tone.bg }}>{months} bln</span>
+              </Link>
+              <ReviewButton docId={doc.id} location={doc.location} compact />
+            </div>
+          );
+        })}
       </div>
       <DashboardListModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Belum Diperbarui > 12 Bulan"
+        title="Perlu Evaluasi Tahunan"
         items={items}
-        emptyLabel="dokumen yang belum diperbarui"
+        emptyLabel="dokumen yang perlu evaluasi tahunan"
         renderTile={({ doc, lastUpdate, months }) => (
           <DashboardTile href={`/document/${doc.id}`} accentColor="#6D28D9" title={doc.title}>
             <div className="text-[11px] text-[#3a3d40] font-semibold">{doc.location}</div>
@@ -159,6 +166,13 @@ function StaleList({ items }: { items: Insights["stale"] }) {
       />
     </SectionCard>
   );
+}
+
+// Makin lama belum ditinjau makin mendesak: 12–23 bln kuning, 24–47 bln oranye, 48 bln ke atas merah.
+function staleTone(months: number): { color: string; bg: string } {
+  if (months >= 48) return { color: "#DC2626", bg: "#FDE8E8" };
+  if (months >= 24) return { color: "#C2410C", bg: "#FFEDD5" };
+  return { color: "#B45309", bg: "#FFF3D9" };
 }
 
 function RecentUpdates({ items }: { items: Insights["recent"] }) {

@@ -6,6 +6,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import ReviewButton from "@/components/ReviewButton";
 import type { DocumentItem } from "@/lib/domain/types";
 import { docsByExpiryBucket, psiInsights } from "@/lib/domain/dashboard";
 import { PSI_CHAPTERS } from "@/lib/domain/psiSubChapters";
@@ -16,7 +17,7 @@ export type ActionKind = "kedaluwarsa" | "segera" | "stale" | "kosong";
 export const ACTION_META: Record<ActionKind, { label: string; color: string }> = {
   kedaluwarsa: { label: "Kedaluwarsa", color: "#DC2626" },
   segera: { label: "Berakhir ≤ 90 hari", color: "#B45309" },
-  stale: { label: "Belum diperbarui > 12 bln", color: "#6D28D9" },
+  stale: { label: "Perlu evaluasi tahunan", color: "#6D28D9" },
   kosong: { label: "Belum ada dokumen", color: "#6b6e72" },
 };
 
@@ -28,6 +29,9 @@ const PAGE = 50;
 
 interface Row {
   id: string;
+  location?: string;
+  /** Baris ini bisa ditandai "sudah ditinjau" (daftar evaluasi tahunan). */
+  reviewable?: boolean;
   title: string;
   path: string;
   note: string;
@@ -46,7 +50,15 @@ function rowsFor(kind: Exclude<ActionKind, "kosong">, docs: DocumentItem[]): Row
   if (kind === "segera") {
     return ins.expiring.map(({ doc, daysLeft }) => ({ id: doc.id, title: doc.title, path: path(doc), note: `Berakhir ${fmtDate(doc.expiryDate)} · ${daysLeft} hari lagi`, noteColor: daysLeft <= 30 ? "#DC2626" : "#B45309" }));
   }
-  return ins.stale.map(({ doc, lastUpdate, months }) => ({ id: doc.id, title: doc.title, path: path(doc), note: `Terbit ${fmtDate(new Date(lastUpdate).toISOString().slice(0, 10))} · ${months} bln lalu`, noteColor: "#6D28D9" }));
+  return ins.stale.map(({ doc, lastUpdate, months }) => ({
+    id: doc.id,
+    location: doc.location,
+    reviewable: true,
+    title: doc.title,
+    path: path(doc),
+    note: `Terakhir ${fmtDate(new Date(lastUpdate).toISOString().slice(0, 10))} · ${months} bln lalu`,
+    noteColor: months >= 48 ? "#DC2626" : months >= 24 ? "#C2410C" : "#B45309",
+  }));
 }
 
 function DocRows({ rows }: { rows: Row[] }) {
@@ -56,21 +68,23 @@ function DocRows({ rows }: { rows: Row[] }) {
     <>
       <div className="bg-white border border-[#D8E1E4] rounded-[14px] overflow-hidden">
         {rows.slice(0, shown).map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => router.push(`/document/${r.id}`)}
-            className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left border-b border-[#EEF2F4] last:border-b-0 hover:bg-[#F5F7F9] transition-colors duration-150"
-          >
-            <div className="min-w-0">
-              <div className="text-[13px] font-semibold text-[#0F172A] truncate">{r.title}</div>
-              <div className="text-[11px] text-[#6b6e72] truncate">{r.path}</div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[11px] font-mono tabular-nums" style={{ color: r.noteColor }}>{r.note}</span>
-              <ChevronRight className="w-4 h-4 text-[#c3c6c9]" strokeWidth={2} />
-            </div>
-          </button>
+          <div key={r.id} className="flex items-center gap-2 pr-3 border-b border-[#EEF2F4] last:border-b-0 hover:bg-[#F5F7F9] transition-colors duration-150">
+            <button
+              type="button"
+              onClick={() => router.push(`/document/${r.id}`)}
+              className="flex-1 min-w-0 flex items-center justify-between gap-3 px-4 py-2.5 text-left"
+            >
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-[#0F172A] truncate">{r.title}</div>
+                <div className="text-[11px] text-[#6b6e72] truncate">{r.path}</div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[11px] font-mono tabular-nums" style={{ color: r.noteColor }}>{r.note}</span>
+                <ChevronRight className="w-4 h-4 text-[#c3c6c9]" strokeWidth={2} />
+              </div>
+            </button>
+            {r.reviewable && r.location && <ReviewButton docId={r.id} location={r.location} compact />}
+          </div>
         ))}
       </div>
       {rows.length > shown && (

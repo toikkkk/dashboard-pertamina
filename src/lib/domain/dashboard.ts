@@ -1,7 +1,7 @@
 // Angka dan daftar untuk dashboard PSI dan MOC. Semuanya diturunkan dari data yang ada
 // (dokumen, riwayat, MOC); tidak ada angka bawaan. Fungsi murni: mudah diperiksa.
 import type { DocumentItem, HistoryItem, LastUpdateType } from "@/lib/domain/types";
-import { getLastUpdateType, isDocOverdue } from "@/lib/domain/rules";
+import { getLastUpdateType, isDocOverdue, isReviewEntry } from "@/lib/domain/rules";
 import {
   MOC_REVIEW_SLA_DAYS,
   MOC_STAGES,
@@ -64,6 +64,7 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   //    bukan tanggal dokumen), dan
   //  - "Revised" yang hanya memindahkan sub-kategori (bukan perubahan isi).
   const isRealUpdate = (h: HistoryItem): boolean => {
+    if (isReviewEntry(h)) return false; // tinjauan tahunan bukan pembaruan isi dokumen
     if (h.action === "Created") {
       const n = h.notes ?? "";
       return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi:");
@@ -77,7 +78,8 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
   // Pembaruan terakhir = yang paling baru antara tanggal terbit dokumen dan pembaruan
   // nyata di atas. TKO PSI meminta evaluasi tiap tahun.
   const lastUpdateOf = (d: DocumentItem): number => {
-    const times = d.history.filter(isRealUpdate).map((h) => parseTs(h.timestamp));
+    // Tinjauan tahunan ("Ditinjau:") ikut mengembalikan jam evaluasi walau bukan pembaruan isi.
+    const times = d.history.filter((h) => isRealUpdate(h) || isReviewEntry(h)).map((h) => parseTs(h.timestamp));
     return Math.max(parseTs(d.issueDate), ...times);
   };
   const stale = live

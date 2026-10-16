@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import ReviewButton from "@/components/ReviewButton";
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRouter } from "next/navigation";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
@@ -126,6 +127,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           </button>
           {canWrite && (
             <>
+              <ReviewButton docId={doc.id} location={doc.location} className="!py-[7px]" />
               <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
                 <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Ganti berkas
               </button>

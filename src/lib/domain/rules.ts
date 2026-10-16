@@ -7,13 +7,20 @@
 // file is the workflow-state half (who can act on what, given routing state).
 import { DocumentItem, HistoryItem, SimulatedUser, LastUpdateType } from "./types";
 
+// Penanda riwayat "dokumen sudah ditinjau" (evaluasi tahunan): aksi Revised dengan catatan berawalan ini. Bukan
+// pembaruan isi dokumen; hanya mencatat bahwa dokumen dicek dan masih valid.
+export const REVIEW_NOTE_PREFIX = "Ditinjau:";
+export function isReviewEntry(h: Pick<HistoryItem, "action" | "notes">): boolean {
+  return h.action === "Revised" && (h.notes ?? "").startsWith(REVIEW_NOTE_PREFIX);
+}
+
 // Poin #7 Klien (Dilema 5-Tahun): bedakan dokumen yang cuma "diperpanjang" (tanpa
 // perubahan teknis) dari yang benar "direvisi" (ada perubahan fasilitas/konten).
 // Dicari dari entri riwayat terakhir yang benar-benar berupa perubahan berkas/versi —
 // entri seperti Approved/Rejected/Forwarded dilewati karena bukan aksi update konten.
 export function getLastUpdateType(history: HistoryItem[]): LastUpdateType {
   const contentActions: HistoryItem['action'][] = ['Created', 'Extended Validity', 'Revised'];
-  const lastContentUpdate = [...history].reverse().find((h) => contentActions.includes(h.action));
+  const lastContentUpdate = [...history].reverse().find((h) => contentActions.includes(h.action) && !isReviewEntry(h));
 
   if (!lastContentUpdate || lastContentUpdate.action === 'Created') return 'Baru';
   if (lastContentUpdate.action === 'Extended Validity') return 'Diperpanjang';

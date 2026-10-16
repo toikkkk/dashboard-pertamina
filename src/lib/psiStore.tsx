@@ -54,6 +54,8 @@ interface PsiContextType {
   approveStep: (docId: string, stepOrder: number, comment?: string) => Promise<void>;
   rejectStep: (docId: string, stepOrder: number, comment: string) => Promise<void>;
   extendValidity: (docId: string, notes?: string) => Promise<void>;
+  /** Tandai dokumen sudah ditinjau (evaluasi tahunan) tanpa mengubah isi atau masa berlakunya. */
+  markReviewed: (docId: string, notes?: string) => Promise<void>;
   /** PATCHes /api/documents/:id/history/:historyId — Admin Regional only (enforced
    * server-side). Corrects a history entry's recorded date/actor/notes, e.g. for
    * documents migrated from the archive where "Created" was stamped with the
@@ -251,6 +253,11 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await mutate();
   };
 
+  const markReviewed = async (docId: string, notes?: string): Promise<void> => {
+    await fetchJson(`/api/documents/${docId}/review`, { method: "POST", body: JSON.stringify({ notes }) });
+    await mutate();
+  };
+
   const reviseDocument = async (docId: string, newVersion: string, newFileId: string, notes?: string): Promise<void> => {
     await fetchJson(`/api/documents/${docId}/revise`, { method: "POST", body: JSON.stringify({ newVersion, newFileId, notes }) });
     await mutate();
@@ -364,6 +371,7 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveStep,
         rejectStep,
         extendValidity,
+        markReviewed,
         reviseDocument,
         updateHistoryItem,
         addNewDocument,

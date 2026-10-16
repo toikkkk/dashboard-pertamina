@@ -44,6 +44,7 @@ const ACTION_LABEL: Record<string, { label: string; color: string }> = {
   "dokumen.dipindah": { label: "Dokumen dipindah", color: "#0F3B59" },
   "dokumen.direvisi": { label: "Dokumen direvisi", color: "#6D28D9" },
   "dokumen.diubah": { label: "Dokumen diubah", color: "#6D28D9" },
+  "dokumen.ditinjau": { label: "Dokumen ditinjau", color: "#0891B2" },
   "dokumen.dihapus": { label: "Dokumen ke Sampah", color: "#B45309" },
   "dokumen.dipulihkan": { label: "Dokumen dipulihkan", color: "#15803D" },
   "dokumen.dihapus_permanen": { label: "Dokumen dihapus permanen", color: "#DC2626" },

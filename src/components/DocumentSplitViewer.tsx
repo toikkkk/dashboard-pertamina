@@ -8,6 +8,7 @@ import DocumentMetadataFallback from "@/components/DocumentMetadataFallback";
 import StatusTag from "@/components/StatusTag";
 import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
 import { usePsi } from "@/lib/psiStore";
+import { isReviewEntry } from "@/lib/domain/rules";
 
 interface DocumentSplitViewerProps {
   document: DocumentItem;
@@ -276,7 +277,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                       ) : (
                         <div className="flex items-start justify-between gap-2.5 flex-wrap">
                           <div>
-                            <div className="text-[12.5px] font-bold text-[#3a3d40]">{ACTION_LABELS[h.action]}</div>
+                            <div className="text-[12.5px] font-bold text-[#3a3d40]">{isReviewEntry(h) ? "Ditinjau" : ACTION_LABELS[h.action]}</div>
                             <div className="text-[11px] text-[#9a9da0] mt-0.5">{h.timestamp} · {h.actorName} ({h.actorRole}) · {h.location}</div>
                             {h.notes && <div className="text-xs text-[#3a3d40] mt-1.5">{h.notes}</div>}
                           </div>
@@ -305,7 +306,7 @@ export default function DocumentSplitViewer({ document: doc }: DocumentSplitView
                         <div className="animate-fadeInUp">
                           <table className="w-full text-[11.5px] border-collapse mt-3 border-t border-[#eceded] pt-2">
                             <tbody>
-                              <tr><td className="py-[5px] pr-2 text-[#9a9da0] w-[34%]">Aksi</td><td className="py-[5px] font-semibold">{ACTION_LABELS[h.action]}</td></tr>
+                              <tr><td className="py-[5px] pr-2 text-[#9a9da0] w-[34%]">Aksi</td><td className="py-[5px] font-semibold">{isReviewEntry(h) ? "Ditinjau" : ACTION_LABELS[h.action]}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Versi Dokumen</td><td className="py-[5px] font-semibold">v{h.version}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Nama Berkas</td><td className="py-[5px] font-semibold">{h.fileName ?? "-"}</td></tr>
                               <tr><td className="py-[5px] pr-2 text-[#9a9da0]">Diproses Oleh</td><td className="py-[5px] font-semibold">{h.actorName}</td></tr>
