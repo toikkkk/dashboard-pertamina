@@ -5,12 +5,11 @@
 // getComplianceMetrics(), bukan data contoh.
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, ChevronDown, FileClock, ArrowDownRight, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { ArrowUpRight, ChevronRight, ChevronDown, FileClock, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import type { DocumentItem } from "@/lib/domain/types";
 import { EXPIRING_WITHIN_DAYS, completenessByChapter, completenessByLocation, psiInsights } from "@/lib/domain/dashboard";
 import { useDirectoryOverview, useDocumentCategorySummary } from "@/lib/useDocumentCategories";
 import SectionCard from "@/components/dashboard/SectionCard";
-import ReviewButton from "@/components/ReviewButton";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
 import { PSI_CHAPTERS, psiSubDocumentByName } from "@/lib/domain/psiSubChapters";
@@ -120,59 +119,102 @@ function ExpiringList({ items }: { items: Insights["expiring"] }) {
   );
 }
 
-function StaleList({ items }: { items: Insights["stale"] }) {
-  // Expand-di-tempat (versi sebelumnya) ternyata bikin scroll kepanjangan begitu
-  // datanya banyak (masukan langsung, 2026-10-01) — diganti popup + grid ubin +
-  // paginasi (DashboardListModal), bukan menumpuk makin panjang di halaman.
+// Terminal (atau sub-dokumen, bila satu terminal dipilih) yang paling mendesak: berapa dokumen sudah kedaluwarsa
+// (merah) dan berapa berakhir <= 90 hari (kuning), yang terparah di atas. Klik membuka daftar yang sesuai.
+function UrgentByGroup({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const shown = items.slice(0, 5);
+  const bySubDoc = locationFilter !== "ALL";
+  const now = Date.now();
+  type Group = { key: string; name: string; overdue: number; soon: number; oldestDays: number; nextDays: number; href: string };
+  const map = new Map<string, Group>();
+  const touch = (doc: DocumentItem): Group => {
+    const key = bySubDoc ? doc.categoryId ?? doc.categoryName ?? "-" : doc.location;
+    let g = map.get(key);
+    if (!g) {
+      const name = bySubDoc ? doc.categoryName ?? "Tanpa sub-dokumen" : doc.location;
+      const href = bySubDoc
+        ? doc.categoryId
+          ? `/directory?location=${encodeURIComponent(doc.location)}&category=${encodeURIComponent(doc.categoryId)}`
+          : `/directory?location=${encodeURIComponent(doc.location)}`
+        : `/directory?aksi=kedaluwarsa&lokasi=${encodeURIComponent(doc.location)}`;
+      g = { key, name, overdue: 0, soon: 0, oldestDays: 0, nextDays: Infinity, href };
+      map.set(key, g);
+    }
+    return g;
+  };
+  for (const doc of insights.overdue) {
+    const g = touch(doc);
+    g.overdue++;
+    const days = Math.floor((now - new Date(doc.expiryDate + "T00:00:00").getTime()) / 86_400_000);
+    if (days > g.oldestDays) g.oldestDays = days;
+  }
+  for (const { doc, daysLeft } of insights.expiring) {
+    const g = touch(doc);
+    g.soon++;
+    if (daysLeft < g.nextDays) g.nextDays = daysLeft;
+  }
+  const rows = Array.from(map.values()).sort((a, b) => b.overdue - a.overdue || b.soon - a.soon || a.name.localeCompare(b.name));
+  const shown = rows.slice(0, 7);
+  const max = Math.max(1, ...rows.map((r) => r.overdue + r.soon));
+  const age = (days: number) => (days < 60 ? `${days} hari` : `${Math.round(days / 30.4)} bln`);
   return (
     <SectionCard
-      title="Perlu evaluasi tahunan"
-      action={items.length > 5 ? <button type="button" onClick={() => setModalOpen(true)} className="card-action">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></button> : undefined}
+      title={bySubDoc ? "Sub-dokumen paling mendesak" : "Terminal paling mendesak"}
       className="span-4"
-      state={shown.length > 0 ? "ready" : "empty"}
-      emptyLabel="dokumen yang perlu evaluasi tahunan"
+      state={rows.length > 0 ? "ready" : "empty"}
+      emptyLabel="dokumen mendesak"
     >
-      <div className="list-stack compact-list">
-        {shown.map(({ doc, lastUpdate, months }) => {
-          const tone = staleTone(months);
-          return (
-            <div className="stale-row" key={doc.id}>
-              <Link className="stale-link" href={`/document/${doc.id}`}>
-                <div className="stale-mark" style={{ color: tone.color, borderLeftColor: tone.color }}><ArrowDownRight className="h-3.5 w-3.5" /></div>
-                <div className="row-main"><strong>{doc.title}</strong><span>{doc.location} <i /> {new Date(lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-                <span className="months-badge" style={{ color: tone.color, background: tone.bg }}>{months} bln</span>
-              </Link>
-              <ReviewButton docId={doc.id} location={doc.location} compact />
-            </div>
-          );
-        })}
+      <div className="completeness-legend">
+        <span><i style={{ background: "#DC2626" }} /> Kedaluwarsa</span>
+        <span><i style={{ background: "#B45309" }} /> Berakhir ≤ 90 hari</span>
       </div>
+      <div className="urgent-rows">
+        {shown.map((r) => (
+          <Link key={r.key} href={r.href} className="urgent-row insight-link-row">
+            <div className="urgent-name">
+              <strong title={r.name}>{r.name}</strong>
+              <span>
+                {r.overdue > 0 ? `tertua lewat ${age(r.oldestDays)}` : `berakhir ${r.nextDays} hari lagi`}
+              </span>
+            </div>
+            <div className="stack-track">
+              <i style={{ width: `${(r.overdue / max) * 100}%`, background: "#DC2626" }} />
+              <i style={{ width: `${(r.soon / max) * 100}%`, background: "#B45309" }} />
+            </div>
+            <div className="urgent-count">
+              {r.overdue > 0 && <b style={{ color: "#DC2626" }}>{r.overdue}</b>}
+              {r.soon > 0 && <b style={{ color: "#B45309" }}>{r.soon}</b>}
+            </div>
+          </Link>
+        ))}
+      </div>
+      {rows.length > 7 && (
+        <button type="button" className="completeness-more" onClick={() => setModalOpen(true)}>
+          Lihat semua {rows.length} {bySubDoc ? "sub-dokumen" : "terminal"}
+        </button>
+      )}
       <DashboardListModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Perlu Evaluasi Tahunan"
-        items={items}
-        emptyLabel="dokumen yang perlu evaluasi tahunan"
-        renderTile={({ doc, lastUpdate, months }) => (
-          <DashboardTile href={`/document/${doc.id}`} accentColor="#6D28D9" title={doc.title}>
-            <div className="text-[11px] text-[#3a3d40] font-semibold">{doc.location}</div>
-            <div className="text-[10.5px] font-mono text-[#9a9da0] mt-0.5">
-              {new Date(lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })} · {months} bln
+        title={bySubDoc ? "Sub-dokumen Paling Mendesak" : "Terminal Paling Mendesak"}
+        unit={bySubDoc ? "sub-dokumen" : "terminal"}
+        pageSize={30}
+        items={rows}
+        emptyLabel="dokumen mendesak"
+        renderTile={(r) => (
+          <DashboardTile href={r.href} accentColor={r.overdue > 0 ? "#DC2626" : "#B45309"} title={r.name}>
+            <div className="flex items-center gap-3 text-[11px] font-mono">
+              {r.overdue > 0 && <span style={{ color: "#DC2626" }}>{r.overdue} kedaluwarsa</span>}
+              {r.soon > 0 && <span style={{ color: "#B45309" }}>{r.soon} ≤ 90 hari</span>}
+            </div>
+            <div className="text-[10.5px] text-[#6b6e72] mt-0.5">
+              {r.overdue > 0 ? `tertua lewat ${age(r.oldestDays)}` : `berakhir ${r.nextDays} hari lagi`}
             </div>
           </DashboardTile>
         )}
       />
     </SectionCard>
   );
-}
-
-// Makin lama belum ditinjau makin mendesak: 12–23 bln kuning, 24–47 bln oranye, 48 bln ke atas merah.
-function staleTone(months: number): { color: string; bg: string } {
-  if (months >= 48) return { color: "#DC2626", bg: "#FDE8E8" };
-  if (months >= 24) return { color: "#C2410C", bg: "#FFEDD5" };
-  return { color: "#B45309", bg: "#FFF3D9" };
 }
 
 function RecentUpdates({ items }: { items: Insights["recent"] }) {
@@ -532,9 +574,9 @@ function ChapterCompleteness({ locationFilter, span }: { locationFilter: string;
 // Terminal yang paling perlu perhatian (kelengkapan terendah dulu). Hanya untuk tampilan semua terminal.
 function TerminalAttention() {
   const { overview } = useDirectoryOverview();
-  const [all, setAll] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const rows = overview ? completenessByLocation(overview) : [];
-  const shown = all ? rows : rows.slice(0, 8);
+  const shown = rows.slice(0, 8);
   return (
     <SectionCard
       title="Terminal yang perlu perhatian"
@@ -553,10 +595,30 @@ function TerminalAttention() {
         ))}
       </div>
       {rows.length > 8 && (
-        <button type="button" className="completeness-more" onClick={() => setAll((v) => !v)}>
-          {all ? "Tampilkan lebih sedikit" : `Tampilkan semua ${rows.length} terminal`}
+        <button type="button" className="completeness-more" onClick={() => setModalOpen(true)}>
+          Lihat semua {rows.length} terminal
         </button>
       )}
+      <DashboardListModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Kelengkapan Semua Terminal"
+        unit="terminal"
+        pageSize={30}
+        items={rows}
+        emptyLabel="terminal"
+        renderTile={(r) => (
+          <DashboardTile href={`/directory?location=${encodeURIComponent(r.name)}`} accentColor={barColor(r.pct)} title={r.name}>
+            {/* Popup dirender di luar area dashboard, jadi batang memakai gaya inline (bukan kelas .stack-track). */}
+            <div style={{ display: "flex", height: 8, borderRadius: 4, background: "#ECEDED", overflow: "hidden", gap: 1 }} role="img" aria-label={`${r.ok} terpenuhi, ${r.review} perlu ditinjau, ${r.missing} belum ada dokumen`}>
+              <i style={{ width: `${(r.ok / Math.max(1, r.total)) * 100}%`, background: COMPLETENESS_COLORS.ok }} />
+              <i style={{ width: `${(r.review / Math.max(1, r.total)) * 100}%`, background: COMPLETENESS_COLORS.review }} />
+              <i style={{ width: `${(r.missing / Math.max(1, r.total)) * 100}%`, background: COMPLETENESS_COLORS.missing }} />
+            </div>
+            <div className="text-[10.5px] font-mono text-[#6b6e72] mt-1.5">{r.pct}% terpenuhi · {r.ok}/{r.total} sub-dokumen</div>
+          </DashboardTile>
+        )}
+      />
     </SectionCard>
   );
 }
@@ -617,7 +679,7 @@ export default function PsiDashboardManus({
       </div>
       <div className="content-grid content-grid-psi">
         <ExpiringList items={insights.expiring} />
-        <StaleList items={insights.stale} />
+        <UrgentByGroup insights={insights} locationFilter={locationFilter} />
         <RecentUpdates items={insights.recent} />
         <ComplianceTable documents={documents} locations={locations} scope={scope} />
       </div>

@@ -21,6 +21,8 @@ export default function DashboardListModal<T>({
   items,
   renderTile,
   emptyLabel = "data",
+  unit = "dokumen",
+  pageSize = PAGE_SIZE,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,9 +30,12 @@ export default function DashboardListModal<T>({
   items: T[];
   renderTile: (item: T) => React.ReactNode;
   emptyLabel?: string;
+  /** Satuan yang disebut di bawah judul (dokumen, terminal, ...). */
+  unit?: string;
+  pageSize?: number;
 }) {
   const [page, setPage] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
 
   // Reset ke halaman 1 tiap kali popup dibuka ulang — jangan nyangkut di halaman
   // terakhir yang pernah dibuka sebelumnya.
@@ -40,8 +45,8 @@ export default function DashboardListModal<T>({
 
   if (!open || typeof document === "undefined") return null;
 
-  const start = page * PAGE_SIZE;
-  const shown = items.slice(start, start + PAGE_SIZE);
+  const start = page * pageSize;
+  const shown = items.slice(start, start + pageSize);
 
   return createPortal(
     <div
@@ -52,7 +57,7 @@ export default function DashboardListModal<T>({
         <div className="flex items-center justify-between px-[22px] pt-[22px] pb-3.5 border-b border-[#eceded]">
           <div>
             <h3 className="font-heading text-lg font-bold text-[#0F172A]">{title}</h3>
-            <p className="text-[11.5px] text-[#9a9da0] mt-0.5">{items.length} dokumen</p>
+            <p className="text-[11.5px] text-[#9a9da0] mt-0.5">{items.length} {unit}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Tutup" className="p-1.5 rounded-[8px] hover:bg-[#F5F7F9] transition-colors">
             <X className="w-4 h-4 text-[#6b6e72]" strokeWidth={1.8} />
@@ -72,7 +77,7 @@ export default function DashboardListModal<T>({
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-[22px] py-3 border-t border-[#eceded]">
             <span className="text-[11.5px] text-[#6b6e72]">
-              Menampilkan {start + 1}–{Math.min(start + PAGE_SIZE, items.length)} dari {items.length}
+              Menampilkan {start + 1}–{Math.min(start + pageSize, items.length)} dari {items.length}
             </span>
             <div className="flex items-center gap-2">
               <button
