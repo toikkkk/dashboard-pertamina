@@ -444,6 +444,96 @@ function ComplianceTable({
   );
 }
 
+// ------------------------------------------------------------------ infografik
+
+const STATUS_COLORS = { berlaku: "#15803D", segera: "#B45309", lewat: "#DC2626" };
+
+// Komposisi status dokumen: donat + daftar angka yang bisa diklik ke daftar yang sama.
+function StatusDonut({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
+  const segera = insights.expiring.length;
+  const lewat = insights.overdue.length;
+  const berlaku = Math.max(0, insights.total - segera - lewat);
+  const items = [
+    { label: "Berlaku", count: berlaku, color: STATUS_COLORS.berlaku, href: "/directory" },
+    { label: "Berakhir ≤ 90 hari", count: segera, color: STATUS_COLORS.segera, href: `/directory?aksi=segera&lokasi=${encodeURIComponent(locationFilter)}` },
+    { label: "Kedaluwarsa", count: lewat, color: STATUS_COLORS.lewat, href: "/dilemma" },
+  ];
+  let acc = 0;
+  const stops = items
+    .filter((i) => i.count > 0)
+    .map((i) => {
+      const from = acc;
+      acc += (i.count / insights.total) * 100;
+      return `${i.color} ${from}% ${acc}%`;
+    });
+  return (
+    <SectionCard title="Status dokumen" className="span-4 insight-card" state={insights.total > 0 ? "ready" : "empty"} emptyLabel="status dokumen">
+      <div className="donut-breakdown">
+        <div className="donut" style={{ background: stops.length > 0 ? `conic-gradient(${stops.join(", ")})` : "#E9EEF0" }} role="img" aria-label={`Status ${insights.total} dokumen`}>
+          <div className="donut-hole"><strong>{insights.total}</strong><span>dokumen</span></div>
+        </div>
+        <div className="breakdown-list">
+          {items.map((item) => (
+            <Link key={item.label} href={item.href} className="insight-link-row">
+              <span className="breakdown-mark" style={{ background: item.color }} />
+              <span>{item.label}</span>
+              <b>{item.count}</b>
+              <small>{insights.total > 0 ? Math.round((item.count / insights.total) * 100) : 0}%</small>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+// Umur pembaruan dokumen berlaku: dua batang terakhir = daftar "Belum diperbarui > 12 bln".
+function AgeBars({ insights, locationFilter }: { insights: Insights; locationFilter: string }) {
+  const total = insights.ageBuckets.reduce((sum, b) => sum + b.count, 0);
+  const max = Math.max(1, ...insights.ageBuckets.map((b) => b.count));
+  const href = `/directory?aksi=stale&lokasi=${encodeURIComponent(locationFilter)}`;
+  return (
+    <SectionCard title="Umur pembaruan" className="span-4 insight-card" state={total > 0 ? "ready" : "empty"} emptyLabel="umur pembaruan dokumen">
+      <div className="insight-bars">
+        {insights.ageBuckets.map((b) => {
+          const row = (
+            <>
+              <span>{b.label}</span>
+              <div className="insight-track"><i style={{ width: `${(b.count / max) * 100}%`, background: b.stale ? "#6D28D9" : "#0F3B59" }} /></div>
+              <strong>{b.count}</strong>
+            </>
+          );
+          return b.stale ? (
+            <Link key={b.key} href={href} className="insight-bar-row insight-link-row">{row}</Link>
+          ) : (
+            <div key={b.key} className="insight-bar-row">{row}</div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+// Jadwal kedaluwarsa per tahun: beban kerja pembaruan ke depan.
+function ExpiryColumns({ insights }: { insights: Insights }) {
+  const max = Math.max(1, ...insights.expiryYears.map((e) => e.count));
+  const total = insights.expiryYears.reduce((sum, e) => sum + e.count, 0);
+  const toneColor = { lewat: "#DC2626", dekat: "#B45309", jauh: "#0F3B59" } as const;
+  return (
+    <SectionCard title="Jadwal kedaluwarsa" className="span-4 insight-card" state={total > 0 ? "ready" : "empty"} emptyLabel="jadwal kedaluwarsa">
+      <div className="insight-columns" role="img" aria-label="Jumlah dokumen yang berakhir per tahun">
+        {insights.expiryYears.map((e) => (
+          <div key={e.key} className="insight-column">
+            <strong>{e.count}</strong>
+            <div className="insight-column-track"><i style={{ height: `${Math.max(e.count > 0 ? 4 : 0, (e.count / max) * 100)}%`, background: toneColor[e.tone] }} /></div>
+            <span>{e.label}</span>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
 // ------------------------------------------------------------------ composition
 
 export default function PsiDashboardManus({
@@ -462,6 +552,11 @@ export default function PsiDashboardManus({
   return (
     <div className="dashboard-content page-enter">
       <MetricGrid insights={insights} locationFilter={locationFilter} />
+      <div className="content-grid insight-grid">
+        <StatusDonut insights={insights} locationFilter={locationFilter} />
+        <AgeBars insights={insights} locationFilter={locationFilter} />
+        <ExpiryColumns insights={insights} />
+      </div>
       <div className="content-grid content-grid-psi">
         <ExpiringList items={insights.expiring} />
         <StaleList items={insights.stale} />

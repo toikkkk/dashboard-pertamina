@@ -100,7 +100,49 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
     .filter((x) => x.at > 0)
     .sort((a, b) => b.at - a.at);
 
-  return { overdue, expiring, stale, recent, total: docs.length, approved: live.filter((d) => d.status === "Approved").length };
+  // Umur pembaruan dokumen yang masih berlaku (dasar infografik dashboard). Batas 12 bulan sama dengan
+  // `stale`, jadi dua bucket terakhir berjumlah persis sama dengan daftar "Belum diperbarui".
+  const ageBuckets = [
+    { key: "u3", label: "≤ 3 bln", maxDays: 90, stale: false, count: 0 },
+    { key: "u6", label: "3–6 bln", maxDays: 180, stale: false, count: 0 },
+    { key: "u12", label: "6–12 bln", maxDays: STALE_AFTER_DAYS, stale: false, count: 0 },
+    { key: "u24", label: "1–2 thn", maxDays: 730, stale: true, count: 0 },
+    { key: "o24", label: "> 2 thn", maxDays: Infinity, stale: true, count: 0 },
+  ];
+  for (const doc of live) {
+    const last = lastUpdateOf(doc);
+    if (last <= 0) continue;
+    const ageDays = (nowMs - last) / DAY;
+    const b = ageBuckets.find((x) => ageDays <= x.maxDays);
+    if (b) b.count++;
+  }
+
+  // Jadwal kedaluwarsa: berapa dokumen berakhir per tahun (yang sudah lewat dihitung terpisah).
+  const thisYear = new Date(nowMs).getFullYear();
+  const expiryYears: { key: string; label: string; count: number; tone: "lewat" | "dekat" | "jauh" }[] = [
+    { key: "lewat", label: "Lewat", count: overdue.length, tone: "lewat" },
+  ];
+  for (let y = thisYear; y <= thisYear + 4; y++) {
+    expiryYears.push({ key: String(y), label: String(y), count: 0, tone: y === thisYear ? "dekat" : "jauh" });
+  }
+  expiryYears.push({ key: "later", label: `${thisYear + 5}+`, count: 0, tone: "jauh" });
+  for (const doc of live) {
+    const y = new Date(doc.expiryDate + "T00:00:00").getFullYear();
+    if (Number.isNaN(y)) continue;
+    const slot = y > thisYear + 4 ? expiryYears[expiryYears.length - 1] : expiryYears.find((e) => e.key === String(y));
+    if (slot) slot.count++;
+  }
+
+  return {
+    overdue,
+    expiring,
+    stale,
+    recent,
+    ageBuckets,
+    expiryYears,
+    total: docs.length,
+    approved: live.filter((d) => d.status === "Approved").length,
+  };
 }
 
 // ---------------------------------------------------------------- MOC
