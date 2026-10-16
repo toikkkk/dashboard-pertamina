@@ -1,7 +1,7 @@
 // Angka dan daftar untuk dashboard PSI dan MOC. Semuanya diturunkan dari data yang ada
 // (dokumen, riwayat, MOC); tidak ada angka bawaan. Fungsi murni: mudah diperiksa.
 import type { DocumentItem, HistoryItem, LastUpdateType } from "@/lib/domain/types";
-import { getLastUpdateType, isDocOverdue, isReviewEntry } from "@/lib/domain/rules";
+import { getLastUpdateType, isDocOverdue, isEvidenceDoc, isReviewEntry } from "@/lib/domain/rules";
 import {
   MOC_REVIEW_SLA_DAYS,
   MOC_STAGES,
@@ -49,7 +49,9 @@ export interface PsiRecentUpdate {
   at: number;
 }
 
-export function psiInsights(docs: DocumentItem[], nowMs: number) {
+export function psiInsights(allDocs: DocumentItem[], nowMs: number) {
+  // Evidence PHA (bukti pendukung HAZID/HAZOP) tidak ikut dihitung di visualisasi.
+  const docs = allDocs.filter((d) => !isEvidenceDoc(d));
   const overdue = docs.filter(isDocOverdue);
   const live = docs.filter((d) => !isDocOverdue(d));
 
@@ -135,7 +137,7 @@ export function psiInsights(docs: DocumentItem[], nowMs: number) {
 export function docsByExpiryBucket(docs: DocumentItem[], key: string, nowMs: number): DocumentItem[] {
   const thisYear = new Date(nowMs).getFullYear();
   return docs
-    .filter((d) => !isDocOverdue(d))
+    .filter((d) => !isEvidenceDoc(d) && !isDocOverdue(d))
     .filter((d) => {
       const y = new Date(d.expiryDate + "T00:00:00").getFullYear();
       if (Number.isNaN(y)) return false;

@@ -7,6 +7,13 @@
 // file is the workflow-state half (who can act on what, given routing state).
 import { DocumentItem, HistoryItem, SimulatedUser, LastUpdateType } from "./types";
 
+// Sub-dokumen bukti pendukung HAZID/HAZOP (permintaan client 16 Okt 2026): tersimpan dan bisa dicari, tetapi
+// TIDAK dihitung di visualisasi dashboard (kedaluwarsa, berakhir, evaluasi tahunan, jadwal, badge Overdue).
+export const EVIDENCE_PHA_CATEGORY = "Evidence PHA";
+export function isEvidenceDoc(doc: Pick<DocumentItem, "categoryName">): boolean {
+  return doc.categoryName === EVIDENCE_PHA_CATEGORY;
+}
+
 // Penanda riwayat "dokumen sudah ditinjau" (evaluasi tahunan): aksi Revised dengan catatan berawalan ini. Bukan
 // pembaruan isi dokumen; hanya mencatat bahwa dokumen dicek dan masih valid.
 export const REVIEW_NOTE_PREFIX = "Ditinjau:";

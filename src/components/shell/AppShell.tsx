@@ -10,7 +10,7 @@ import useSWR from "swr";
 import { usePsi } from "@/lib/psiStore";
 import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import { useMocList } from "@/lib/useMoc";
-import { isDocOverdue } from "@/lib/mockData";
+import { isDocOverdue, isEvidenceDoc } from "@/lib/mockData";
 import { mocPendingActions } from "@/lib/domain/moc";
 import Sidebar, { buildNavItems } from "@/components/shell/Sidebar";
 import Topbar from "@/components/shell/Topbar";
@@ -66,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!showChrome) return <>{children}</>;
 
   const isPending = !activeUser.isRegionalAdmin && !activeUser.location;
-  const overdueCount = documents.filter(isDocOverdue).length;
+  const overdueCount = documents.filter((d) => isDocOverdue(d) && !isEvidenceDoc(d)).length;
   const mocActor = { id: activeUser.id, name: activeUser.name, role: activeUser.role, location: activeUser.location, isRegionalAdmin: activeUser.isRegionalAdmin };
   const mocNotifs = mocs.map((m) => ({ m, acts: mocPendingActions(m, mocActor) })).filter((x) => x.acts.length > 0);
   const pendingUserCount = users.filter((u) => !u.isRegionalAdmin && !u.location).length;

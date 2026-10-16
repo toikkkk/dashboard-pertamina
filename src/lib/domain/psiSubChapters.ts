@@ -94,6 +94,8 @@ const CHAPTER_ORDER = new Map(PSI_CHAPTERS.map((c, i) => [c.key, i]));
 // dan tidak dihitung di kepatuhan (tetap kategori kustom). Kunci = nama kategori persis.
 export const PSI_EXTRA_PLACEMENT: Record<string, string> = {
   "HAZID & HAZOP Study": "B.3",
+  "Report PHA": "B.3",
+  "Evidence PHA": "B.3",
 };
 
 export function psiSubDocumentByName(name: string): PsiSubDocument | null {
