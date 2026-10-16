@@ -17,6 +17,7 @@ import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
 import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
 import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
 import { canDeleteDocument } from "@/lib/domain/rules";
+import { psiInsights } from "@/lib/domain/dashboard";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
 // established, unfiltered exception for cross-location benchmarking widgets only —
@@ -90,6 +91,15 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   // them over from whatever document was last viewed.
   // Jalur naik ke folder induk (Direktori › Lokasi › Sub-dokumen), seperti Google Drive.
   const canWrite = !!activeUser.isRegionalAdmin || activeUser.location === doc.location;
+  // Dokumen ini termasuk "Perlu evaluasi tahunan"? Sama dengan hitungan dashboard (psiInsights), supaya konsisten.
+  const staleItem = psiInsights([doc], Date.now()).stale[0];
+  const staleInfo = staleItem
+    ? {
+        months: staleItem.months,
+        date: new Date(staleItem.lastUpdate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+        color: staleItem.months >= 48 ? "#DC2626" : staleItem.months >= 24 ? "#C2410C" : "#B45309",
+      }
+    : null;
   const canDelete = canDeleteDocument(activeUser, doc.location);
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
@@ -127,7 +137,6 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           </button>
           {canWrite && (
             <>
-              <ReviewButton docId={doc.id} location={doc.location} className="!py-[7px]" />
               <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
                 <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Ganti berkas
               </button>
@@ -197,6 +206,28 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
             void globalMutate("/api/bootstrap");
           }}
         />
+      )}
+      {staleInfo && (
+        <div
+          className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border bg-white px-4 py-3"
+          style={{ borderColor: staleInfo.color, borderLeftWidth: 4 }}
+          role="status"
+        >
+          <div className="min-w-0">
+            <div className="text-[13px] font-bold text-[#0F172A]">Perlu evaluasi tahunan</div>
+            <div className="text-[12px] text-[#3a3d40]">
+              Terakhir diperbarui <b>{staleInfo.date}</b> ({staleInfo.months} bln lalu). Apakah dokumen ini masih valid?
+            </div>
+          </div>
+          {canWrite && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <ReviewButton docId={doc.id} location={doc.location} onDone={() => { void mutate(); void globalMutate("/api/bootstrap"); }} className="!py-[7px] !text-[12.5px]" />
+              <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
+                <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Perlu diperbarui
+              </button>
+            </div>
+          )}
+        </div>
       )}
       <DocumentSplitViewer document={doc} key={doc.id} />
     </>

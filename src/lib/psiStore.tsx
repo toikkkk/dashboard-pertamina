@@ -255,7 +255,8 @@ export const PsiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markReviewed = async (docId: string, notes?: string): Promise<void> => {
     await fetchJson(`/api/documents/${docId}/review`, { method: "POST", body: JSON.stringify({ notes }) });
-    await mutate();
+    // Tidak ditunggu: halaman dokumen memuat ulang dirinya sendiri, jadi tombol tidak perlu menanti seluruh data.
+    void mutate();
   };
 
   const reviseDocument = async (docId: string, newVersion: string, newFileId: string, notes?: string): Promise<void> => {

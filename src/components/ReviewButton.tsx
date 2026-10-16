@@ -10,12 +10,13 @@ export default function ReviewButton({
   docId,
   location,
   className = "",
-  compact = false,
+  onDone,
 }: {
   docId: string;
   location: string;
   className?: string;
-  compact?: boolean;
+  /** Dipanggil setelah berhasil dicatat (mis. memuat ulang halaman dokumen). */
+  onDone?: () => void;
 }) {
   const { activeUser, markReviewed } = usePsi();
   const [step, setStep] = useState<"idle" | "confirm" | "saving" | "error">("idle");
@@ -38,14 +39,15 @@ export default function ReviewButton({
     setStep("saving");
     try {
       await markReviewed(docId);
+      onDone?.();
+      setStep("idle");
     } catch {
       setStep("error");
       timer.current = setTimeout(() => setStep("idle"), 4000);
     }
   };
 
-  const label =
-    step === "confirm" ? "Ya, tandai" : step === "saving" ? "Menyimpan" : step === "error" ? "Gagal, ulangi" : compact ? "Tandai ditinjau" : "Tandai sudah ditinjau";
+  const label = step === "confirm" ? "Ya, masih valid" : step === "saving" ? "Menyimpan" : step === "error" ? "Gagal, ulangi" : "Masih valid";
   const tone =
     step === "confirm" ? "border-[#0F3B59] bg-[#0F3B59] text-white" : step === "error" ? "border-[#DC2626] text-[#DC2626]" : "border-[#C5CED3] text-[#0F3B59] hover:border-[#0F3B59] hover:bg-[#EEF3F6]";
   return (
@@ -53,7 +55,7 @@ export default function ReviewButton({
       type="button"
       onClick={onClick}
       disabled={step === "saving"}
-      title="Dokumen sudah dicek dan masih valid. Tanggal terbit dan masa berlaku tidak berubah."
+      title="Catat bahwa dokumen sudah dicek dan masih valid, tanpa unggah ulang. Tanggal terbit dan masa berlaku tidak berubah."
       className={`inline-flex items-center gap-1.5 rounded-[8px] border bg-white px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap transition-colors duration-150 ${tone} ${className}`}
     >
       {step === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} /> : <CheckCheck className="h-3.5 w-3.5" strokeWidth={2.2} />}
