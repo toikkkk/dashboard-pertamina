@@ -82,18 +82,32 @@ export const mocApi = {
   update: (id: string, patch: Partial<MocFormContent>) =>
     mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then(afterMutation),
   // Simpan otomatis pilihan reviewer/approver yang belum diajukan (tidak mengubah status).
-  savePlan: (id: string, plan: { plannedReviewers: { userId: string; functionLabel: string; jabatan: string }[]; plannedApproverId: string | null }) =>
-    mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(plan) }).then(afterMutation),
+  savePlan: (
+    id: string,
+    plan: {
+      plannedReviewers: { userId: string; functionLabel: string; jabatan: string; manual?: boolean; name?: string }[];
+      plannedApproverId: string | null;
+      approverManualName: string | null;
+      approverManualJabatan: string | null;
+    }
+  ) => mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(plan) }).then(afterMutation),
+  // Reviewer: akun (userId) atau tanpa akun (manual + name). Approver: akun (approverUserId) atau manual.
   submit: (
     id: string,
     body: {
-      reviewers: { userId: string; functionLabel: string; jabatan: string }[];
-      approverUserId: string;
+      reviewers: { userId?: string; manual?: boolean; name?: string; functionLabel: string; jabatan: string }[];
+      approverUserId?: string;
+      approverManual?: { name: string; jabatan: string };
       evidenceFileId?: string;
     }
   ) => post(`/api/moc/${id}/submit`, body),
-  review: (id: string, body: { outcome: "Sesuai" | "Perlu Perubahan"; recommendation: string; evidenceFileId?: string }) =>
+  // reviewId = mencatat review atas nama reviewer tanpa akun (oleh pembuat MOC atau Controller).
+  review: (id: string, body: { outcome: "Sesuai" | "Perlu Perubahan"; recommendation: string; evidenceFileId?: string; reviewId?: string }) =>
     post(`/api/moc/${id}/review`, body),
+  updateParties: (
+    id: string,
+    body: { reviewers: { id: string; name: string; functionLabel: string; jabatan: string }[]; approverManual?: { name: string; jabatan: string } }
+  ) => mocFetch<MocRequest>(`/api/moc/${id}/parties`, { method: "PATCH", body: JSON.stringify(body) }).then(afterMutation),
   decide: (
     id: string,
     body: {

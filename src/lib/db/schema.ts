@@ -369,6 +369,9 @@ export const mocRequests = pgTable(
     // tidak hilang saat berpindah halaman / mengubah formulir.
     plannedReviewers: jsonb("planned_reviewers").notNull().default(sql`'[]'::jsonb`),
     plannedApproverId: uuid("planned_approver_id").references(() => users.id),
+    // Approver tanpa akun: nama dan jabatan diketik manual (approverUserId kosong). Dipakai juga sebagai rencana saat draf.
+    approverManualName: text("approver_manual_name"),
+    approverManualJabatan: text("approver_manual_jabatan"),
     // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
     communication: jsonb("communication"),
     implementationPlan: jsonb("implementation_plan"),

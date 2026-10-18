@@ -116,12 +116,14 @@ function toRequest(
     validationState: row.validationState as MocRequest["validationState"],
     round: row.round,
     approverUserId: row.approverUserId,
-    approverName,
+    approverName: approverName ?? row.approverManualName,
     performerUserId: row.performerUserId,
     performerName: row.performerName,
     approverNote: row.approverNote,
     plannedReviewers: row.plannedReviewers as MocRequest["plannedReviewers"],
     plannedApproverId: row.plannedApproverId,
+    approverManualName: row.approverManualName,
+    approverManualJabatan: row.approverManualJabatan,
     communication: (row.communication as MocRequest["communication"]) ?? null,
     implementationPlan: (row.implementationPlan as MocRequest["implementationPlan"]) ?? null,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
@@ -295,9 +297,11 @@ export const mocFormPatchSchema = z
   .object({
     // Rencana reviewer/approver (disimpan otomatis dari panel Ajukan; baris kosong boleh).
     plannedReviewers: z
-      .array(z.object({ userId: z.union([z.string().uuid(), z.literal("")]), functionLabel: text(100), jabatan: text(200) }))
+      .array(z.object({ userId: z.union([z.string().uuid(), z.literal("")]), functionLabel: text(100), jabatan: text(200), manual: z.boolean().optional(), name: text(200).optional() }))
       .max(10),
     plannedApproverId: z.union([z.string().uuid(), z.literal("").transform(() => null), z.null()]),
+    approverManualName: text(200).nullable(),
+    approverManualJabatan: text(200).nullable(),
     unitOperasi: text(200),
     fungsi: text(200),
     region: text(100),

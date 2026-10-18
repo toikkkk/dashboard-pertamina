@@ -11,36 +11,42 @@ import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { handleEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
 import { hasMocRole, mocSubmitIssues } from "@/lib/domain/moc";
 
-const bodySchema = z.object({
-  reviewers: z
-    .array(
-      z.object({
-        userId: z.string().uuid(),
-        functionLabel: z.string().trim().min(1).max(100),
-        jabatan: z.string().trim().max(200).default(""),
-      })
-    )
-    .min(1)
-    .max(10),
-  approverUserId: z.string().uuid(),
-  evidenceFileId: z.string().uuid().optional(),
-});
+// Reviewer: akun terdaftar (userId) ATAU tanpa akun (manual + name). Approver: akun (approverUserId) ATAU manual.
+const reviewerSchema = z
+  .object({
+    userId: z.string().uuid().optional(),
+    manual: z.boolean().optional(),
+    name: z.string().trim().max(200).optional(),
+    functionLabel: z.string().trim().min(1).max(100),
+    jabatan: z.string().trim().max(200).default(""),
+  })
+  .refine((r) => (r.manual ? !!r.name : !!r.userId), { message: "Reviewer harus berupa akun terdaftar atau nama yang diketik manual." });
+
+const bodySchema = z
+  .object({
+    reviewers: z.array(reviewerSchema).min(1).max(10),
+    approverUserId: z.string().uuid().optional(),
+    approverManual: z.object({ name: z.string().trim().min(1).max(200), jabatan: z.string().trim().max(200).default("") }).optional(),
+    evidenceFileId: z.string().uuid().optional(),
+  })
+  .refine((b) => !!b.approverUserId !== !!b.approverManual, { message: "Pilih Approver dari akun terdaftar atau isi manual, salah satu saja." });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
     const moc = await requireMocAction(params.id, user, "submit");
-    const { reviewers, approverUserId, evidenceFileId } = bodySchema.parse(await req.json());
+    const { reviewers, approverUserId, approverManual, evidenceFileId } = bodySchema.parse(await req.json());
 
     const issues = mocSubmitIssues(moc, moc.location);
     if (issues.length > 0) throw new HttpError(400, "Formulir belum lengkap.", { issues });
 
-    const reviewerIds = reviewers.map((r) => r.userId);
+    const accountReviewers = reviewers.filter((r) => !r.manual);
+    const reviewerIds = accountReviewers.map((r) => r.userId as string);
     if (new Set(reviewerIds).size !== reviewerIds.length) {
       throw new HttpError(400, "Reviewer yang sama tidak boleh dipilih dua kali.");
     }
     // Reviewer & Approver dipilih manual, tetapi harus user terdaftar di lokasi MOC ini.
-    const wanted = Array.from(new Set([...reviewerIds, approverUserId]));
+    const wanted = Array.from(new Set([...reviewerIds, ...(approverUserId ? [approverUserId] : [])]));
     const found = await db
       .select({ id: users.id, name: users.name, mocRoles: users.mocRoles })
       .from(users)
@@ -51,15 +57,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const nameOf = new Map(found.map((f) => [f.id, f.name]));
     // Dropdown di UI hanya menampilkan akun ber-peran yang sesuai; ini penjaga di server.
     const byId = new Map(found.map((f) => [f.id, f]));
-    for (const r of reviewers) {
-      const u = byId.get(r.userId);
+    for (const r of accountReviewers) {
+      const u = byId.get(r.userId as string);
       if (!u || !hasMocRole({ mocRoles: u.mocRoles as string[] }, "Reviewer")) {
         throw new HttpError(400, `${u?.name ?? "Pengguna"} belum ditetapkan sebagai MoC Reviewer. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
       }
     }
-    const approver = byId.get(approverUserId);
-    if (!approver || !hasMocRole({ mocRoles: approver.mocRoles as string[] }, "Approver")) {
-      throw new HttpError(400, `${approver?.name ?? "Pengguna"} belum ditetapkan sebagai MoC Approver. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
+    if (approverUserId) {
+      const approver = byId.get(approverUserId);
+      if (!approver || !hasMocRole({ mocRoles: approver.mocRoles as string[] }, "Approver")) {
+        throw new HttpError(400, `${approver?.name ?? "Pengguna"} belum ditetapkan sebagai MoC Approver. Minta Admin Regional mengatur Peran MOC di Kelola User.`);
+      }
     }
 
     const isFirst = moc.validationState === "draft";
@@ -70,18 +78,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         mocId: moc.id,
         round,
         functionLabel: r.functionLabel,
-        reviewerUserId: r.userId,
-        reviewerName: nameOf.get(r.userId) ?? "",
+        reviewerUserId: r.manual ? null : (r.userId as string),
+        reviewerName: r.manual ? (r.name as string) : nameOf.get(r.userId as string) ?? "",
         reviewerJabatan: r.jabatan,
       }))
     );
     await db
       .update(mocRequests)
-      .set({ validationState: "in_review", round, approverUserId, approverNote: null, updatedAt: new Date() })
+      .set({
+        validationState: "in_review",
+        round,
+        approverUserId: approverUserId ?? null,
+        approverManualName: approverManual?.name ?? null,
+        approverManualJabatan: approverManual?.jabatan ?? null,
+        approverNote: null,
+        updatedAt: new Date(),
+      })
       .where(eq(mocRequests.id, moc.id));
 
     await recordMocHistory(moc.id, user, isFirst ? "Diajukan" : "Diperbarui Initiator", {
-      notes: `Review putaran ${round}: ${reviewers.map((r) => r.functionLabel).join(", ")}.`,
+      notes: `Review putaran ${round}: ${reviewers.map((r) => `${r.functionLabel}${r.manual ? " (tanpa akun)" : ""}`).join(", ")}.${approverManual ? ` Approver tanpa akun: ${approverManual.name}.` : ""}`,
       fromState: moc.validationState,
       toState: "in_review",
     });

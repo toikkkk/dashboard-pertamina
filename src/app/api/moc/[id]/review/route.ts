@@ -15,19 +15,24 @@ const bodySchema = z.object({
   outcome: z.enum(["Sesuai", "Perlu Perubahan"]),
   recommendation: z.string().trim().max(5000).default(""),
   evidenceFileId: z.string().uuid().optional(),
+  // Diisi bila Initiator/Controller mencatat review atas nama reviewer tanpa akun.
+  reviewId: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
-    const moc = await requireMocAction(params.id, user, "review");
-    const { outcome, recommendation, evidenceFileId } = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await req.json());
+    const { outcome, recommendation, evidenceFileId, reviewId } = body;
+    const moc = await requireMocAction(params.id, user, reviewId ? "reviewProxy" : "review");
     if (!recommendation) {
       throw new HttpError(400, "Catatan review wajib diisi.");
     }
 
-    const mine = reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === user.id && r.outcome === "Pending");
-    if (!mine) throw new HttpError(409, "Review Anda pada putaran ini sudah tercatat.");
+    const mine = reviewId
+      ? reviewsOfCurrentRound(moc).find((r) => r.id === reviewId && !r.reviewerUserId && r.outcome === "Pending")
+      : reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === user.id && r.outcome === "Pending");
+    if (!mine) throw new HttpError(409, reviewId ? "Review untuk pihak tanpa akun ini sudah tercatat." : "Review Anda pada putaran ini sudah tercatat.");
 
     await db
       .update(mocReviews)
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       resolution === "all_ok" ? "pending_approval" : resolution === "needs_changes" ? "returned" : moc.validationState;
 
     await recordMocHistory(moc.id, user, outcome === "Sesuai" ? "Review Sesuai" : "Review Perlu Perubahan", {
-      notes: `${mine.functionLabel}${recommendation ? `: ${recommendation}` : ""}`,
+      notes: `${mine.functionLabel}${recommendation ? `: ${recommendation}` : ""}${reviewId ? ` (dicatat ${user.name} atas nama ${mine.reviewerName})` : ""}`,
       fromState: moc.validationState,
       toState: nextState,
     });

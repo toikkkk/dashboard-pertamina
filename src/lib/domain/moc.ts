@@ -142,9 +142,12 @@ export const MOC_ROLE_FLAGS = ["Reviewer", "Approver", "Performer"] as const;
 export type MocRoleFlag = (typeof MOC_ROLE_FLAGS)[number];
 
 export interface MocPlannedReviewer {
-  userId: string; // "" = baris belum dipilih
+  userId: string; // "" = baris belum dipilih (atau manual)
   functionLabel: string;
   jabatan: string;
+  // Reviewer tanpa akun: nama diketik manual. Review-nya dicatat Initiator/Controller atas namanya.
+  manual?: boolean;
+  name?: string;
 }
 
 // Saran fungsi/jabatan per peran MOC di tingkat Lokasi (TKO B13.3-07 Tabel 3): Reviewer =
@@ -328,6 +331,9 @@ export interface MocRequest extends MocFormContent {
   approverNote: string | null;
   plannedReviewers: MocPlannedReviewer[];
   plannedApproverId: string | null;
+  // Approver tanpa akun (diketik manual); approverUserId kosong. Keputusannya dicatat Controller atas namanya.
+  approverManualName: string | null;
+  approverManualJabatan: string | null;
   // null = belum dicatat. Diisi setelah registrasi, sebelum Implementasi dimulai.
   communication: MocCommunication | null;
   implementationPlan: MocImplementationPlan | null;
@@ -347,7 +353,18 @@ export interface MocActor {
   isRegionalAdmin?: boolean;
 }
 
-export type MocAction = "edit" | "submit" | "review" | "decide" | "register" | "communicate" | "planImplementation" | "advance";
+export type MocAction =
+  | "edit"
+  | "submit"
+  | "review"
+  | "reviewProxy"
+  | "decide"
+  | "decideProxy"
+  | "editParties"
+  | "register"
+  | "communicate"
+  | "planImplementation"
+  | "advance";
 
 export const MOC_INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
 
@@ -410,6 +427,16 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
     if (mine) actions.push("review");
   }
   if (moc.validationState === "pending_approval" && moc.approverUserId === user.id) actions.push("decide");
+
+  // Pihak tanpa akun (diketik manual): review dicatat pembuat MOC atau Controller atas nama reviewer; keputusan
+  // Approver hanya dicatat Controller (Initiator tidak boleh memutuskan MOC-nya sendiri). Controller juga
+  // boleh memperbaiki nama pihak tanpa akun selama review/persetujuan berjalan.
+  const isOwner = user.role === MOC_INITIATOR_ROLE && moc.createdBy === user.id;
+  const manualReviewPending = moc.validationState === "in_review" && reviewsOfCurrentRound(moc).some((r) => !r.reviewerUserId && r.outcome === "Pending");
+  const manualApproverPending = moc.validationState === "pending_approval" && !moc.approverUserId && !!moc.approverManualName;
+  if (manualReviewPending && (isOwner || isController)) actions.push("reviewProxy");
+  if (manualApproverPending && isController) actions.push("decideProxy");
+  if ((manualReviewPending || manualApproverPending) && isController) actions.push("editParties");
   if (moc.validationState === "approved" && isController) actions.push("register");
 
   // Setelah registrasi, sebelum Implementasi: Komunikasi (D) lalu Rencana Implementasi (E.1), diisi
@@ -592,7 +619,10 @@ export const MOC_ACTION_LABEL: Record<MocAction, string> = {
   edit: "Ubah",
   submit: "Ajukan",
   review: "Beri review",
+  reviewProxy: "Catat review atas nama reviewer",
   decide: "Putuskan",
+  decideProxy: "Catat keputusan atas nama Approver",
+  editParties: "Ubah nama pihak",
   register: "Daftarkan",
   communicate: "Catat komunikasi",
   planImplementation: "Catat rencana implementasi",
@@ -607,7 +637,9 @@ export function mocPendingActions(moc: MocRequest, actor: MocActor): MocAction[]
     (a) =>
       a === "submit" ||
       a === "review" ||
+      a === "reviewProxy" ||
       a === "decide" ||
+      a === "decideProxy" ||
       a === "register" ||
       (a === "communicate" && !moc.communication) ||
       (a === "planImplementation" && !moc.implementationPlan)

@@ -187,10 +187,13 @@ export default function MocActionsPanel({
     moc.plannedReviewers.length > 0
       ? moc.plannedReviewers
       : lastRound.length > 0
-        ? lastRound.map((r) => ({ userId: r.reviewerUserId ?? "", functionLabel: r.functionLabel, jabatan: r.reviewerJabatan }))
+        ? lastRound.map((r) => (r.reviewerUserId ? { userId: r.reviewerUserId, functionLabel: r.functionLabel, jabatan: r.reviewerJabatan } : { userId: "", manual: true, name: r.reviewerName, functionLabel: r.functionLabel, jabatan: r.reviewerJabatan }))
         : [{ userId: "", functionLabel: "", jabatan: "" }, { userId: "", functionLabel: "", jabatan: "" }]
   );
   const [approverId, setApproverId] = useState(moc.plannedApproverId ?? moc.approverUserId ?? "");
+  // Approver tanpa akun: nama dan jabatan diketik manual (keputusannya dicatat Controller atas namanya).
+  const [approverMode, setApproverMode] = useState<"akun" | "manual">(!moc.plannedApproverId && !moc.approverUserId && moc.approverManualName ? "manual" : "akun");
+  const [approverManual, setApproverManual] = useState({ name: moc.approverManualName ?? "", jabatan: moc.approverManualJabatan ?? "" });
   const dirty = useRef(false);
   const [planSaved, setPlanSaved] = useState<"idle" | "saving" | "saved">("idle");
 
@@ -199,7 +202,12 @@ export default function MocActionsPanel({
     setPlanSaved("saving");
     const t = setTimeout(async () => {
       try {
-        await mocApi.savePlan(moc.id, { plannedReviewers: reviewers, plannedApproverId: approverId || null });
+        await mocApi.savePlan(moc.id, {
+          plannedReviewers: reviewers,
+          plannedApproverId: approverMode === "akun" ? approverId || null : null,
+          approverManualName: approverMode === "manual" ? approverManual.name.trim() || null : null,
+          approverManualJabatan: approverMode === "manual" ? approverManual.jabatan.trim() || null : null,
+        });
         setPlanSaved("saved");
       } catch {
         setPlanSaved("idle");
@@ -207,7 +215,7 @@ export default function MocActionsPanel({
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewers, approverId]);
+  }, [reviewers, approverId, approverMode, approverManual]);
 
   const touch = () => { dirty.current = true; };
   const setRow = (i: number, patch: Partial<MocPlannedReviewer>) => {
@@ -225,6 +233,7 @@ export default function MocActionsPanel({
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [note, setNote] = useState("");
   const [performerId, setPerformerId] = useState("");
+  const [performerManual, setPerformerManual] = useState("");
   const [advanceNotes, setAdvanceNotes] = useState("");
   const [confirmAdvance, setConfirmAdvance] = useState(false);
 
@@ -267,7 +276,13 @@ export default function MocActionsPanel({
   const myReview = reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === activeUser.id && r.outcome === "Pending");
   const next = nextRegisterStatus(moc.registerStatus);
   const startsImplementation = moc.registerStatus === "Inisiasi & Validasi";
-  const canSubmit = !busy && !!approverId && reviewers.length > 0 && reviewers.every((r) => r.userId && r.functionLabel.trim());
+  const canSubmit =
+    !busy &&
+    (approverMode === "akun" ? !!approverId : !!approverManual.name.trim()) &&
+    reviewers.length > 0 &&
+    reviewers.every((r) => (r.manual ? !!r.name?.trim() : !!r.userId) && r.functionLabel.trim());
+  const proxyReviews = reviewsOfCurrentRound(moc).filter((r) => !r.reviewerUserId && r.outcome === "Pending");
+  const performerReady = performerId === "__manual" ? !!performerManual.trim() : !!performerId;
   const reviseNotes = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Perlu Perubahan");
   const commIssues = mocCommunicationIssues(comm);
   const planIssues = mocImplementationPlanIssues({ ...plan, milestones: plan.milestones.filter((m) => m.label.trim() || m.targetDate) });
@@ -365,45 +380,73 @@ export default function MocActionsPanel({
 
           <Step n={1} label="Siapa yang mereview? (dinilai bersamaan)">
             <MocAuthorityInfo />
-            {reviewerPool.length === 0 ? (
-              <EmptyPool role="Reviewer" />
-            ) : (
-              <div className="flex flex-col gap-2">
-                {reviewers.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <MenuSelect
-                      ariaLabel="Reviewer"
-                      fullWidth
-                      minWidth={200}
-                      value={r.userId}
-                      options={[{ value: "", label: "Pilih reviewer…" }, ...reviewerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}`, disabled: reviewers.some((x, idx) => idx !== i && x.userId === u.id) }))]}
-                      onChange={(v) => pickReviewer(i, v)}
-                    />
+            <div className="flex flex-col gap-2">
+              {reviewerPool.length === 0 && <EmptyPool role="Reviewer" />}
+              {reviewers.map((r, i) => (
+                <div key={i} className="flex flex-col gap-1.5 rounded-[10px] border border-[#EEF2F4] bg-white p-2">
+                  <div className="flex items-center gap-2">
+                    {r.manual ? (
+                      <input className={INPUT} placeholder="Nama reviewer (tanpa akun)" maxLength={200} value={r.name ?? ""} onChange={(e) => setRow(i, { name: e.target.value })} />
+                    ) : (
+                      <MenuSelect
+                        ariaLabel="Reviewer"
+                        fullWidth
+                        minWidth={200}
+                        value={r.userId}
+                        options={[{ value: "", label: "Pilih reviewer…" }, ...reviewerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}`, disabled: reviewers.some((x, idx) => idx !== i && x.userId === u.id) }))]}
+                        onChange={(v) => pickReviewer(i, v)}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setRow(i, r.manual ? { manual: false, name: "", userId: "", functionLabel: "", jabatan: "" } : { manual: true, userId: "", name: "", functionLabel: "", jabatan: "" })}
+                      className="whitespace-nowrap text-[12px] font-semibold text-[#0F3B59] hover:underline"
+                    >
+                      {r.manual ? "Pilih akun" : "Isi manual"}
+                    </button>
                     <button type="button" aria-label="Hapus reviewer" disabled={reviewers.length === 1} onClick={() => { touch(); setReviewers(reviewers.filter((_, idx) => idx !== i)); }} className="p-2 text-[#6b6e72] hover:text-[#DC2626] disabled:opacity-30">
                       <X className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
-                ))}
-                <button type="button" onClick={() => { touch(); setReviewers([...reviewers, { userId: "", functionLabel: "", jabatan: "" }]); }} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah reviewer
-                </button>
-              </div>
-            )}
+                  {r.manual && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input className={INPUT} placeholder="Fungsi (mis. Maintenance Service)" maxLength={100} value={r.functionLabel} onChange={(e) => setRow(i, { functionLabel: e.target.value })} />
+                      <input className={INPUT} placeholder="Jabatan (opsional)" maxLength={200} value={r.jabatan} onChange={(e) => setRow(i, { jabatan: e.target.value })} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={() => { touch(); setReviewers([...reviewers, { userId: "", functionLabel: "", jabatan: "" }]); }} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+                <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah reviewer
+              </button>
+            </div>
           </Step>
 
           <Step n={2} label="Siapa yang menyetujui?">
-            {approverPool.length === 0 ? (
-              <EmptyPool role="Approver" />
-            ) : (
-              <MenuSelect
-                ariaLabel="Approver"
-                fullWidth
-                minWidth={200}
-                value={approverId}
-                options={[{ value: "", label: "Pilih approver…" }, ...approverPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` }))]}
-                onChange={(v) => { touch(); setApproverId(v); }}
-              />
-            )}
+            <div className="flex flex-col gap-2">
+              {approverMode === "akun" ? (
+                approverPool.length === 0 ? (
+                  <EmptyPool role="Approver" />
+                ) : (
+                  <MenuSelect
+                    ariaLabel="Approver"
+                    fullWidth
+                    minWidth={200}
+                    value={approverId}
+                    options={[{ value: "", label: "Pilih approver…" }, ...approverPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` }))]}
+                    onChange={(v) => { touch(); setApproverId(v); }}
+                  />
+                )
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input className={INPUT} placeholder="Nama approver (tanpa akun)" maxLength={200} value={approverManual.name} onChange={(e) => { touch(); setApproverManual({ ...approverManual, name: e.target.value }); }} />
+                  <input className={INPUT} placeholder="Jabatan" maxLength={200} value={approverManual.jabatan} onChange={(e) => { touch(); setApproverManual({ ...approverManual, jabatan: e.target.value }); }} />
+                </div>
+              )}
+              <button type="button" onClick={() => { touch(); setApproverMode(approverMode === "akun" ? "manual" : "akun"); }} className="self-start text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+                {approverMode === "akun" ? "Tidak ada di daftar? Isi nama manual" : "Pilih dari akun terdaftar"}
+              </button>
+            </div>
           </Step>
 
           <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
@@ -417,8 +460,14 @@ export default function MocActionsPanel({
                 run(
                   () =>
                     mocApi.submit(moc.id, {
-                      reviewers: reviewers.map((r) => ({ userId: r.userId, functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() })),
-                      approverUserId: approverId,
+                      reviewers: reviewers.map((r) =>
+                        r.manual
+                          ? { manual: true, name: (r.name ?? "").trim(), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
+                          : { userId: r.userId, functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
+                      ),
+                      ...(approverMode === "akun"
+                        ? { approverUserId: approverId }
+                        : { approverManual: { name: approverManual.name.trim(), jabatan: approverManual.jabatan.trim() } }),
                       evidenceFileId: evidence,
                     }),
                   (s) => `MOC diajukan ke ${reviewers.length} reviewer (putaran ${s.round}). Sekarang menunggu review.`
@@ -472,26 +521,55 @@ export default function MocActionsPanel({
         </Panel>
       )}
 
-      {actions.includes("decide") && (
-        <Panel title="Setujui atau tolak MOC ini">
+      {actions.includes("reviewProxy") && (
+        <Panel title="Catat review atas nama reviewer tanpa akun">
+          <div className="flex flex-col gap-3">
+            {proxyReviews.map((r) => (
+              <ProxyReviewCard
+                key={r.id}
+                review={r}
+                busy={busy}
+                onSend={(body) =>
+                  run(
+                    () => mocApi.review(moc.id, { ...body, reviewId: r.id }),
+                    (saved) => `Review ${r.reviewerName} tercatat atas nama reviewer (${body.outcome}). ${saved.validationState === "in_review" ? "Menunggu reviewer lain." : saved.validationState === "pending_approval" ? "Semua reviewer sesuai, dilanjutkan ke Approver." : "MOC dikembalikan ke Initiator untuk diperbaiki."}`
+                  )
+                }
+              />
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {actions.includes("editParties") && (
+        <PartiesEditor
+          moc={moc}
+          busy={busy}
+          onSave={(body) => run(() => mocApi.updateParties(moc.id, body), () => "Nama pihak tanpa akun diperbarui.")}
+        />
+      )}
+
+      {(actions.includes("decide") || actions.includes("decideProxy")) && (
+        <Panel title={actions.includes("decideProxy") ? `Catat keputusan atas nama ${moc.approverManualName ?? "Approver"}` : "Setujui atau tolak MOC ini"}>
           <div role="radiogroup" aria-label="Keputusan" className="flex gap-2.5 flex-wrap">
             <Choice selected={decision === "approve"} onSelect={() => setDecision("approve")} tone="good" title="Setujui" />
             <Choice selected={decision === "reject"} onSelect={() => setDecision("reject")} tone="bad" title="Tolak" />
           </div>
           {decision === "approve" && (
             <Step n={1} label="Siapa MoC Performer-nya?">
-              {performerPool.length === 0 ? (
-                <EmptyPool role="Performer" />
-              ) : (
+              <div className="flex flex-col gap-2">
                 <MenuSelect
                   ariaLabel="Performer"
                   fullWidth
                   minWidth={200}
                   value={performerId}
-                  options={[{ value: "", label: "Pilih performer…" }, ...performerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` }))]}
+                  options={[{ value: "", label: "Pilih performer…" }, ...performerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}` })), { value: "__manual", label: "Isi nama manual (tanpa akun)" }]}
                   onChange={setPerformerId}
                 />
-              )}
+                {performerId === "__manual" && (
+                  <input className={INPUT} placeholder="Nama MoC Performer" maxLength={200} value={performerManual} onChange={(e) => setPerformerManual(e.target.value)} />
+                )}
+              </div>
             </Step>
           )}
           <NoteField
@@ -505,14 +583,14 @@ export default function MocActionsPanel({
             <button
               type="button"
               className={BTN}
-              disabled={busy || !note.trim() || (decision === "approve" && !performerId)}
+              disabled={busy || !note.trim() || (decision === "approve" && !performerReady)}
               onClick={() =>
                 run(
                   () =>
                     mocApi.decide(moc.id, {
                       decision,
                       note: note.trim(),
-                      performer: decision === "approve" ? { userId: performerId, name: performerPool.find((p) => p.id === performerId)?.name ?? "" } : undefined,
+                      performer: decision === "approve" ? (performerId === "__manual" ? { name: performerManual.trim() } : { userId: performerId, name: performerPool.find((p) => p.id === performerId)?.name ?? "" }) : undefined,
                       evidenceFileId: evidence,
                     }),
                   () => (decision === "approve" ? "MOC disetujui dan Performer ditunjuk. Menunggu registrasi MoC Controller." : "MOC ditolak dan dikembalikan ke Initiator.")
@@ -596,5 +674,92 @@ export default function MocActionsPanel({
 
       {error && <p role="alert" className="text-[13px] font-semibold text-[#DC2626]">{error}</p>}
     </div>
+  );
+}
+
+// Mencatat review atas nama reviewer tanpa akun: hasil dan catatan diisi oleh pembuat MOC atau Controller,
+// bukti tanda tangan (lembar yang sudah ditandatangani) dilampirkan bila ada.
+function ProxyReviewCard({
+  review,
+  busy,
+  onSend,
+}: {
+  review: MocRequest["reviews"][number];
+  busy: boolean;
+  onSend: (body: { outcome: "Sesuai" | "Perlu Perubahan"; recommendation: string; evidenceFileId?: string }) => void;
+}) {
+  const [outcome, setOutcome] = useState<"Sesuai" | "Perlu Perubahan">("Sesuai");
+  const [recommendation, setRecommendation] = useState("");
+  const [file, setFile] = useState<string | undefined>();
+  return (
+    <div className="rounded-[10px] border border-[#D8E1E4] bg-white p-3 flex flex-col gap-2.5">
+      <div className="text-[13px] font-bold text-[#0F172A]">
+        {review.reviewerName} <span className="font-normal text-[#6b6e72]">· {review.functionLabel}{review.reviewerJabatan ? ` · ${review.reviewerJabatan}` : ""} · tanpa akun</span>
+      </div>
+      <div role="radiogroup" aria-label="Hasil review" className="flex gap-2.5 flex-wrap">
+        <Choice selected={outcome === "Sesuai"} onSelect={() => setOutcome("Sesuai")} tone="good" title="Sesuai" />
+        <Choice selected={outcome === "Perlu Perubahan"} onSelect={() => setOutcome("Perlu Perubahan")} tone="warn" title="Perlu perubahan" />
+      </div>
+      <NoteField label="Catatan review dari lembar yang ditandatangani" value={recommendation} onChange={setRecommendation} placeholder="Salin rekomendasi reviewer…" rows={2} />
+      <Optional label="Lampirkan lembar bertanda tangan (opsional)"><EvidenceInput onFileId={setFile} disabled={busy} /></Optional>
+      <div>
+        <button type="button" className={BTN} disabled={busy || !recommendation.trim()} onClick={() => onSend({ outcome, recommendation: recommendation.trim(), evidenceFileId: file })}>
+          {busy ? "Menyimpan…" : "Catat review"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Controller memperbaiki nama pihak tanpa akun (reviewer yang belum menilai dan Approver manual).
+function PartiesEditor({
+  moc,
+  busy,
+  onSave,
+}: {
+  moc: MocRequest;
+  busy: boolean;
+  onSave: (body: { reviewers: { id: string; name: string; functionLabel: string; jabatan: string }[]; approverManual?: { name: string; jabatan: string } }) => void;
+}) {
+  const manualReviews = reviewsOfCurrentRound(moc).filter((r) => !r.reviewerUserId && r.outcome === "Pending");
+  const hasManualApprover = !moc.approverUserId && !!moc.approverManualName;
+  const [rows, setRows] = useState(() => manualReviews.map((r) => ({ id: r.id, name: r.reviewerName, functionLabel: r.functionLabel, jabatan: r.reviewerJabatan })));
+  const [approver, setApprover] = useState({ name: moc.approverManualName ?? "", jabatan: moc.approverManualJabatan ?? "" });
+  const [open, setOpen] = useState(false);
+  const setRow = (i: number, patch: Partial<(typeof rows)[number]>) => setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const valid = rows.every((r) => r.name.trim() && r.functionLabel.trim()) && (!hasManualApprover || !!approver.name.trim());
+  return (
+    <section className="rounded-[12px] border border-[#D8E1E4] bg-white px-4 py-3">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+        {open ? "Tutup" : "Ubah nama pihak tanpa akun"}
+      </button>
+      {open && (
+        <div className="mt-3 flex flex-col gap-3">
+          {rows.map((r, i) => (
+            <div key={r.id} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input className={INPUT} aria-label="Nama reviewer" maxLength={200} value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} />
+              <input className={INPUT} aria-label="Fungsi" maxLength={100} value={r.functionLabel} onChange={(e) => setRow(i, { functionLabel: e.target.value })} />
+              <input className={INPUT} aria-label="Jabatan" maxLength={200} value={r.jabatan} onChange={(e) => setRow(i, { jabatan: e.target.value })} />
+            </div>
+          ))}
+          {hasManualApprover && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input className={INPUT} aria-label="Nama approver" maxLength={200} value={approver.name} onChange={(e) => setApprover({ ...approver, name: e.target.value })} />
+              <input className={INPUT} aria-label="Jabatan approver" maxLength={200} value={approver.jabatan} onChange={(e) => setApprover({ ...approver, jabatan: e.target.value })} />
+            </div>
+          )}
+          <div>
+            <button
+              type="button"
+              className={BTN}
+              disabled={busy || !valid}
+              onClick={() => onSave({ reviewers: rows.map((r) => ({ id: r.id, name: r.name.trim(), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() })), approverManual: hasManualApprover ? { name: approver.name.trim(), jabatan: approver.jabatan.trim() } : undefined })}
+            >
+              {busy ? "Menyimpan…" : "Simpan perubahan nama"}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

@@ -20,8 +20,12 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
-    const moc = await requireMocAction(params.id, user, "decide");
     const { decision, note, performer, evidenceFileId } = bodySchema.parse(await req.json());
+    // Approver tanpa akun: keputusan dicatat Controller atas namanya (aksi decideProxy).
+    const peek = await loadMocItem(params.id);
+    const proxy = !!peek && !peek.approverUserId && !!peek.approverManualName;
+    const moc = await requireMocAction(params.id, user, proxy ? "decideProxy" : "decide");
+    const onBehalf = proxy ? ` (dicatat ${user.name} atas nama ${moc.approverManualName})` : "";
 
     if (!note) throw new HttpError(400, decision === "reject" ? "Catatan wajib diisi saat menolak." : "Catatan persetujuan wajib diisi.");
     if (decision === "reject") {
@@ -29,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         .update(mocRequests)
         .set({ validationState: "rejected", approverNote: note, updatedAt: new Date() })
         .where(eq(mocRequests.id, moc.id));
-      await recordMocHistory(moc.id, user, "Ditolak", { notes: note, fromState: moc.validationState, toState: "rejected" });
+      await recordMocHistory(moc.id, user, "Ditolak", { notes: `${note}${onBehalf}`, fromState: moc.validationState, toState: "rejected" });
     } else {
       if (!performer) throw new HttpError(400, "Tunjuk MoC Performer sebelum menyetujui.");
       let performerName = performer.name;
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         })
         .where(eq(mocRequests.id, moc.id));
       await recordMocHistory(moc.id, user, "Disetujui", {
-        notes: `Performer: ${performerName}.${note ? ` ${note}` : ""}`,
+        notes: `Performer: ${performerName}.${note ? ` ${note}` : ""}${onBehalf}`,
         fromState: moc.validationState,
         toState: "approved",
       });

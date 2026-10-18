@@ -25,7 +25,7 @@ function moc(patch: Partial<MocRequest> = {}): MocRequest {
     id: "m1", mocNumber: "MOC-SURABAYA-2026-001", location: LOC, createdBy: "u-init", createdByName: "Ina", stateSince: null,
     registerStatus: "Inisiasi & Validasi", validationState: "registered", round: 1,
     approverUserId: "u-appr", approverName: "Budi", performerUserId: "u-perf", performerName: "Wahyu", approverNote: null,
-    plannedReviewers: [], plannedApproverId: null, communication: null, implementationPlan: null,
+    plannedReviewers: [], plannedApproverId: null, approverManualName: null, approverManualJabatan: null, communication: null, implementationPlan: null,
     createdAt: "", updatedAt: "", reviews: [], history: [], evidence: [],
     unitOperasi: "", fungsi: "", region: "Jatimbalinus", anggaranType: "", tanggal: "2026-10-01", judul: "Uji", latarBelakang: "",
     changeCategories: [], sifatPerubahan: "Permanen", deskripsi: "", prosesTerdampak: "", peraturanRelevan: "", stakeholderReviewer: "",
@@ -76,3 +76,20 @@ assert.equal(mocStageIndex(moc({ registerStatus: "Implementasi" })), 4);
 assert.equal(mocStageIndex(moc({ registerStatus: "Closed" })), 7);
 
 console.log("check-moc-prep: semua pemeriksaan lulus");
+
+// Pihak tanpa akun (diketik manual): review dicatat pembuat MOC atau Controller; keputusan hanya Controller.
+const manualReview = { id: "r1", round: 1, functionLabel: "Maintenance Service", reviewerUserId: null, reviewerName: "Pak Hadi", reviewerJabatan: "", outcome: "Pending" as const, recommendation: "" };
+const inReview = moc({ validationState: "in_review", reviews: [manualReview] });
+assert.ok(mocActionsFor(inReview, initiator).includes("reviewProxy"));
+assert.ok(mocActionsFor(inReview, controller).includes("reviewProxy"));
+assert.ok(mocActionsFor(inReview, controller).includes("editParties"));
+assert.ok(!mocActionsFor(inReview, initiator).includes("editParties")); // hanya Controller yang mengubah nama pihak
+assert.deepEqual(mocActionsFor(inReview, otherInitiator).filter((a) => a === "reviewProxy"), []); // bukan pembuat MOC
+assert.deepEqual(mocActionsFor(inReview, outsider), []); // lokasi lain
+assert.ok(!mocActionsFor(moc({ validationState: "in_review", reviews: [{ ...manualReview, outcome: "Sesuai" as const }] }), controller).includes("reviewProxy")); // sudah dicatat
+
+const manualApprover = moc({ validationState: "pending_approval", approverUserId: null, approverName: "Bu Sari", approverManualName: "Bu Sari" });
+assert.ok(mocActionsFor(manualApprover, controller).includes("decideProxy"));
+assert.ok(!mocActionsFor(manualApprover, initiator).includes("decideProxy")); // Initiator tidak boleh memutuskan MOC-nya sendiri
+assert.ok(!mocActionsFor(manualApprover, initiator).includes("decide"));
+assert.ok(!mocActionsFor(moc({ validationState: "pending_approval" }), controller).includes("decideProxy")); // Approver berakun: bukan proxy
