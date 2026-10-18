@@ -134,6 +134,9 @@ export const MOC_HISTORY_ACTIONS = [
   "Komunikasi Dicatat",
   "Rencana Implementasi Dicatat",
   "Tahap Dimajukan",
+  "Pemantauan Dicatat",
+  "Tinjauan Akhir Dicatat",
+  "Ditutup",
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
 
@@ -199,6 +202,71 @@ export const MOC_REQUIRE_SIGNED_EVIDENCE = false;
 export interface MocBarrier {
   text: string;
   pic: string; // kolom PENANGGUNG JAWAB di samping tiap barrier pada formulir
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Tahap F Pemantauan, G Tinjauan Akhir, H Penutupan (Formulir Lampiran 6 dan 7, TKO B13.3-07; jawaban client
+// 13 Okt 2026): pemantauan minimal 1x per 3 bulan, hasilnya lanjut / perpanjang / tutup; perpanjangan maksimal
+// 2 x 6 bulan; Tinjauan Akhir paling lambat 3 bulan (Permanen) atau 1 bulan (Sementara dan Darurat); penutupan oleh
+// MoC Approver.
+export const MOC_MONITOR_OUTCOMES = ["Lanjut", "Perpanjang", "Tutup"] as const;
+export type MocMonitorOutcome = (typeof MOC_MONITOR_OUTCOMES)[number];
+export const MOC_MONITOR_OUTCOME_LABEL: Record<MocMonitorOutcome, string> = {
+  Lanjut: "Lanjutkan pemantauan",
+  Perpanjang: "Perpanjang pemantauan 6 bulan",
+  Tutup: "Tutup pemantauan, lanjut ke Tinjauan Akhir",
+};
+export const MOC_MONITOR_INTERVAL_MONTHS = 3;
+export const MOC_EXTENSION_MONTHS = 6;
+export const MOC_MAX_EXTENSIONS = 2;
+// Batas Tinjauan Akhir sejak masuk tahap itu (bulan). Darurat: 1 bulan, atau 3 bulan bila ditetapkan menjadi tetap.
+export const MOC_FINAL_REVIEW_MONTHS: Record<MocSifatPerubahan, number> = { Permanen: 3, Sementara: 1, Darurat: 1 };
+// Pertanyaan pada Formulir Lampiran 7 (urutan dan kata-kata persis formulir).
+export const MOC_FINAL_QUESTIONS = [
+  "Apakah tujuan dan sasaran perubahan tercapai ?",
+  "Apakah mitigasi risiko dari perubahan telah dilaksanakan?",
+  "Apakah informasi keselamatan proses akibat perubahan telah disosialisasikan kepada pekerja terkait?",
+  "Apakah rencana tanggap darurat telah disesuaikan untuk mengakomodir perubahan?",
+] as const;
+
+// Satu baris tabel pada Lampiran 6 dan 7: Kegiatan (atau Deskripsi Aksi Tindak Lanjut), Keterangan, Tahapan, PIC,
+// Target Date, Status.
+export interface MocTrackedItem {
+  item: string;
+  keterangan: string;
+  tahapan: string;
+  pic: string;
+  targetDate: string; // YYYY-MM-DD atau ""
+  status: string;
+}
+export interface MocMonitoringInput {
+  date: string; // YYYY-MM-DD
+  activities: MocTrackedItem[];
+  followUps: MocTrackedItem[];
+  notes: string;
+  outcome: MocMonitorOutcome;
+}
+export type MocMonitoringEntry = MocMonitoringInput & MocRecordedBy & { no: number };
+export interface MocFinalReviewerRow {
+  fungsi: string;
+  keterangan: string;
+  tanggapan: string;
+  tanggal: string;
+}
+export interface MocFinalReviewInput {
+  date: string;
+  answers: { yes: boolean | null; keterangan: string }[]; // sejajar dengan MOC_FINAL_QUESTIONS
+  followUps: MocTrackedItem[];
+  reviewers: MocFinalReviewerRow[]; // MoC Reviewer & Tim Peninjau Akhir
+  notes: string;
+}
+export type MocFinalReview = MocFinalReviewInput & MocRecordedBy;
+export interface MocClosure {
+  note: string;
+  closedAt: string; // ISO
+  closedById: string;
+  closedByName: string;
+  onBehalfOf: string | null; // nama Approver tanpa akun bila Controller yang mencatat
 }
 
 // Tahap D Komunikasi (TKO V-D.1.a): isi rencana komunikasi & pelatihan, urutan sesuai TKO.
@@ -337,6 +405,10 @@ export interface MocRequest extends MocFormContent {
   // null = belum dicatat. Diisi setelah registrasi, sebelum Implementasi dimulai.
   communication: MocCommunication | null;
   implementationPlan: MocImplementationPlan | null;
+  // Tahap F-H: catatan pemantauan berurutan (ke-1, ke-2, ...), tinjauan akhir, dan penutupan.
+  monitoring: MocMonitoringEntry[];
+  finalReview: MocFinalReview | null;
+  closure: MocClosure | null;
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -364,7 +436,11 @@ export type MocAction =
   | "register"
   | "communicate"
   | "planImplementation"
-  | "advance";
+  | "advance"
+  | "monitor"
+  | "finalReview"
+  | "close"
+  | "closeProxy";
 
 export const MOC_INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
 
@@ -449,10 +525,84 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
       if (moc.communication) actions.push("planImplementation");
       actions.push("advance");
     }
-  } else if (moc.validationState === "registered" && moc.registerStatus !== "Closed" && isController) {
-    actions.push("advance");
+  } else if (moc.validationState === "registered" && moc.registerStatus === "Implementasi" && isController) {
+    actions.push("advance"); // Implementasi -> Pemantauan; sesudahnya lewat Formulir Pemantauan dan Tinjauan Akhir
+  }
+
+  if (moc.validationState === "registered") {
+    const isPerformer = !!moc.performerUserId && moc.performerUserId === user.id;
+    if (moc.registerStatus === "Pemantauan" && (isOwner || isController || isPerformer)) actions.push("monitor");
+    if (moc.registerStatus === "Tinjauan Akhir") {
+      if (isOwner || isController) actions.push("finalReview");
+      // Penutupan: kewenangan MoC Approver; bila Approver tanpa akun, Controller mencatat atas namanya.
+      if (moc.finalReview) {
+        if (moc.approverUserId && moc.approverUserId === user.id) actions.push("close");
+        else if (!moc.approverUserId && moc.approverManualName && isController) actions.push("closeProxy");
+      }
+    }
   }
   return actions;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Jadwal pemantauan dan tinjauan akhir. Tanggal dihitung dalam WIB. `stateSince` (kapan MOC masuk tahap sekarang)
+// dipakai sebagai tanggal dasar bila belum ada catatan pemantauan.
+export function wibYmd(input: string | number | Date): string {
+  const d = input instanceof Date ? input : new Date(input);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+export function addMonthsYmd(ymd: string, months: number): string {
+  // Jepit ke akhir bulan tujuan (31 Des + 6 bulan = 30 Jun), bukan meluap ke bulan berikutnya.
+  const [y, m, day] = ymd.split("-").map(Number);
+  const target = new Date(y, m - 1 + months, 1);
+  const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(Math.min(day, last)).padStart(2, "0")}`;
+}
+const daysBetweenYmd = (fromYmd: string, toYmd: string) => Math.round((new Date(`${toYmd}T00:00:00`).getTime() - new Date(`${fromYmd}T00:00:00`).getTime()) / 86_400_000);
+
+export function mocExtensionsUsed(moc: Pick<MocRequest, "monitoring">): number {
+  return moc.monitoring.filter((e) => e.outcome === "Perpanjang").length;
+}
+
+// Batas pemantauan berikutnya (YYYY-MM-DD): 3 bulan sesudah pemantauan terakhir, atau sejak masuk tahap Pemantauan.
+export function mocMonitoringDue(moc: Pick<MocRequest, "validationState" | "registerStatus" | "monitoring" | "stateSince">): string | null {
+  if (moc.validationState !== "registered" || moc.registerStatus !== "Pemantauan") return null;
+  const base = moc.monitoring.length > 0 ? moc.monitoring[moc.monitoring.length - 1].date : moc.stateSince ? wibYmd(moc.stateSince) : "";
+  return base ? addMonthsYmd(base, MOC_MONITOR_INTERVAL_MONTHS) : null;
+}
+export function mocMonitoringOverdueDays(moc: Parameters<typeof mocMonitoringDue>[0], nowMs: number = Date.now()): number {
+  const due = mocMonitoringDue(moc);
+  return due ? Math.max(0, daysBetweenYmd(due, wibYmd(nowMs))) : 0;
+}
+// Batas Tinjauan Akhir menurut sifat perubahan.
+export function mocFinalReviewDue(moc: Pick<MocRequest, "validationState" | "registerStatus" | "sifatPerubahan" | "stateSince">): string | null {
+  if (moc.validationState !== "registered" || moc.registerStatus !== "Tinjauan Akhir" || !moc.stateSince) return null;
+  return addMonthsYmd(wibYmd(moc.stateSince), MOC_FINAL_REVIEW_MONTHS[moc.sifatPerubahan]);
+}
+export function mocFinalReviewOverdueDays(moc: Parameters<typeof mocFinalReviewDue>[0] & Pick<MocRequest, "finalReview">, nowMs: number = Date.now()): number {
+  if (moc.finalReview) return 0;
+  const due = mocFinalReviewDue(moc);
+  return due ? Math.max(0, daysBetweenYmd(due, wibYmd(nowMs))) : 0;
+}
+
+// Kelengkapan isian (pesan sama di klien dan server).
+export function mocMonitoringIssues(i: MocMonitoringInput, extUsed: number, todayYmd: string): string[] {
+  const issues: string[] = [];
+  if (!i.date) issues.push("Tanggal pemantauan wajib diisi.");
+  else if (i.date > todayYmd) issues.push("Tanggal pemantauan tidak boleh di masa depan.");
+  if (!i.activities.some((a) => a.item.trim())) issues.push("Isi minimal satu aktivitas yang dipantau.");
+  if (i.outcome === "Perpanjang" && extUsed >= MOC_MAX_EXTENSIONS) {
+    issues.push(`Perpanjangan sudah ${MOC_MAX_EXTENSIONS} kali ${MOC_EXTENSION_MONTHS} bulan; risiko harus direview ulang sebelum diperpanjang lagi.`);
+  }
+  return issues;
+}
+export function mocFinalReviewIssues(i: MocFinalReviewInput, todayYmd: string): string[] {
+  const issues: string[] = [];
+  if (!i.date) issues.push("Tanggal tinjauan akhir wajib diisi.");
+  else if (i.date > todayYmd) issues.push("Tanggal tinjauan akhir tidak boleh di masa depan.");
+  if (i.answers.length !== MOC_FINAL_QUESTIONS.length || i.answers.some((a) => a.yes === null)) issues.push("Jawab keempat pertanyaan tinjauan akhir dengan Ya atau Tidak.");
+  else if (i.answers.some((a) => a.yes === false && !a.keterangan.trim())) issues.push("Beri keterangan untuk setiap jawaban Tidak.");
+  return issues;
 }
 
 // Isian minimum catatan Komunikasi. Mengembalikan daftar masalah (kosong = lengkap).
@@ -559,6 +709,8 @@ export const MOC_LATER_STAGE_INFO: Record<"Implementasi" | "Pemantauan" | "Tinja
   Closed: "MOC telah ditutup: Approver menyetujui penutupan dan Controller memastikan dokumen serta Register diperbarui.",
 };
 
+const fmtYmdId = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+
 // Ringkasan jelas: MOC ini SEKARANG menunggu siapa dan apa — supaya user tidak
 // bingung apakah input mereka sudah masuk.
 export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; done: boolean } {
@@ -594,6 +746,21 @@ export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; 
         }
         return { title: "Siap diserahkan ke Performer", detail: `${owner} atau MoC Controller menyerahkan rencana ke ${moc.performerName ?? "MoC Performer"} dan memulai Implementasi.`, done: false };
       }
+      if (moc.registerStatus === "Pemantauan") {
+        const due = mocMonitoringDue(moc);
+        const ke = moc.monitoring.length + 1;
+        return {
+          title: due ? `Pemantauan ke-${ke}, paling lambat ${fmtYmdId(due)}` : `Pemantauan ke-${ke}`,
+          detail: `Pembuat MOC, MoC Performer, atau Controller mencatat pemantauan (minimal 1× per ${MOC_MONITOR_INTERVAL_MONTHS} bulan). Hasilnya: lanjutkan, perpanjang ${MOC_EXTENSION_MONTHS} bulan (maks ${MOC_MAX_EXTENSIONS}×), atau tutup menuju Tinjauan Akhir.`,
+          done: false,
+        };
+      }
+      if (moc.registerStatus === "Tinjauan Akhir") {
+        const due = mocFinalReviewDue(moc);
+        return moc.finalReview
+          ? { title: "Tinjauan Akhir dicatat, menunggu penutupan Approver", detail: `${moc.approverName ?? "MoC Approver"} menyetujui penutupan MOC${!moc.approverUserId ? " (dicatat Controller atas nama Approver)" : ""}.`, done: false }
+          : { title: due ? `Menunggu Tinjauan Akhir, paling lambat ${fmtYmdId(due)}` : "Menunggu Tinjauan Akhir", detail: `${owner} atau Controller mencatat hasil Tinjauan Akhir (Lampiran 7).`, done: false };
+      }
       return {
         title: `Tahap ${moc.registerStatus}`,
         detail: MOC_LATER_STAGE_INFO[moc.registerStatus as keyof typeof MOC_LATER_STAGE_INFO] ?? "",
@@ -627,6 +794,10 @@ export const MOC_ACTION_LABEL: Record<MocAction, string> = {
   communicate: "Catat komunikasi",
   planImplementation: "Catat rencana implementasi",
   advance: "Majukan tahap",
+  monitor: "Catat pemantauan",
+  finalReview: "Catat tinjauan akhir",
+  close: "Tutup MOC",
+  closeProxy: "Tutup MOC atas nama Approver",
 };
 
 // Tindakan yang benar-benar "menunggu" user (tanpa 'edit' dan 'advance' yang selalu
@@ -642,6 +813,10 @@ export function mocPendingActions(moc: MocRequest, actor: MocActor): MocAction[]
       a === "decideProxy" ||
       a === "register" ||
       (a === "communicate" && !moc.communication) ||
-      (a === "planImplementation" && !moc.implementationPlan)
+      (a === "planImplementation" && !moc.implementationPlan) ||
+      (a === "monitor" && mocMonitoringOverdueDays(moc) > 0) ||
+      a === "finalReview" ||
+      a === "close" ||
+      a === "closeProxy"
   );
 }

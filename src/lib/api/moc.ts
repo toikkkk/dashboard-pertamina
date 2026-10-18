@@ -13,6 +13,8 @@ import {
   MOC_CHANGE_CATEGORIES,
   MOC_COMMUNICATION_ITEMS,
   MOC_COMMUNICATION_MEDIA,
+  MOC_FINAL_QUESTIONS,
+  MOC_MONITOR_OUTCOMES,
   MOC_REQUIRE_SIGNED_EVIDENCE,
   mocActionsFor,
   type MocAction,
@@ -126,6 +128,9 @@ function toRequest(
     approverManualJabatan: row.approverManualJabatan,
     communication: (row.communication as MocRequest["communication"]) ?? null,
     implementationPlan: (row.implementationPlan as MocRequest["implementationPlan"]) ?? null,
+    monitoring: (row.monitoring as MocRequest["monitoring"]) ?? [],
+    finalReview: (row.finalReview as MocRequest["finalReview"]) ?? null,
+    closure: (row.closure as MocRequest["closure"]) ?? null,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
     createdAt: fmtTs(row.createdAt),
     updatedAt: fmtTs(row.updatedAt),
@@ -356,6 +361,28 @@ export const mocImplementationPlanSchema = z.object({
   documentationPlan: text(10000).default(""),
   attachmentFileIds,
 });
+
+// Tahap F-H. Baris tabel Lampiran 6 dan 7; baris yang seluruhnya kosong dibuang di rute.
+const trackedItem = z.object({ item: text(1000), keterangan: text(2000), tahapan: text(300), pic: text(300), targetDate: ymd, status: text(200) });
+export const mocMonitoringSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  activities: z.array(trackedItem).max(40),
+  followUps: z.array(trackedItem).max(40).default([]),
+  notes: text(5000).default(""),
+  outcome: z.enum(MOC_MONITOR_OUTCOMES),
+  attachmentFileIds,
+});
+export const mocFinalReviewSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  answers: z.array(z.object({ yes: z.boolean().nullable(), keterangan: text(2000) })).length(MOC_FINAL_QUESTIONS.length),
+  followUps: z.array(trackedItem).max(40).default([]),
+  reviewers: z.array(z.object({ fungsi: text(200), keterangan: text(2000), tanggapan: text(2000), tanggal: ymd })).max(20).default([]),
+  notes: text(5000).default(""),
+  attachmentFileIds,
+});
+export const mocCloseSchema = z.object({ note: z.string().trim().min(1).max(5000), evidenceFileId: z.string().uuid().optional() });
+export const isBlankTracked = (r: { item: string; keterangan: string; tahapan: string; pic: string; targetDate: string; status: string }) =>
+  !r.item.trim() && !r.keterangan.trim() && !r.tahapan.trim() && !r.pic.trim() && !r.targetDate && !r.status.trim();
 
 // Lampiran tahap (gambar/PDF) yang ikut dikirim bersama catatan tahap.
 export async function attachStageFiles(mocId: string, fileIds: string[], user: SessionUser, stage: string): Promise<void> {

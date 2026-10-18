@@ -372,6 +372,10 @@ export const mocRequests = pgTable(
     // Approver tanpa akun: nama dan jabatan diketik manual (approverUserId kosong). Dipakai juga sebagai rencana saat draf.
     approverManualName: text("approver_manual_name"),
     approverManualJabatan: text("approver_manual_jabatan"),
+    // Tahap F-H (Lampiran 6 dan 7): daftar catatan pemantauan, catatan tinjauan akhir, dan penutupan. NULL = belum ada.
+    monitoring: jsonb("monitoring"),
+    finalReview: jsonb("final_review"),
+    closure: jsonb("closure"),
     // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
     communication: jsonb("communication"),
     implementationPlan: jsonb("implementation_plan"),

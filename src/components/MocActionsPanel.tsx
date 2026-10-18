@@ -11,7 +11,18 @@ import { uploadFileToR2 } from "@/lib/uploadFile";
 import {
   MOC_COMMUNICATION_ITEMS,
   MOC_COMMUNICATION_MEDIA,
+  MOC_FINAL_QUESTIONS,
+  MOC_MONITOR_OUTCOMES,
+  MOC_MONITOR_OUTCOME_LABEL,
   hasMocRole,
+  mocExtensionsUsed,
+  mocFinalReviewIssues,
+  mocMonitoringDue,
+  mocMonitoringIssues,
+  wibYmd,
+  type MocFinalReviewInput,
+  type MocMonitoringInput,
+  type MocTrackedItem,
   mocAdvanceIssues,
   mocCommunicationIssues,
   mocImplementationPlanIssues,
@@ -672,8 +683,227 @@ export default function MocActionsPanel({
         </Panel>
       )}
 
+      {actions.includes("monitor") && <MonitorPanel moc={moc} busy={busy} run={run} />}
+      {actions.includes("finalReview") &&
+        (moc.finalReview ? (
+          <EditRecorded label={`Ubah Tinjauan Akhir (dicatat ${moc.finalReview.recordedByName})`}>
+            <FinalReviewForm moc={moc} busy={busy} run={run} />
+          </EditRecorded>
+        ) : (
+          <Panel title="Catat Tinjauan Akhir (Lampiran 7)">
+            <FinalReviewForm moc={moc} busy={busy} run={run} />
+          </Panel>
+        ))}
+      {(actions.includes("close") || actions.includes("closeProxy")) && (
+        <ClosePanel moc={moc} proxy={!actions.includes("close")} busy={busy} run={run} onEvidence={setEvidence} evidence={evidence} />
+      )}
+
       {error && <p role="alert" className="text-[13px] font-semibold text-[#DC2626]">{error}</p>}
     </div>
+  );
+}
+
+type RunFn = (fn: () => Promise<MocRequest>, message: (saved: MocRequest) => string) => Promise<void>;
+const blankItem = (): MocTrackedItem => ({ item: "", keterangan: "", tahapan: "", pic: "", targetDate: "", status: "" });
+const nonBlank = (r: MocTrackedItem) => r.item.trim() || r.keterangan.trim() || r.tahapan.trim() || r.pic.trim() || r.targetDate || r.status.trim();
+
+// Tabel Kegiatan / Keterangan / Tahapan / PIC / Target Date / Status (Lampiran 6 dan 7).
+function TrackedRows({ rows, onChange, itemLabel }: { rows: MocTrackedItem[]; onChange: (rows: MocTrackedItem[]) => void; itemLabel: string }) {
+  const set = (i: number, patch: Partial<MocTrackedItem>) => onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  return (
+    <div className="flex flex-col gap-2.5">
+      {rows.map((r, i) => (
+        <div key={i} className="rounded-[10px] border border-[#C5CED3] p-3 flex flex-col gap-2">
+          <div className="flex items-start gap-2">
+            <input className={INPUT} value={r.item} onChange={(e) => set(i, { item: e.target.value })} placeholder={itemLabel} aria-label={itemLabel} />
+            <button type="button" aria-label="Hapus baris" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} className="p-2 text-[#6b6e72] hover:text-[#DC2626]">
+              <X className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className={INPUT} value={r.keterangan} onChange={(e) => set(i, { keterangan: e.target.value })} placeholder="Keterangan" aria-label="Keterangan" />
+            <input className={INPUT} value={r.tahapan} onChange={(e) => set(i, { tahapan: e.target.value })} placeholder="Tahapan" aria-label="Tahapan" />
+            <input className={INPUT} value={r.pic} onChange={(e) => set(i, { pic: e.target.value })} placeholder="PIC" aria-label="PIC" />
+            <input type="date" className={INPUT} value={r.targetDate} onChange={(e) => set(i, { targetDate: e.target.value })} aria-label="Target date" />
+            <input className={`${INPUT} sm:col-span-2`} value={r.status} onChange={(e) => set(i, { status: e.target.value })} placeholder="Status (mis. Selesai, Berjalan, Belum mulai)" aria-label="Status" />
+          </div>
+        </div>
+      ))}
+      {rows.length < 40 && (
+        <button type="button" onClick={() => onChange([...rows, blankItem()])} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah baris
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Tahap F: Formulir Pemantauan (Lampiran 6). Satu pemantauan per simpan; hasilnya menentukan langkah berikutnya.
+function MonitorPanel({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const today = wibYmd(Date.now());
+  const [form, setForm] = useState<MocMonitoringInput>({ date: today, activities: [blankItem()], followUps: [], notes: "", outcome: "Lanjut" });
+  const [file, setFile] = useState<string | undefined>();
+  const extUsed = mocExtensionsUsed(moc);
+  const clean = { ...form, activities: form.activities.filter(nonBlank), followUps: form.followUps.filter(nonBlank) };
+  const issues = mocMonitoringIssues(clean, extUsed, today);
+  const due = mocMonitoringDue(moc);
+  const no = moc.monitoring.length + 1;
+  return (
+    <Panel title={`Catat Pemantauan ke-${no} (Lampiran 6)`}>
+      {due && <p className="text-[12.5px] text-[#3a3d40]">Pemantauan berikutnya paling lambat <span className="font-semibold">{due}</span> (minimal sekali per 3 bulan).</p>}
+      <Step n={1} label="Tanggal pemantauan">
+        <input type="date" className={`${INPUT} max-w-[220px]`} value={form.date} max={today} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+      </Step>
+      <Step n={2} label="Kegiatan yang dipantau">
+        <TrackedRows rows={form.activities} onChange={(activities) => setForm({ ...form, activities })} itemLabel="Kegiatan" />
+      </Step>
+      <Step n={3} label="Aksi tindak lanjut (bila ada)">
+        <TrackedRows rows={form.followUps} onChange={(followUps) => setForm({ ...form, followUps })} itemLabel="Deskripsi aksi tindak lanjut" />
+      </Step>
+      <Step n={4} label="Hasil pemantauan ini">
+        <div role="radiogroup" className="flex flex-wrap gap-2">
+          {MOC_MONITOR_OUTCOMES.map((o) => (
+            <Choice key={o} selected={form.outcome === o} onSelect={() => setForm({ ...form, outcome: o })} title={MOC_MONITOR_OUTCOME_LABEL[o]} tone={o === "Tutup" ? "good" : "warn"} />
+          ))}
+        </div>
+        {form.outcome === "Perpanjang" && moc.sifatPerubahan === "Sementara" && moc.validUntil && (
+          <p className="text-[11.5px] text-[#6b6e72] mt-1.5">Masa berlaku MOC sementara ini (sampai {moc.validUntil}) akan digeser 6 bulan.</p>
+        )}
+        {extUsed > 0 && <p className="text-[11.5px] text-[#6b6e72] mt-1.5">Perpanjangan terpakai {extUsed} dari 2 kali.</p>}
+      </Step>
+      <Optional label="Catatan lain (opsional)">
+        <textarea className={INPUT} rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </Optional>
+      <Optional label="Lampirkan lembar pemantauan bertanda tangan (opsional)"><EvidenceInput onFileId={setFile} disabled={busy} /></Optional>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          className={BTN}
+          disabled={busy || issues.length > 0}
+          onClick={() =>
+            run(
+              () => mocApi.monitor(moc.id, { ...clean, attachmentFileIds: file ? [file] : [] }),
+              (s) => (form.outcome === "Tutup" ? "Pemantauan ditutup. MOC masuk Tinjauan Akhir." : `Pemantauan ke-${s.monitoring.length} tercatat.`)
+            ).then(() => { setForm({ date: today, activities: [blankItem()], followUps: [], notes: "", outcome: "Lanjut" }); setFile(undefined); })
+          }
+        >
+          {busy ? "Menyimpan…" : "Simpan pemantauan"}
+        </button>
+        {issues.length > 0 && !busy && <span className="text-[11.5px] text-[#6b6e72]">{issues[0]}</span>}
+      </div>
+    </Panel>
+  );
+}
+
+// Tahap G: Formulir Tinjauan Akhir (Lampiran 7).
+function FinalReviewForm({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const today = wibYmd(Date.now());
+  const saved = moc.finalReview;
+  const [form, setForm] = useState<MocFinalReviewInput>(() =>
+    saved
+      ? { date: saved.date, answers: saved.answers, followUps: saved.followUps, reviewers: saved.reviewers, notes: saved.notes }
+      : { date: today, answers: MOC_FINAL_QUESTIONS.map(() => ({ yes: null, keterangan: "" })), followUps: [], reviewers: [{ fungsi: "", keterangan: "", tanggapan: "", tanggal: "" }], notes: "" }
+  );
+  const [file, setFile] = useState<string | undefined>();
+  const issues = mocFinalReviewIssues(form, today);
+  const setAnswer = (i: number, patch: Partial<MocFinalReviewInput["answers"][number]>) =>
+    setForm({ ...form, answers: form.answers.map((a, idx) => (idx === i ? { ...a, ...patch } : a)) });
+  const setReviewer = (i: number, patch: Partial<MocFinalReviewInput["reviewers"][number]>) =>
+    setForm({ ...form, reviewers: form.reviewers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) });
+  return (
+    <>
+      <Step n={1} label="Tanggal tinjauan akhir">
+        <input type="date" className={`${INPUT} max-w-[220px]`} value={form.date} max={today} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+      </Step>
+      <Step n={2} label="Hasil tinjauan">
+        <div className="flex flex-col gap-3">
+          {MOC_FINAL_QUESTIONS.map((q, i) => (
+            <div key={q} className="rounded-[10px] border border-[#C5CED3] p-3">
+              <div className="text-[12.5px] font-semibold text-[#0F172A] mb-2">{q}</div>
+              <div role="radiogroup" aria-label={q} className="flex gap-4 mb-2">
+                {[true, false].map((v) => (
+                  <label key={String(v)} className="flex items-center gap-1.5 text-[12.5px] cursor-pointer">
+                    <input type="radio" name={`fq-${i}`} className="accent-[#0F3B59]" checked={form.answers[i].yes === v} onChange={() => setAnswer(i, { yes: v })} />
+                    {v ? "Ya" : "Tidak"}
+                  </label>
+                ))}
+              </div>
+              <input className={INPUT} value={form.answers[i].keterangan} onChange={(e) => setAnswer(i, { keterangan: e.target.value })} placeholder={form.answers[i].yes === false ? "Keterangan (wajib untuk jawaban Tidak)" : "Keterangan (opsional)"} aria-label="Keterangan" />
+            </div>
+          ))}
+        </div>
+      </Step>
+      <Step n={3} label="Aksi tindak lanjut (bila ada)">
+        <TrackedRows rows={form.followUps} onChange={(followUps) => setForm({ ...form, followUps })} itemLabel="Deskripsi aksi tindak lanjut" />
+      </Step>
+      <Step n={4} label="MoC Reviewer & Tim Peninjau Akhir">
+        <div className="flex flex-col gap-2.5">
+          {form.reviewers.map((r, i) => (
+            <div key={i} className="rounded-[10px] border border-[#C5CED3] p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input className={INPUT} value={r.fungsi} onChange={(e) => setReviewer(i, { fungsi: e.target.value })} placeholder="Fungsi" aria-label="Fungsi" />
+              <input type="date" className={INPUT} value={r.tanggal} onChange={(e) => setReviewer(i, { tanggal: e.target.value })} aria-label="Tanggal" />
+              <input className={INPUT} value={r.keterangan} onChange={(e) => setReviewer(i, { keterangan: e.target.value })} placeholder="Keterangan" aria-label="Keterangan" />
+              <div className="flex items-start gap-2">
+                <input className={INPUT} value={r.tanggapan} onChange={(e) => setReviewer(i, { tanggapan: e.target.value })} placeholder="Tanggapan" aria-label="Tanggapan" />
+                <button type="button" aria-label="Hapus baris" onClick={() => setForm({ ...form, reviewers: form.reviewers.filter((_, idx) => idx !== i) })} className="p-2 text-[#6b6e72] hover:text-[#DC2626]">
+                  <X className="w-4 h-4" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {form.reviewers.length < 20 && (
+            <button type="button" onClick={() => setForm({ ...form, reviewers: [...form.reviewers, { fungsi: "", keterangan: "", tanggapan: "", tanggal: "" }] })} className="self-start inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.2} /> Tambah peninjau
+            </button>
+          )}
+        </div>
+      </Step>
+      <Optional label="Catatan lain (opsional)">
+        <textarea className={INPUT} rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </Optional>
+      <Optional label="Lampirkan lembar tinjauan akhir bertanda tangan (opsional)"><EvidenceInput onFileId={setFile} disabled={busy} /></Optional>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          className={BTN}
+          disabled={busy || issues.length > 0}
+          onClick={() =>
+            run(() => mocApi.finalReview(moc.id, { ...form, attachmentFileIds: file ? [file] : [] }), () => "Tinjauan Akhir tercatat. Approver kini dapat menutup MOC.")
+          }
+        >
+          {busy ? "Menyimpan…" : saved ? "Simpan perubahan" : "Simpan tinjauan akhir"}
+        </button>
+        {issues.length > 0 && !busy && <span className="text-[11.5px] text-[#6b6e72]">{issues[0]}</span>}
+      </div>
+    </>
+  );
+}
+
+// Tahap H: penutupan oleh Approver (atau Controller atas nama Approver tanpa akun).
+function ClosePanel({ moc, proxy, busy, run, onEvidence, evidence }: { moc: MocRequest; proxy: boolean; busy: boolean; run: RunFn; onEvidence: (id: string | undefined) => void; evidence: string | undefined }) {
+  const [note, setNote] = useState("");
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <Panel title={proxy ? `Tutup MOC atas nama ${moc.approverManualName ?? "Approver"}` : "Setujui penutupan MOC"}>
+      <p className="text-[12.5px] text-[#3a3d40]">
+        Tinjauan Akhir sudah dicatat{moc.finalReview ? ` oleh ${moc.finalReview.recordedByName}` : ""}. Penutupan mengubah status Register menjadi Closed dan tidak dapat dibatalkan.
+      </p>
+      <NoteField label="Catatan penutupan" value={note} onChange={setNote} placeholder="Mis. seluruh aksi tindak lanjut selesai, dokumen PSI terkait sudah dimutakhirkan…" rows={2} />
+      <Optional label="Lampirkan bukti penutupan bertanda tangan (opsional)"><EvidenceInput onFileId={onEvidence} disabled={busy} /></Optional>
+      {!confirm ? (
+        <div>
+          <button type="button" className={BTN} disabled={busy || !note.trim()} onClick={() => setConfirm(true)}>Tutup MOC</button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap p-3.5 rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30">
+          <span className="text-[13px] font-semibold text-[#92400E]">Tutup MOC ini? Ini tercatat di Riwayat.</span>
+          <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.close(moc.id, { note: note.trim(), evidenceFileId: evidence }), () => "MOC ditutup.")}>
+            {busy ? "Memproses…" : "Ya, tutup"}
+          </button>
+          <button type="button" disabled={busy} onClick={() => setConfirm(false)} className="px-3 py-2 text-[13px] font-bold text-[#0F172A] hover:underline">Batal</button>
+        </div>
+      )}
+    </Panel>
   );
 }
 

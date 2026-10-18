@@ -5,6 +5,10 @@ import { getLastUpdateType, isDocOverdue, isExcludedFromDashboard, isReviewEntry
 import {
   MOC_REVIEW_SLA_DAYS,
   MOC_STAGES,
+  mocFinalReviewDue,
+  mocFinalReviewOverdueDays,
+  mocMonitoringDue,
+  mocMonitoringOverdueDays,
   mocPendingActions,
   mocStageIndex,
   type MocActor,
@@ -223,7 +227,13 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
         ? "Menunggu review Anda"
         : acts.includes("decide")
           ? "Menunggu keputusan Anda"
-          : acts.includes("reviewProxy")
+          : acts.includes("monitor")
+            ? "Catat pemantauan MOC"
+            : acts.includes("finalReview")
+              ? "Catat Tinjauan Akhir"
+              : acts.includes("close") || acts.includes("closeProxy")
+                ? "Menunggu penutupan MOC"
+                : acts.includes("reviewProxy")
             ? "Catat review atas nama reviewer"
             : acts.includes("decideProxy")
               ? "Catat keputusan atas nama Approver"
@@ -249,6 +259,13 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
     } else if ((m.validationState === "returned" || m.validationState === "rejected") && waited >= 1) {
       push(m, "waiting", `Menunggu perbaikan ${m.createdByName ?? "pembuat"} selama ${waited} hari kerja`);
     }
+
+    const monDue = mocMonitoringDue(m);
+    const monLate = mocMonitoringOverdueDays(m, nowMs);
+    if (monDue && monLate > 0) push(m, "sla", `Pemantauan lewat ${monLate} hari dari batas ${monDue}`);
+    const finDue = mocFinalReviewDue(m);
+    const finLate = mocFinalReviewOverdueDays(m, nowMs);
+    if (finDue && finLate > 0) push(m, "sla", `Tinjauan Akhir lewat ${finLate} hari dari batas ${finDue}`);
 
     if (m.validationState === "registered" && m.sifatPerubahan === "Sementara" && m.validUntil) {
       const left = Math.ceil((new Date(m.validUntil + "T00:00:00").getTime() - nowMs) / DAY);

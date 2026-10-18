@@ -11,6 +11,8 @@ import {
   type MocAction,
   type MocActor,
   type MocCommunicationInput,
+  type MocFinalReviewInput,
+  type MocMonitoringInput,
   type MocFormContent,
   type MocImplementationPlanInput,
   type MocRequest,
@@ -122,6 +124,9 @@ export const mocApi = {
   planImplementation: (id: string, body: MocImplementationPlanInput & { attachmentFileIds?: string[] }) =>
     post(`/api/moc/${id}/implementation-plan`, body),
   advance: (id: string, body: { notes: string }) => post(`/api/moc/${id}/advance`, body),
+  monitor: (id: string, body: MocMonitoringInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/monitoring`, body),
+  finalReview: (id: string, body: MocFinalReviewInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/final-review`, body),
+  close: (id: string, body: { note: string; evidenceFileId?: string }) => post(`/api/moc/${id}/close`, body),
   attachEvidence: (id: string, body: { slot: "initiator" | "reviewer" | "approver" | "controller" | "lampiran"; fileId: string; reviewId?: string }) =>
     post(`/api/moc/${id}/evidence`, body),
 };
