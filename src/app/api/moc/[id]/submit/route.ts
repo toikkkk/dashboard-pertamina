@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const moc = await requireMocAction(params.id, user, "submit");
     const { reviewers, approverUserId, evidenceFileId } = bodySchema.parse(await req.json());
 
-    const issues = mocSubmitIssues(moc);
+    const issues = mocSubmitIssues(moc, moc.location);
     if (issues.length > 0) throw new HttpError(400, "Formulir belum lengkap.", { issues });
 
     const reviewerIds = reviewers.map((r) => r.userId);

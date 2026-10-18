@@ -70,7 +70,7 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
         <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">{mocId ? "Ubah MOC" : "MOC Baru"}</h1>
       </div>
 
-      <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} />
+      <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} location={moc?.location ?? activeUser.location ?? undefined} />
 
       {/* Bilah aksi menempel di bawah layar: form ini panjang, tombol simpan tak perlu dicari di dasar halaman. */}
       <div className="sticky bottom-3 z-20 mt-5 flex flex-wrap items-center gap-2.5 px-4 py-3 rounded-[14px] bg-white/95 backdrop-blur border border-[#D8E1E4] shadow-[0_8px_24px_-8px_rgba(15,23,42,.25)]">

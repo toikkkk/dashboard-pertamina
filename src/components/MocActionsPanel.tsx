@@ -1,6 +1,7 @@
 "use client";
 
 import MenuSelect from "@/components/ui/MenuSelect";
+import { kboForMoc } from "@/lib/domain/kbo";
 import MocAuthorityInfo from "@/components/MocAuthorityInfo";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X, Paperclip } from "lucide-react";
@@ -224,7 +225,6 @@ export default function MocActionsPanel({
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [note, setNote] = useState("");
   const [performerId, setPerformerId] = useState("");
-  const [mocNumber, setMocNumber] = useState("");
   const [advanceNotes, setAdvanceNotes] = useState("");
   const [confirmAdvance, setConfirmAdvance] = useState(false);
 
@@ -527,12 +527,15 @@ export default function MocActionsPanel({
 
       {actions.includes("register") && (
         <Panel title="Daftarkan MOC ke Register">
-          <Optional label="Ubah Nomor MoC (opsional)">
-            <input className={INPUT} value={mocNumber} onChange={(e) => setMocNumber(e.target.value)} placeholder="Kosongkan untuk nomor otomatis (MOC-LOKASI-TAHUN-urut)" />
-          </Optional>
+          <div className="text-[12.5px] text-[#3a3d40]">
+            Nomor MoC dibuat otomatis:{" "}
+            <span className="font-mono font-semibold">
+              {kboForMoc(moc.location, moc.fungsi) ? `NNN/MOC/${kboForMoc(moc.location, moc.fungsi)}/bulan/tahun pengajuan` : "KBO belum ditetapkan"}
+            </span>
+          </div>
           <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
           <div>
-            <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.register(moc.id, { mocNumber: mocNumber.trim() || undefined, evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}.`)}>
+            <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.register(moc.id, { evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}.`)}>
               {busy ? "Mendaftarkan…" : "Daftarkan MOC"}
             </button>
           </div>

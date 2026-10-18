@@ -103,7 +103,7 @@ export const mocApi = {
       evidenceFileId?: string;
     }
   ) => post(`/api/moc/${id}/decision`, body),
-  register: (id: string, body: { mocNumber?: string; evidenceFileId?: string }) => post(`/api/moc/${id}/register`, body),
+  register: (id: string, body: { evidenceFileId?: string }) => post(`/api/moc/${id}/register`, body),
   communicate: (id: string, body: MocCommunicationInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/communication`, body),
   planImplementation: (id: string, body: MocImplementationPlanInput & { attachmentFileIds?: string[] }) =>
     post(`/api/moc/${id}/implementation-plan`, body),

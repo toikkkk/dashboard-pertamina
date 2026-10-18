@@ -6,6 +6,7 @@
 // sesudahnya masih dimajukan manual lewat `advance` sampai milestone berikutnya.
 
 import { isRegionalUnit } from "./regionalUnit";
+import { REGIONAL_KBO_FUNCTIONS } from "./kbo";
 
 // 13 kotak "Aktivitas / Ruang Lingkup Perubahan" pada Formulir Lampiran 5, urutan
 // sesuai formulir. (Sama dengan 13 baris Tabel 1 TKO; "Sistem/aplikasi teknologi"
@@ -497,16 +498,13 @@ export function nextRegisterStatus(current: MocRegisterStatus): MocRegisterStatu
   return i >= 0 && i < MOC_REGISTER_STATUSES.length - 1 ? MOC_REGISTER_STATUSES[i + 1] : null;
 }
 
-// Usulan Nomor MoC — TKO tidak mendefinisikan format; ini hanya usulan yang dapat
-// diubah Controller saat registrasi.
-export function suggestMocNumber(location: string, year: number, sequence: number): string {
-  const code = isRegionalUnit(location) ? "REG" : location.replace(/^(FT|IT|AFT)\s+/i, "").toUpperCase().replace(/\s+/g, "");
-  return `MOC-${code}-${year}-${String(sequence).padStart(3, "0")}`;
-}
-
 // Isian minimum agar draf boleh diajukan ke reviewer. Mengembalikan daftar masalah.
-export function mocSubmitIssues(form: MocFormContent): string[] {
+export function mocSubmitIssues(form: MocFormContent, location?: string): string[] {
   const issues: string[] = [];
+  // Unit Regional: fungsi pengusul menentukan KBO pada Nomor MoC (lihat domain/kbo.ts).
+  if (location && isRegionalUnit(location) && !REGIONAL_KBO_FUNCTIONS.some((f) => f.label === form.fungsi)) {
+    issues.push("Pilih fungsi regional pengusul (menentukan KBO pada Nomor MoC).");
+  }
   if (!form.judul.trim()) issues.push("Judul perubahan wajib diisi.");
   if (form.changeCategories.length === 0) issues.push("Pilih minimal satu aktivitas / ruang lingkup perubahan.");
   if (!form.deskripsi.trim()) issues.push("Deskripsi perubahan wajib diisi.");

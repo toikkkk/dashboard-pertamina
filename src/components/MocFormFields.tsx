@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { REGIONAL_KBO_FUNCTIONS } from "@/lib/domain/kbo";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import MocRiskMatrix from "@/components/MocRiskMatrix";
 import { Plus, X } from "lucide-react";
 import {
@@ -152,10 +154,13 @@ export default function MocFormFields({
   value,
   onChange,
   disabled,
+  location,
 }: {
   value: MocFormContent;
   onChange: (patch: Partial<MocFormContent>) => void;
   disabled?: boolean;
+  /** Lokasi MOC; untuk unit Regional, Fungsi berupa pilihan yang menentukan KBO nomor MoC. */
+  location?: string;
 }) {
   const toggle = <T extends string>(list: T[], item: T): T[] => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
   const nilai = riskValue(value.severity, value.probability);
@@ -169,7 +174,15 @@ export default function MocFormFields({
             <input className={INPUT} disabled={disabled} value={value.unitOperasi} onChange={(e) => onChange({ unitOperasi: e.target.value })} />
           </Field>
           <Field label="Fungsi">
-            <input className={INPUT} disabled={disabled} value={value.fungsi} onChange={(e) => onChange({ fungsi: e.target.value })} />
+            {location && isRegionalUnit(location) ? (
+              <select className={INPUT} disabled={disabled} value={value.fungsi} onChange={(e) => onChange({ fungsi: e.target.value })}>
+                <option value="">Pilih fungsi pengusul…</option>
+                {value.fungsi && !REGIONAL_KBO_FUNCTIONS.some((f) => f.label === value.fungsi) && <option value={value.fungsi}>{value.fungsi}</option>}
+                {REGIONAL_KBO_FUNCTIONS.map((f) => <option key={f.kbo} value={f.label}>{f.label} ({f.kbo})</option>)}
+              </select>
+            ) : (
+              <input className={INPUT} disabled={disabled} value={value.fungsi} onChange={(e) => onChange({ fungsi: e.target.value })} />
+            )}
           </Field>
           <Field label="Region">
             <input className={INPUT} disabled={disabled} value={value.region} onChange={(e) => onChange({ region: e.target.value })} />
