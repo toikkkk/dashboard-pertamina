@@ -432,6 +432,21 @@ export const mocHistory = pgTable("moc_history", {
 });
 
 // Berkas bukti tanda tangan (diunggah balik setelah ditandatangani di luar web).
+// PSI terdampak per MOC (Tahap 4): tautan ke dokumen Direktori. baselineVersion = versi saat ditandai, dipakai
+// membandingkan apakah dokumen sudah diperbarui karena MOC ini.
+export const mocAffectedDocs = pgTable(
+  "moc_affected_docs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mocId: uuid("moc_id").notNull().references(() => mocRequests.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id").notNull().references(() => documents.id),
+    baselineVersion: text("baseline_version").notNull(),
+    addedBy: uuid("added_by").references(() => users.id),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("moc_affected_docs_unique").on(t.mocId, t.documentId), index("moc_affected_docs_document_idx").on(t.documentId)]
+);
+
 export const mocEvidence = pgTable(
   "moc_evidence",
   {

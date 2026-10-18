@@ -137,6 +137,7 @@ export const MOC_HISTORY_ACTIONS = [
   "Pemantauan Dicatat",
   "Tinjauan Akhir Dicatat",
   "Ditutup",
+  "PSI Terdampak Diubah",
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
 
@@ -268,6 +269,35 @@ export interface MocClosure {
   closedByName: string;
   onBehalfOf: string | null; // nama Approver tanpa akun bila Controller yang mencatat
 }
+
+// PSI terdampak (Tahap 4): dokumen Direktori yang berubah akibat MOC. `updated` = sudah ada revisi nyata sesudah ditandai.
+export interface MocAffectedDoc {
+  documentId: string;
+  documentNumber: string;
+  title: string;
+  baselineVersion: string;
+  currentVersion: string;
+  addedByName: string;
+  addedAt: string;
+  updated: boolean;
+}
+export interface MocAffectedByDoc {
+  mocId: string;
+  mocNumber: string | null;
+  judul: string;
+  registerStatus: string;
+  validationState: string;
+  baselineVersion: string;
+  addedAt: string;
+  updated: boolean;
+}
+// Siapa yang boleh menandai/melepas PSI terdampak: pembuat MOC atau Controller lokasi MOC, selama belum Closed.
+export function mocCanEditAffected(moc: Pick<MocRequest, "location" | "createdBy" | "registerStatus">, user: MocActor): boolean {
+  if (!user.location || user.location !== moc.location || moc.registerStatus === "Closed") return false;
+  return user.role.includes("Controller") || moc.createdBy === user.id;
+}
+// Dokumen terdampak yang belum diperbarui (dipakai peringatan saat penutupan).
+export const mocAffectedPending = (docs: Pick<MocAffectedDoc, "updated">[]) => docs.filter((d) => !d.updated).length;
 
 // Tahap D Komunikasi (TKO V-D.1.a): isi rencana komunikasi & pelatihan, urutan sesuai TKO.
 export const MOC_COMMUNICATION_ITEMS = [

@@ -20,6 +20,7 @@ import { canDeleteDocument } from "@/lib/domain/rules";
 import { psiInsights } from "@/lib/domain/dashboard";
 import { supersededInfo } from "@/lib/domain/rules";
 import SupersedeDialog from "@/components/directory/SupersedeDialog";
+import DocumentMocCard from "@/components/DocumentMocCard";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
 // established, unfiltered exception for cross-location benchmarking widgets only —
@@ -281,6 +282,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           )}
         </div>
       )}
+      <DocumentMocCard documentId={doc.id} />
       <DocumentSplitViewer document={doc} key={doc.id} />
     </>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import MenuSelect from "@/components/ui/MenuSelect";
+import useSWR from "swr";
 import { kboForMoc } from "@/lib/domain/kbo";
 import MocAuthorityInfo from "@/components/MocAuthorityInfo";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -883,11 +884,18 @@ function FinalReviewForm({ moc, busy, run }: { moc: MocRequest; busy: boolean; r
 function ClosePanel({ moc, proxy, busy, run, onEvidence, evidence }: { moc: MocRequest; proxy: boolean; busy: boolean; run: RunFn; onEvidence: (id: string | undefined) => void; evidence: string | undefined }) {
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
+  const { data: aff } = useSWR<{ items: { documentNumber: string; updated: boolean }[] }>(`/api/moc/${moc.id}/affected`, (u: string) => fetch(u, { credentials: "same-origin" }).then((r) => r.json()));
+  const stale = (aff?.items ?? []).filter((d) => !d.updated);
   return (
     <Panel title={proxy ? `Tutup MOC atas nama ${moc.approverManualName ?? "Approver"}` : "Setujui penutupan MOC"}>
       <p className="text-[12.5px] text-[#3a3d40]">
         Tinjauan Akhir sudah dicatat{moc.finalReview ? ` oleh ${moc.finalReview.recordedByName}` : ""}. Penutupan mengubah status Register menjadi Closed dan tidak dapat dibatalkan.
       </p>
+      {stale.length > 0 && (
+        <div className="rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3 text-[12.5px] text-[#92400E]">
+          <span className="font-bold">{stale.length} PSI terdampak belum diperbarui:</span> {stale.map((d) => d.documentNumber).join(", ")}. Pastikan dokumen sudah diperbarui sebelum menutup MOC.
+        </div>
+      )}
       <NoteField label="Catatan penutupan" value={note} onChange={setNote} placeholder="Mis. seluruh aksi tindak lanjut selesai, dokumen PSI terkait sudah dimutakhirkan…" rows={2} />
       <Optional label="Lampirkan bukti penutupan bertanda tangan (opsional)"><EvidenceInput onFileId={onEvidence} disabled={busy} /></Optional>
       {!confirm ? (
