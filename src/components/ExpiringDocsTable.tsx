@@ -6,7 +6,7 @@ import { CheckCircle2, Upload as UploadIcon, RefreshCw, FileText, FileSpreadshee
 import DocumentPreviewModal from "@/components/DocumentPreviewModal";
 import UpdateTypeBadge from "@/components/UpdateTypeBadge";
 import StatusTag from "@/components/StatusTag";
-import { isDocOverdue, isEvidenceDoc, type DocumentItem } from "@/lib/mockData";
+import { isDocOverdue, isExcludedFromDashboard, type DocumentItem } from "@/lib/mockData";
 import { mutate as globalMutate } from "swr";
 import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
 import { DOCUMENT_STATUS_META } from "@/lib/domain/statusStyle";
@@ -115,7 +115,7 @@ export default function ExpiringDocsTable() {
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "expiryDate", dir: 1 });
 
-  const expiringDocs = allDocuments.filter((d) => isDocOverdue(d) && !isEvidenceDoc(d));
+  const expiringDocs = allDocuments.filter((d) => isDocOverdue(d) && !isExcludedFromDashboard(d));
 
   // User berlokasi: "Lokasi Saya" dan "Lokasi Lain" dipisah jadi dua tab (bukan satu
   // daftar campur); lokasi lain dikelompokkan per terminal. Admin Regional / akun tanpa

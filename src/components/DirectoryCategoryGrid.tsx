@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isSupersededDoc } from "@/lib/domain/rules";
 import { useRouter } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories, createDocumentCategory, type CategoryTile } from "@/lib/useDocumentCategories";
@@ -436,7 +437,8 @@ function CategoryView({
   onMoved: () => void;
 }) {
   const router = useRouter();
-  const { activeUser } = usePsi();
+  const { activeUser, allDocuments } = usePsi();
+  const supersededIds = useMemo(() => new Set(allDocuments.filter(isSupersededDoc).map((d) => d.id)), [allDocuments]);
   const canDelete = canDeleteDocument(activeUser, location);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteDoc, setDeleteDoc] = useState<{ id: string; title: string; number: string } | null>(null);
@@ -697,8 +699,8 @@ function CategoryView({
                     <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.issueDate)}</span>
                     <span className="hidden sm:block text-[12px] text-[#3a3d40]">{fmtDate(d.expiryDate)}</span>
                     <span className="inline-flex items-center gap-1.5 text-[12px] text-[#0F172A]">
-                      <span className="w-2 h-[3px] rounded-full" style={{ background: expired ? "#DC2626" : "#15803D" }} aria-hidden />
-                      {expired ? "Kedaluwarsa" : "Berlaku"}
+                      <span className="w-2 h-[3px] rounded-full" style={{ background: supersededIds.has(d.id) ? "#9a9da0" : expired ? "#DC2626" : "#15803D" }} aria-hidden />
+                      {supersededIds.has(d.id) ? "Digantikan" : expired ? "Kedaluwarsa" : "Berlaku"}
                     </span>
                   </button>
                   <ActionMenu

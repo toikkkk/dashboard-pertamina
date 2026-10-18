@@ -7,9 +7,16 @@
 import React, { useEffect, useState } from "react";
 import { X, Pencil } from "lucide-react";
 import type { DocumentItem } from "@/lib/mockData";
+import { usePsi } from "@/lib/psiStore";
 
 const PSI_TYPES = ["Informasi Bahan Berbahaya", "Informasi Teknologi Proses", "Informasi Peralatan", "Sistem Tata Kerja"] as const;
 
+const cycleText = (months: number) => (months % 12 === 0 ? `${months / 12} tahun` : `${months} bulan`);
+const addMonthsIso = (iso: string, months: number) => {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setMonth(d.getMonth() + months);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 const addMonths = (iso: string, months: number) => {
   const d = new Date(`${iso}T00:00:00`);
   d.setMonth(d.getMonth() + months);
@@ -29,6 +36,9 @@ export default function EditDocumentDialog({
   onSaved: () => void;
 }) {
   const todayIso = new Date().toISOString().split("T")[0];
+  const { activeUser } = usePsi();
+  const isAdmin = !!activeUser.isRegionalAdmin;
+  const [expiryManual, setExpiryManual] = useState<string | null>(null); // diisi bila Admin mengatur manual
   const [doc, setDoc] = useState<DocumentItem | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [title, setTitle] = useState("");
@@ -66,6 +76,7 @@ export default function EditDocumentDialog({
     if (number.trim() !== doc.documentNumber) changes.documentNumber = number.trim();
     if (psiType !== doc.psiType) changes.psiType = psiType;
     if (dateChanged) changes.issueDate = issue;
+    if (isAdmin && expiryManual !== null && expiryManual !== (dateChanged && issue ? addMonthsIso(issue, cycleMonths) : doc.expiryDate)) changes.expiryDate = expiryManual;
     if (estimated && verified) changes.dateVerified = true;
   }
   const nothing = Object.keys(changes).length === 0;
@@ -137,10 +148,21 @@ export default function EditDocumentDialog({
                 </div>
                 <div>
                   <div className={label}>Berlaku sampai</div>
-                  <div className={`${field} bg-[#F5F7F9] flex items-center text-[#3a3d40]`}>{issue ? addMonths(issue, cycleMonths) : "—"}</div>
+                  {isAdmin ? (
+                    <input
+                      type="date"
+                      value={expiryManual ?? (issue ? (dateChanged ? addMonthsIso(issue, cycleMonths) : doc?.expiryDate ?? "") : "")}
+                      min={issue || undefined}
+                      disabled={busy}
+                      onChange={(e) => setExpiryManual(e.target.value || null)}
+                      className={field}
+                    />
+                  ) : (
+                    <div className={`${field} bg-[#F5F7F9] flex items-center text-[#3a3d40]`}>{issue ? addMonths(issue, cycleMonths) : "—"}</div>
+                  )}
                 </div>
               </div>
-              <p className="text-[11px] text-[#9a9da0] -mt-2">Tanggal berlaku dihitung otomatis: tanggal terbit + {cycleMonths / 12} tahun (siklus tinjau sub-dokumen ini).</p>
+              <p className="text-[11px] text-[#9a9da0] -mt-2">Tanggal berlaku dihitung otomatis: tanggal terbit + {cycleText(cycleMonths)} (siklus tinjau sub-dokumen ini).{isAdmin ? " Admin Regional dapat mengubahnya manual." : ""}</p>
               {estimated && (
                 <label className="flex items-start gap-2.5 px-3 py-2.5 rounded-[8px] bg-[#FEF3C7] text-[12px] text-[#92400E] cursor-pointer">
                   <input type="checkbox" checked={verified} disabled={busy} onChange={(e) => setVerified(e.target.checked)} className="mt-0.5 accent-[#0F3B59]" />

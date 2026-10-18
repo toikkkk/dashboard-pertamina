@@ -95,6 +95,7 @@ export default function DirectoryToolbar({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Perlu tindakan">
+        <span className="text-[12px] font-bold text-[#6b6e72] whitespace-nowrap">Perlu tindakan di</span>
         <MenuSelect value={scopeValue} options={scopeOptions} onChange={onScope} ariaLabel="Cakupan terminal" minWidth={190} />
         {KINDS.map((k) => {
           const meta = ACTION_META[k];

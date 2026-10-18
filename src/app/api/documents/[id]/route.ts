@@ -4,7 +4,7 @@ import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, documentCategories, historyItems, historyDiffs } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationRead, assertLocationWrite } from "@/lib/auth/rbac";
+import { assertLocationRead, assertLocationWrite, ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentItem, getDocumentLocation } from "@/lib/api/documents";
 import { moveToTrash } from "@/lib/api/trash";
@@ -36,6 +36,8 @@ const patchSchema = z
     documentNumber: z.string().trim().min(1).max(100).optional(),
     psiType: z.enum(PSI_TYPES).optional(),
     issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    // "Berlaku sampai" manual (menimpa hitungan terbit + siklus): hanya Admin Regional.
+    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     dateVerified: z.boolean().optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: "Tidak ada perubahan." });
@@ -97,6 +99,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       set.expiryDate = expiry;
       diffs.push({ field: "Tanggal Terbit", oldValue: docRow.issueDate, newValue: body.issueDate });
       diffs.push({ field: "Tanggal Kedaluwarsa", oldValue: docRow.expiryDate, newValue: expiry });
+    }
+
+    // "Berlaku sampai" manual: menimpa hitungan otomatis (mis. sertifikat yang tanggal berlakunya tercetak sendiri).
+    if (body.expiryDate !== undefined) {
+      if (!user.isRegionalAdmin) throw new ForbiddenError("Hanya Admin Regional yang dapat mengubah tanggal berlaku secara manual.");
+      const issueEff = (set.issueDate as string | undefined) ?? docRow.issueDate;
+      if (body.expiryDate < issueEff) throw new HttpError(400, "Tanggal berlaku tidak boleh sebelum tanggal terbit.");
+      const autoIdx = diffs.findIndex((d) => d.field === "Tanggal Kedaluwarsa");
+      if (autoIdx >= 0) diffs.splice(autoIdx, 1);
+      set.expiryDate = body.expiryDate;
+      if (body.expiryDate !== docRow.expiryDate) {
+        diffs.push({ field: "Tanggal Kedaluwarsa (diubah manual)", oldValue: docRow.expiryDate, newValue: body.expiryDate });
+        if (docRow.status === "Expired" && body.expiryDate >= new Date().toISOString().split("T")[0]) set.status = "Approved";
+      } else if (autoIdx < 0) {
+        delete set.expiryDate;
+      }
     }
 
     // Menandai tanggal terverifikasi: hapus label "perkiraan" dari riwayat dokumen ini.

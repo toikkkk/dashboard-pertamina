@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import DocumentSplitViewer from "@/components/DocumentSplitViewer";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, FileLock2, FolderInput, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, FileLock2, FolderInput, Pencil, RefreshCw, Star, Trash2 } from "lucide-react";
 import type { DocumentItem } from "@/lib/mockData";
 import { usePsi } from "@/lib/psiStore";
 import { useDocumentCategories } from "@/lib/useDocumentCategories";
@@ -18,6 +18,8 @@ import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
 import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
 import { canDeleteDocument } from "@/lib/domain/rules";
 import { psiInsights } from "@/lib/domain/dashboard";
+import { supersededInfo } from "@/lib/domain/rules";
+import SupersedeDialog from "@/components/directory/SupersedeDialog";
 
 // Deliberately does NOT read from usePsi()'s `allDocuments` (that list is an
 // established, unfiltered exception for cross-location benchmarking widgets only —
@@ -38,6 +40,8 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   const { isFav, toggleFav } = useDocRefs(activeUser.id);
   const [moveOpen, setMoveOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [supersedeOpen, setSupersedeOpen] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -100,6 +104,17 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
         color: staleItem.months >= 48 ? "#DC2626" : staleItem.months >= 24 ? "#C2410C" : "#B45309",
       }
     : null;
+  const superseded = supersededInfo(doc);
+  const undoSupersede = async () => {
+    setUndoBusy(true);
+    try {
+      await fetch(`/api/documents/${doc.id}/supersede`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ undo: true }) });
+      await mutate();
+      void globalMutate("/api/bootstrap");
+    } finally {
+      setUndoBusy(false);
+    }
+  };
   const canDelete = canDeleteDocument(activeUser, doc.location);
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
@@ -140,6 +155,11 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               <button type="button" onClick={() => setReplaceOpen(true)} className={barBtn}>
                 <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Ganti berkas
               </button>
+              {!superseded && (
+                <button type="button" onClick={() => setSupersedeOpen(true)} className={barBtn}>
+                  <Archive className="w-3.5 h-3.5" strokeWidth={2.2} /> Tandai digantikan
+                </button>
+              )}
               <button type="button" onClick={() => setEditOpen(true)} className={barBtn}>
                 <Pencil className="w-3.5 h-3.5" strokeWidth={2.2} /> Ubah data
               </button>
@@ -193,6 +213,17 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           }}
         />
       )}
+      {supersedeOpen && (
+        <SupersedeDialog
+          doc={doc}
+          onClose={() => setSupersedeOpen(false)}
+          onDone={() => {
+            setSupersedeOpen(false);
+            void mutate();
+            void globalMutate("/api/bootstrap");
+          }}
+        />
+      )}
       {replaceOpen && (
         <ReplaceFileDialog
           documentId={doc.id}
@@ -206,6 +237,27 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
             void globalMutate("/api/bootstrap");
           }}
         />
+      )}
+      {superseded && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border bg-white px-4 py-3" style={{ borderColor: "#6b6e72", borderLeftWidth: 4 }} role="status">
+          <div className="min-w-0">
+            <div className="text-[13px] font-bold text-[#0F172A]">Digantikan</div>
+            <div className="text-[12px] text-[#3a3d40]">
+              {superseded.text}
+              {superseded.byId && (
+                <>
+                  {" "}
+                  <Link href={`/document/${superseded.byId}`} className="font-semibold text-[#0F3B59] hover:underline">Buka dokumen pengganti</Link>
+                </>
+              )}
+            </div>
+          </div>
+          {canWrite && (
+            <button type="button" onClick={undoSupersede} disabled={undoBusy} className={barBtn}>
+              {undoBusy ? "Memproses…" : "Aktifkan kembali"}
+            </button>
+          )}
+        </div>
       )}
       {staleInfo && (
         <div

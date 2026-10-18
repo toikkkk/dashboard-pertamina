@@ -8,10 +8,12 @@ import { useSearchParams } from "next/navigation";
 import { usePsi } from "@/lib/psiStore";
 import { userRoleLabel } from "@/lib/domain/roleLabel";
 import AccountSecurityPanel from "@/components/settings/AccountSecurityPanel";
+import ReviewCyclesPanel from "@/components/settings/ReviewCyclesPanel";
 
 const TABS = [
   { key: "profil", label: "Profil" },
   { key: "keamanan", label: "Keamanan Akun" },
+  { key: "siklus", label: "Siklus Tinjau", adminOnly: true },
 ] as const;
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -24,14 +26,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function SettingsContent() {
-  const tab = useSearchParams().get("tab") === "keamanan" ? "keamanan" : "profil";
+  const tabParam = useSearchParams().get("tab");
   const { activeUser } = usePsi();
+  const tab = tabParam === "keamanan" ? "keamanan" : tabParam === "siklus" && activeUser.isRegionalAdmin ? "siklus" : "profil";
 
   return (
-    <div className="max-w-[720px]">
+    <div className={tab === "siklus" ? "max-w-[1000px]" : "max-w-[720px]"}>
       <h1 className="font-heading text-[22px] font-bold text-[#0F172A] mb-4">Pengaturan</h1>
       <div role="tablist" aria-label="Pengaturan" className="flex gap-1 mb-5 border-b border-[#D8E1E4]">
-        {TABS.map((t) => {
+        {TABS.filter((t) => !("adminOnly" in t && t.adminOnly) || activeUser.isRegionalAdmin).map((t) => {
           const on = tab === t.key;
           return (
             <Link
@@ -57,6 +60,8 @@ function SettingsContent() {
             <Row label="Lokasi" value={activeUser.location ?? (activeUser.isRegionalAdmin ? "Semua lokasi" : "Belum ditetapkan")} />
           </dl>
         </section>
+      ) : tab === "siklus" ? (
+        <ReviewCyclesPanel />
       ) : (
         <AccountSecurityPanel />
       )}

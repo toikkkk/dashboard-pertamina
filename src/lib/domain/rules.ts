@@ -14,6 +14,38 @@ export function isEvidenceDoc(doc: Pick<DocumentItem, "categoryName">): boolean 
   return doc.categoryName === EVIDENCE_PHA_CATEGORY;
 }
 
+// Status "Digantikan" (permintaan client 14 Okt 2026): versi lama yang sudah ada penggantinya ditandai MANUAL.
+// Dicatat sebagai riwayat Revised bernada "Digantikan: oleh <nomor> - <judul> [<id>]"; entri "Aktif kembali:"
+// membatalkannya. Dokumen tetap tersimpan sebagai riwayat versi tetapi tidak dihitung di kedaluwarsa, berakhir,
+// dan perlu evaluasi tahunan (lihat isExcludedFromDashboard). Tanpa kolom baru di database.
+export const SUPERSEDE_NOTE_PREFIX = "Digantikan:";
+export const UNSUPERSEDE_NOTE_PREFIX = "Aktif kembali:";
+export function isSupersedeEntry(h: Pick<HistoryItem, "action" | "notes">): boolean {
+  const n = h.notes ?? "";
+  return h.action === "Revised" && (n.startsWith(SUPERSEDE_NOTE_PREFIX) || n.startsWith(UNSUPERSEDE_NOTE_PREFIX));
+}
+// Keterangan penggantian bila dokumen sedang berstatus Digantikan (entri terbaru di antara Digantikan/Aktif kembali).
+export function supersededInfo(doc: Pick<DocumentItem, "history">): { text: string; byId: string | null } | null {
+  for (let i = doc.history.length - 1; i >= 0; i--) {
+    const h = doc.history[i];
+    if (h.action !== "Revised") continue;
+    const n = h.notes ?? "";
+    if (n.startsWith(UNSUPERSEDE_NOTE_PREFIX)) return null;
+    if (n.startsWith(SUPERSEDE_NOTE_PREFIX)) {
+      const idMatch = /\[([0-9a-f-]{36})\]\s*$/.exec(n);
+      return { text: n.slice(SUPERSEDE_NOTE_PREFIX.length).replace(/\s*\[[0-9a-f-]{36}\]\s*$/, "").trim(), byId: idMatch ? idMatch[1] : null };
+    }
+  }
+  return null;
+}
+export function isSupersededDoc(doc: Pick<DocumentItem, "history">): boolean {
+  return supersededInfo(doc) !== null;
+}
+// Tidak dihitung di visualisasi dashboard: bukti pendukung (Evidence PHA) dan versi lama yang Digantikan.
+export function isExcludedFromDashboard(doc: Pick<DocumentItem, "categoryName" | "history">): boolean {
+  return isEvidenceDoc(doc) || isSupersededDoc(doc);
+}
+
 // Penanda riwayat "dokumen sudah ditinjau" (evaluasi tahunan): aksi Revised dengan catatan berawalan ini. Bukan
 // pembaruan isi dokumen; hanya mencatat bahwa dokumen dicek dan masih valid.
 export const REVIEW_NOTE_PREFIX = "Ditinjau:";
@@ -27,7 +59,7 @@ export function isReviewEntry(h: Pick<HistoryItem, "action" | "notes">): boolean
 // entri seperti Approved/Rejected/Forwarded dilewati karena bukan aksi update konten.
 export function getLastUpdateType(history: HistoryItem[]): LastUpdateType {
   const contentActions: HistoryItem['action'][] = ['Created', 'Extended Validity', 'Revised'];
-  const lastContentUpdate = [...history].reverse().find((h) => contentActions.includes(h.action) && !isReviewEntry(h));
+  const lastContentUpdate = [...history].reverse().find((h) => contentActions.includes(h.action) && !isReviewEntry(h) && !isSupersedeEntry(h));
 
   if (!lastContentUpdate || lastContentUpdate.action === 'Created') return 'Baru';
   if (lastContentUpdate.action === 'Extended Validity') return 'Diperpanjang';

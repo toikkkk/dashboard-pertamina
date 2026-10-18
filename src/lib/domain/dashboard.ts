@@ -1,7 +1,7 @@
 // Angka dan daftar untuk dashboard PSI dan MOC. Semuanya diturunkan dari data yang ada
 // (dokumen, riwayat, MOC); tidak ada angka bawaan. Fungsi murni: mudah diperiksa.
 import type { DocumentItem, HistoryItem, LastUpdateType } from "@/lib/domain/types";
-import { getLastUpdateType, isDocOverdue, isEvidenceDoc, isReviewEntry } from "@/lib/domain/rules";
+import { getLastUpdateType, isDocOverdue, isExcludedFromDashboard, isReviewEntry, isSupersedeEntry } from "@/lib/domain/rules";
 import {
   MOC_REVIEW_SLA_DAYS,
   MOC_STAGES,
@@ -50,8 +50,8 @@ export interface PsiRecentUpdate {
 }
 
 export function psiInsights(allDocs: DocumentItem[], nowMs: number) {
-  // Evidence PHA (bukti pendukung HAZID/HAZOP) tidak ikut dihitung di visualisasi.
-  const docs = allDocs.filter((d) => !isEvidenceDoc(d));
+  // Evidence PHA (bukti pendukung HAZID/HAZOP) dan versi lama yang Digantikan tidak ikut dihitung di visualisasi.
+  const docs = allDocs.filter((d) => !isExcludedFromDashboard(d));
   const overdue = docs.filter(isDocOverdue);
   const live = docs.filter((d) => !isDocOverdue(d));
 
@@ -66,7 +66,7 @@ export function psiInsights(allDocs: DocumentItem[], nowMs: number) {
   //    bukan tanggal dokumen), dan
   //  - "Revised" yang hanya memindahkan sub-kategori (bukan perubahan isi).
   const isRealUpdate = (h: HistoryItem): boolean => {
-    if (isReviewEntry(h)) return false; // tinjauan tahunan bukan pembaruan isi dokumen
+    if (isReviewEntry(h) || isSupersedeEntry(h)) return false; // tinjauan tahunan dan penandaan Digantikan bukan pembaruan isi dokumen
     if (h.action === "Created") {
       const n = h.notes ?? "";
       return !n.startsWith("Ditautkan dari arsip registry") && !n.startsWith("Dikoreksi:");
@@ -137,7 +137,7 @@ export function psiInsights(allDocs: DocumentItem[], nowMs: number) {
 export function docsByExpiryBucket(docs: DocumentItem[], key: string, nowMs: number): DocumentItem[] {
   const thisYear = new Date(nowMs).getFullYear();
   return docs
-    .filter((d) => !isEvidenceDoc(d) && !isDocOverdue(d))
+    .filter((d) => !isExcludedFromDashboard(d) && !isDocOverdue(d))
     .filter((d) => {
       const y = new Date(d.expiryDate + "T00:00:00").getFullYear();
       if (Number.isNaN(y)) return false;
@@ -197,7 +197,7 @@ export interface MocAttentionItem {
   detail: string;
 }
 
-const RISK_ORDER: MocRiskLevel[] = ["H", "M", "L"];
+const RISK_ORDER: MocRiskLevel[] = ["H", "MTH", "M", "LTM", "L"];
 
 export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) {
   const closed = (m: MocRequest) => m.validationState === "registered" && m.registerStatus === "Closed";
@@ -223,7 +223,11 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
         ? "Menunggu review Anda"
         : acts.includes("decide")
           ? "Menunggu keputusan Anda"
-          : acts.includes("register")
+          : acts.includes("reviewProxy")
+            ? "Catat review atas nama reviewer"
+            : acts.includes("decideProxy")
+              ? "Catat keputusan atas nama Approver"
+              : acts.includes("register")
             ? "Menunggu registrasi Anda"
             : acts.includes("communicate")
               ? "Catat komunikasi MOC"

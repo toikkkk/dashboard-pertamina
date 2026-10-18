@@ -1,10 +1,10 @@
 "use client";
 
 import MenuSelect from "@/components/ui/MenuSelect";
-import React, { useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, Plus } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, Plus, Download } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
 import { useMocActor, useMocList } from "@/lib/useMoc";
 import {
@@ -18,6 +18,8 @@ import {
 } from "@/lib/domain/moc";
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import StatusTag from "@/components/StatusTag";
+import { mocInsights } from "@/lib/domain/dashboard";
+import { exportMocRegisterXlsx } from "@/lib/exportMocRegister";
 
 const CARD =
   "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
@@ -38,24 +40,142 @@ interface Row {
   canAdvance: boolean;
 }
 
-export default function MocRegisterPage() {
+
+// Ringkasan di atas Register: total, jumlah per tahap, dan hal yang perlu perhatian. Setiap angka bisa diklik dan
+// memfilter daftar di bawahnya; jumlah pada kartu sama dengan jumlah baris hasil filter.
+function RegisterSummary({
+  mocs,
+  needCount,
+  attention,
+  status,
+  mineOnly,
+  perhatian,
+  setParams,
+}: {
+  mocs: MocRequest[];
+  needCount: number;
+  attention: { sla: number; temp: number; waiting: number };
+  status: string;
+  mineOnly: boolean;
+  perhatian: string | null;
+  setParams: (patch: Record<string, string | null>) => void;
+}) {
+  const running = mocs.filter((m) => m.registerStatus !== "Closed").length;
+  const byStatus = MOC_REGISTER_STATUSES.map((s) => ({ s, n: mocs.filter((m) => m.registerStatus === s).length }));
+  const max = Math.max(1, ...byStatus.map((x) => x.n));
+  const noFilter = status === "ALL" && !mineOnly && !perhatian;
+  const clear = { status: null, perlu: null, perhatian: null };
+  const attentionRows: { label: string; n: number; color: string; active: boolean; patch: Record<string, string | null> }[] = [
+    { label: "Perlu tindakan Anda", n: needCount, color: "#B45309", active: mineOnly, patch: { ...clear, perlu: "1" } },
+    { label: "Lewat batas waktu", n: attention.sla, color: "#DC2626", active: perhatian === "sla", patch: { ...clear, perhatian: "sla" } },
+    { label: "Masa berlaku sementara", n: attention.temp, color: "#B45309", active: perhatian === "temp", patch: { ...clear, perhatian: "temp" } },
+    { label: "Menunggu perbaikan", n: attention.waiting, color: "#6D28D9", active: perhatian === "waiting", patch: { ...clear, perhatian: "waiting" } },
+  ];
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+      <button
+        type="button"
+        onClick={() => setParams(clear)}
+        aria-pressed={noFilter}
+        className={`${CARD} text-left p-4 transition-colors hover:border-[#0F3B59] ${noFilter ? "!border-[#0F3B59]" : ""}`}
+      >
+        <div className="text-[11px] font-bold uppercase tracking-[.05em] text-[#6b6e72]">Total MOC</div>
+        <div className="font-heading text-[40px] font-bold leading-none text-[#0F172A] mt-2">{mocs.length}</div>
+        <div className="text-[12px] text-[#6b6e72] mt-2.5">{running} berjalan · {mocs.length - running} selesai</div>
+      </button>
+
+      <div className={`${CARD} p-4`}>
+        <div className="text-[11px] font-bold uppercase tracking-[.05em] text-[#6b6e72] mb-2">Per tahap</div>
+        <div className="flex flex-col gap-1">
+          {byStatus.map(({ s, n }) => (
+            <button
+              key={s}
+              type="button"
+              disabled={n === 0}
+              onClick={() => setParams({ ...clear, status: status === s ? null : s })}
+              aria-pressed={status === s}
+              className={`grid items-center gap-2.5 rounded-[8px] px-2 py-1 text-left transition-colors ${status === s ? "bg-[#E2E8EB]" : "hover:bg-[#F3F6F8]"} disabled:opacity-60 disabled:hover:bg-transparent`}
+              style={{ gridTemplateColumns: "118px minmax(0,1fr) 28px" }}
+            >
+              <span className="text-[12px] text-[#3a3d40] truncate">{s}</span>
+              <span className="h-[8px] rounded-[4px] bg-[#ECEDED] overflow-hidden"><i className="block h-full rounded-[4px] bg-[#0F3B59]" style={{ width: `${(n / max) * 100}%` }} /></span>
+              <b className="font-mono text-[12px] text-[#0F172A] text-right">{n}</b>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={`${CARD} p-4`}>
+        <div className="text-[11px] font-bold uppercase tracking-[.05em] text-[#6b6e72] mb-2">Perlu perhatian</div>
+        <div className="flex flex-col gap-1">
+          {attentionRows.map((r) => (
+            <button
+              key={r.label}
+              type="button"
+              disabled={r.n === 0}
+              onClick={() => setParams(r.active ? clear : r.patch)}
+              aria-pressed={r.active}
+              className={`flex items-center justify-between gap-3 rounded-[8px] px-2 py-1.5 text-left transition-colors ${r.active ? "bg-[#E2E8EB]" : "hover:bg-[#F3F6F8]"} disabled:opacity-60 disabled:hover:bg-transparent`}
+            >
+              <span className="inline-flex items-center gap-2 text-[12.5px] text-[#3a3d40]"><i className="inline-block w-2 h-2 rounded-full" style={{ background: r.color }} />{r.label}</span>
+              <b className="font-mono text-[13px]" style={{ color: r.n > 0 ? r.color : "#9a9da0" }}>{r.n}</b>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MocRegisterContent() {
   const { activeUser } = usePsi();
   const actor = useMocActor();
   const router = useRouter();
   const { mocs, isLoading, error } = useMocList();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [mineOnly, setMineOnly] = useState(false);
-  const [scopeAll, setScopeAll] = useState(false);
+  // Filter disimpan di alamat halaman (?status=&perlu=&perhatian=&lokasi=) supaya angka di ringkasan dashboard dan
+  // ringkasan Register bisa menaut ke daftar yang sudah terfilter.
+  const sp = useSearchParams();
+  const statusRaw = sp.get("status");
+  const status = statusRaw && (MOC_REGISTER_STATUSES as readonly string[]).includes(statusRaw) ? statusRaw : "ALL";
+  const mineOnly = sp.get("perlu") === "1";
+  const perhatianRaw = sp.get("perhatian");
+  const perhatian = (["sla", "temp", "waiting"] as const).find((k) => k === perhatianRaw) ?? null;
+  const lokasiParam = sp.get("lokasi");
+  const setParams = (patch: Record<string, string | null>) => {
+    const next = new URLSearchParams(sp.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "") next.delete(k);
+      else next.set(k, v);
+    }
+    const qs = next.toString();
+    router.replace(qs ? `/moc?${qs}` : "/moc", { scroll: false });
+  };
 
   const isAdmin = !!activeUser.isRegionalAdmin;
   const canCreate = !isAdmin && !!activeUser.location && activeUser.role === MOC_INITIATOR_ROLE;
   // Admin Regional & mode "Semua lokasi": hanya-lihat. Non-admin default ke lokasi sendiri.
+  // Non-admin: tanpa ?lokasi = lokasi sendiri; ?lokasi=ALL atau nama lokasi = lihat lokasi lain (hanya lihat).
+  const scopeAll = !isAdmin && !!lokasiParam;
   const showAll = isAdmin || scopeAll;
+  const scopeLocation = showAll && lokasiParam && lokasiParam !== "ALL" ? lokasiParam : null;
 
-  const rows: Row[] = mocs
-    .filter((m) => showAll || m.location === activeUser.location)
+  const scopedMocs = useMemo(
+    () => mocs.filter((m) => (showAll ? (scopeLocation ? m.location === scopeLocation : true) : m.location === activeUser.location)),
+    [mocs, showAll, scopeLocation, activeUser.location]
+  );
+  const insights = useMemo(() => mocInsights(scopedMocs, actor, Date.now()), [scopedMocs, actor]);
+  const attentionIds = useMemo(() => {
+    const ids: Record<"sla" | "temp" | "waiting", Set<string>> = { sla: new Set(), temp: new Set(), waiting: new Set() };
+    for (const a of insights.attention) if (a.kind !== "mine") ids[a.kind].add(a.moc.id);
+    return ids;
+  }, [insights]);
+  const needCount = scopedMocs.filter((m) => mocPendingActions(m, actor).length > 0).length;
+  const locationOptions = useMemo(() => Array.from(new Set(mocs.map((m) => m.location))).sort(), [mocs]);
+
+  const rows: Row[] = scopedMocs
     .filter((m) => status === "ALL" || m.registerStatus === status)
+    .filter((m) => !perhatian || attentionIds[perhatian].has(m.id))
     .filter((m) => {
       const q = search.trim().toLowerCase();
       return !q || m.judul.toLowerCase().includes(q) || (m.mocNumber ?? "").toLowerCase().includes(q);
@@ -105,6 +225,15 @@ export default function MocRegisterPage() {
         <div>
           <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">Register MOC</h1>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            disabled={rows.length === 0}
+            onClick={() => exportMocRegisterXlsx(rows.map((r) => r.moc), scopeLocation ?? (showAll ? "Semua-lokasi" : activeUser.location ?? "MOC"))}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] text-[13px] font-bold transition-colors disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" strokeWidth={2.2} /> Ekspor Register
+          </button>
         {canCreate && (
           <Link
             href="/moc/new"
@@ -113,7 +242,18 @@ export default function MocRegisterPage() {
             <Plus className="w-4 h-4" strokeWidth={2.2} /> MOC Baru
           </Link>
         )}
+        </div>
       </div>
+
+      <RegisterSummary
+        mocs={scopedMocs}
+        needCount={needCount}
+        attention={{ sla: attentionIds.sla.size, temp: attentionIds.temp.size, waiting: attentionIds.waiting.size }}
+        status={status}
+        mineOnly={mineOnly}
+        perhatian={perhatian}
+        setParams={setParams}
+      />
 
       <div className="flex gap-2.5 mb-4 flex-wrap items-center">
         <div className="relative flex-1 min-w-[220px]">
@@ -130,7 +270,7 @@ export default function MocRegisterPage() {
           minWidth={180}
           value={status}
           options={[{ value: "ALL", label: "Semua Status" }, ...MOC_REGISTER_STATUSES.map((st) => ({ value: st, label: st }))]}
-          onChange={setStatus}
+          onChange={(v) => setParams({ status: v === "ALL" ? null : v, perhatian: null })}
         />
         {!isAdmin && !!activeUser.location && (
           <MenuSelect
@@ -141,11 +281,20 @@ export default function MocRegisterPage() {
               { value: "OWN", label: `Lokasi saya (${activeUser.location})` },
               { value: "ALL", label: "Semua lokasi (lihat saja)" },
             ]}
-            onChange={(v) => setScopeAll(v === "ALL")}
+            onChange={(v) => setParams({ lokasi: v === "ALL" ? "ALL" : null })}
+          />
+        )}
+        {showAll && (
+          <MenuSelect
+            ariaLabel="Lokasi MOC"
+            minWidth={200}
+            value={scopeLocation ?? "ALL"}
+            options={[{ value: "ALL", label: "Semua lokasi" }, ...locationOptions.map((l) => ({ value: l, label: l }))]}
+            onChange={(v) => setParams({ lokasi: v === "ALL" ? (isAdmin ? null : "ALL") : v })}
           />
         )}
         <label className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F172A] cursor-pointer">
-          <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
+          <input type="checkbox" checked={mineOnly} onChange={(e) => setParams({ perlu: e.target.checked ? "1" : null, perhatian: null })} />
           Hanya yang perlu tindakan saya
         </label>
       </div>
@@ -191,7 +340,7 @@ export default function MocRegisterPage() {
                   <table className="w-full text-[12.5px]">
                     <thead>
                       <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-[#6b6e72] border-b border-[#C5CED3] bg-[#E2E8EB]">
-                        {["No MOC", "Lokasi", "Sifat", "Judul Perubahan", "Tgl. Disetujui", "Status", "Untuk Anda"].map((h) => (
+                        {["No MOC", "Lokasi", "Sifat", "Anggaran", "Judul Perubahan", "Tgl. Disetujui", "Status", "Untuk Anda"].map((h) => (
                           <th key={h} className="px-3 py-2.5 font-bold">{h}</th>
                         ))}
                       </tr>
@@ -208,6 +357,7 @@ export default function MocRegisterPage() {
                             <td className="px-3 py-3 font-mono text-[11.5px] text-[#3a3d40] whitespace-nowrap">{m.mocNumber ?? "—"}</td>
                             <td className="px-3 py-3 whitespace-nowrap">{m.location}</td>
                             <td className="px-3 py-3">{m.sifatPerubahan}</td>
+                            <td className="px-3 py-3 whitespace-nowrap">{m.anggaranType || "—"}</td>
                             <td className="px-3 py-3 min-w-[220px]">
                               <Link href={`/moc/${m.id}`} className="font-bold text-[#0F172A] hover:text-[#0F3B59] transition-colors">
                                 {m.judul || "(tanpa judul)"}
@@ -235,5 +385,13 @@ export default function MocRegisterPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MocRegisterPage() {
+  return (
+    <Suspense fallback={<div className="text-[13px] text-[#6b6e72]">Memuat…</div>}>
+      <MocRegisterContent />
+    </Suspense>
   );
 }

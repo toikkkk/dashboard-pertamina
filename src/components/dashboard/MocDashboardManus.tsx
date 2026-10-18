@@ -7,7 +7,7 @@ import gsap from "gsap";
 import { Flip } from "gsap/Flip";
 import Link from "next/link";
 import { ChevronRight, Timer } from "lucide-react";
-import { MOC_RISK_LEVEL_LABEL, type MocRequest } from "@/lib/domain/moc";
+import { MOC_RISK_LEVEL_COLOR, MOC_RISK_LEVEL_LABEL, type MocRequest } from "@/lib/domain/moc";
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import { workingDaysBetween, type MocAttentionKind, type mocInsights } from "@/lib/domain/dashboard";
 import SectionCard from "@/components/dashboard/SectionCard";
@@ -103,14 +103,15 @@ function RecentMocActivity({ items }: { items: MocRequest[] }) {
 
 const DONUT_COLOR = ["#0F3B59", "#60758A", "#AAB6BF"];
 
-function BreakdownCard({ title, items, total, span, flipId }: { title: string; items: { label: string; count: number }[]; total: number; span: string; flipId: string }) {
+function BreakdownCard({ title, items, total, span, flipId }: { title: string; items: { label: string; count: number; color?: string }[]; total: number; span: string; flipId: string }) {
   let acc = 0;
   const stops = items
+    .map((i, idx) => ({ ...i, color: i.color ?? DONUT_COLOR[idx % DONUT_COLOR.length] }))
     .filter((i) => i.count > 0)
-    .map((i, idx) => {
+    .map((i) => {
       const from = acc;
       acc += total > 0 ? (i.count / total) * 100 : 0;
-      return `${DONUT_COLOR[idx % DONUT_COLOR.length]} ${from}% ${acc}%`;
+      return `${i.color} ${from}% ${acc}%`;
     });
   return (
     <SectionCard title={title} className={`${span} moc-lower-card`} flipId={flipId} state={total > 0 ? "ready" : "empty"} emptyLabel={title.toLowerCase()}>
@@ -121,7 +122,7 @@ function BreakdownCard({ title, items, total, span, flipId }: { title: string; i
         <div className="breakdown-list">
           {items.map((item, index) => (
             <div key={item.label}>
-              <span className={`breakdown-mark mark-${index}`} />
+              <span className={`breakdown-mark mark-${index}`} style={item.color ? { background: item.color } : undefined} />
               <span>{item.label}</span>
               <b>{item.count}</b>
               <small>{total > 0 ? Math.round((item.count / total) * 100) : 0}%</small>
@@ -211,7 +212,7 @@ export default function MocDashboardManus({
         />
         <BreakdownCard
           title="Tingkat risiko"
-          items={insights.byRisk.map((r) => ({ label: MOC_RISK_LEVEL_LABEL[r.level], count: r.count }))}
+          items={insights.byRisk.map((r) => ({ label: MOC_RISK_LEVEL_LABEL[r.level], count: r.count, color: MOC_RISK_LEVEL_COLOR[r.level] }))}
           total={insights.active}
           span={span}
           flipId="risiko"
