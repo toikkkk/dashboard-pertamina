@@ -52,7 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Gerak masuk setelah login: seluruh kerangka naik dari bawah (kartu login keluar ke
   // atas, lihat clean-minimal-sign-in.tsx). Hanya sekali, dan tidak untuk reduced-motion.
   const rootRef = useRef<HTMLDivElement>(null);
-  const showChrome = isAuthLoaded && isLoggedIn && pathname !== "/login";
+  const showChrome = isAuthLoaded && isLoggedIn && pathname !== "/login" && pathname !== "/ganti-sandi";
   useEffect(() => {
     if (!showChrome || !takeEnterFlag()) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

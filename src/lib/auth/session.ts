@@ -11,7 +11,7 @@ import { cookies, headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { sessions, users } from "@/lib/db/schema";
-import { UnauthorizedError } from "./rbac";
+import { ForbiddenError, UnauthorizedError } from "./rbac";
 
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "psi_session";
 const TTL_DAYS = Number(process.env.SESSION_TTL_DAYS ?? "7");
@@ -96,8 +96,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return row.user;
 }
 
-export async function requireSessionUser(): Promise<SessionUser> {
+export async function requireSessionUser(opts: { allowMustChange?: boolean } = {}): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) throw new UnauthorizedError();
+  // Akun dengan sandi awal tidak boleh memakai API apa pun selain ganti sandi/keluar sampai sandinya diganti.
+  if (user.mustChangePassword && !opts.allowMustChange) throw new ForbiddenError("Anda wajib mengganti kata sandi awal lebih dulu.");
   return user;
 }

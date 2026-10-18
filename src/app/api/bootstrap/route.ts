@@ -32,7 +32,7 @@ export async function GET() {
     // sistem (celah kebocoran data nyata, ditemukan lewat audit kode). `documents`
     // tetap aman dipakai (query-nya sudah otomatis kosong untuk location=null) dan
     // `locations` tetap wajib dikirim (dipakai pemilih terminal di modal onboarding).
-    const isPending = !sessionUser.isRegionalAdmin && !sessionUser.location;
+    const isPending = (!sessionUser.isRegionalAdmin && !sessionUser.location) || sessionUser.mustChangePassword;
 
     // allDocuments is a deliberate, pre-existing exception (see CLAUDE.md): the
     // dashboard's cross-location benchmarking widgets (ComplianceChart,
@@ -88,6 +88,7 @@ export async function GET() {
         requestedMocFunction: sessionUser.requestedMocFunction,
         mocRoles: sessionUser.mocRoles,
         mocFunction: sessionUser.mocFunction,
+        mustChangePassword: sessionUser.mustChangePassword,
       },
       documents: documentItems,
       allDocuments: allDocumentItems,

@@ -8,6 +8,7 @@ import { usePsi } from "@/lib/psiStore";
 // exactly the page someone clicking a password-reset link from email lands on while
 // signed out (the whole point of the flow is recovering access without one).
 const PUBLIC_PATHS = ["/login", "/reset-password", "/verifikasi-email"];
+const CHANGE_PASSWORD_PATH = "/ganti-sandi";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isAuthLoaded, activeUser } = usePsi();
@@ -20,7 +21,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // while waiting, but every other route (directory, approvals, upload, admin, document
   // detail) redirects back to "/" until an Admin Regional runs assignUserAccess. The
   // dashboard itself shows this state via a banner (see page.tsx) rather than blocking here.
-  const isPending = isLoggedIn && !activeUser.isRegionalAdmin && !activeUser.location;
+  const mustChange = isLoggedIn && !!activeUser.mustChangePassword;
+  const isPending = isLoggedIn && !mustChange && !activeUser.isRegionalAdmin && !activeUser.location;
 
   useEffect(() => {
     if (isAuthLoaded && !isLoggedIn && !isPublicPath) {
@@ -33,6 +35,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // mengganti layar di sini memotong animasi itu (penyebab animasi "kadang ada, kadang
   // tidak": hanya akun belum aktif yang terpotong). LoginPage sendiri yang mengarahkan
   // sesi aktif ke dashboard setelah animasi selesai.
+  useEffect(() => {
+    if (isAuthLoaded && mustChange && pathname !== CHANGE_PASSWORD_PATH && pathname !== "/login") router.replace(CHANGE_PASSWORD_PATH);
+  }, [isAuthLoaded, mustChange, pathname, router]);
+
   useEffect(() => {
     if (isAuthLoaded && isPending && pathname !== "/" && !isPublicPath) {
       router.replace("/");
@@ -52,6 +58,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center">
         <p className="text-xs font-bold text-slate-500">Mengalihkan ke Portal Login...</p>
+      </div>
+    );
+  }
+
+  if (mustChange && pathname !== CHANGE_PASSWORD_PATH && !isPublicPath) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center">
+        <p className="text-xs font-bold text-slate-500">Mengalihkan ke penggantian kata sandi...</p>
       </div>
     );
   }

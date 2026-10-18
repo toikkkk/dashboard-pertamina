@@ -69,6 +69,8 @@ export const users = pgTable("users", {
   // yang punya peran yang sesuai; server memvalidasi ulang.
   mocRoles: jsonb("moc_roles").notNull().default(sql`'[]'::jsonb`),
   mocFunction: text("moc_function"),
+  // Akun sungguhan yang dibuat Admin/skrip: wajib mengganti kata sandi awal sebelum memakai portal.
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   // Nama pengguna alternatif untuk masuk (selain email). Nullable: akun lama diisi dari
   // bagian depan email lewat migrasi 0007; unik tanpa membedakan huruf besar/kecil.
   username: text("username"),

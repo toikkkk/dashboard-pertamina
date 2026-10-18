@@ -102,6 +102,8 @@ export interface SimulatedUser {
   /** Hanya dikirim ke Admin Regional (layar Kelola User). */
   emailVerifiedAt?: string | null;
   mfaEnabled?: boolean;
+  /** Akun dengan sandi awal: harus ganti sandi sebelum memakai portal. */
+  mustChangePassword?: boolean;
   /** Self-selected preferences from the Register form, shown to the Admin Regional as
    * suggested defaults on the activation screen. Never granted until approved. */
   requestedRole?: string | null;

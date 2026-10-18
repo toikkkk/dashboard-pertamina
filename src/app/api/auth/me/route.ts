@@ -13,6 +13,7 @@ export async function GET() {
       role: user.role,
       location: user.location,
       isRegionalAdmin: user.isRegionalAdmin,
+      mustChangePassword: user.mustChangePassword,
     });
   });
 }
