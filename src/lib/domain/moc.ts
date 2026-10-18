@@ -59,6 +59,33 @@ export const MOC_RISK_LEVEL_COLOR: Record<MocRiskLevel, string> = {
   H: "#FF0000",
 };
 
+// Matriks risiko kiriman client (WhatsApp 13 Okt 2026): Risiko = Likelihood x Severity, masing-masing 1-5.
+// Label, rentang, dan frekuensi disalin persis dari gambar matriks.
+export const MOC_SEVERITY_LEVELS: { value: number; label: string }[] = [
+  { value: 1, label: "Insignificant" },
+  { value: 2, label: "Minor" },
+  { value: 3, label: "Moderate" },
+  { value: 4, label: "Significant" },
+  { value: 5, label: "Catastrophic" },
+];
+export const MOC_LIKELIHOOD_LEVELS: { value: number; label: string; range: string; frequency: string }[] = [
+  { value: 1, label: "Rare", range: "0% < X < 20%", frequency: "<10⁻⁶ per year" },
+  { value: 2, label: "Unlikely", range: "20% < X < 40%", frequency: "10⁻⁶ to 10⁻⁴ per year" },
+  { value: 3, label: "Moderate", range: "40% < X < 60%", frequency: "10⁻⁴ to 10⁻² per year" },
+  { value: 4, label: "Likely", range: "60% < X < 80%", frequency: "10⁻² to 1 per year" },
+  { value: 5, label: "Almost", range: "80% < X < 100%", frequency: "> 1 per year" },
+];
+
+// Tabel 3 TKO B13.3-07 "Kewenangan Validasi MoC" (kolom Lokasi dan Region/AP; kolom Subholding di luar cakupan
+// aplikasi). Dipakai sebagai info saat memilih Reviewer/Approver; pemilihan tetap manual oleh Initiator.
+export const MOC_AUTHORITY_TABLE: { role: string; scope: string; lokasi: string; region: string }[] = [
+  { role: "Change Initiator", scope: "Semua", lokasi: "Pekerja Pertamina", region: "Pekerja Pertamina" },
+  { role: "MoC Reviewer", scope: "1 – 12", lokasi: "Maintenance Service, HSSE / AP", region: "RPD, HSSE Regional / AP" },
+  { role: "MoC Reviewer", scope: "13", lokasi: "Fungsi IT, Maintenance Service, HSSE", region: "Fungsi IT, RPD, HSSE Regional / AP" },
+  { role: "MoC Approver", scope: "Semua", lokasi: "Terminal Manager (IT / FT / AFT) / Operation Head", region: "Manager Fungsi Regional / AP, EGM / GHO / SMOM" },
+  { role: "MoC Controller", scope: "Semua", lokasi: "HSSE Lokasi", region: "HSSE Regional" },
+];
+
 // Status pada Register MOC (Lampiran 8, keterangan status perubahan 1-5).
 export const MOC_REGISTER_STATUSES = [
   "Inisiasi & Validasi",

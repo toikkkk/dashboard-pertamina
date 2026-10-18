@@ -1,6 +1,7 @@
 "use client";
 
 import MenuSelect from "@/components/ui/MenuSelect";
+import MocAuthorityInfo from "@/components/MocAuthorityInfo";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X, Paperclip } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
@@ -363,6 +364,7 @@ export default function MocActionsPanel({
           )}
 
           <Step n={1} label="Siapa yang mereview? (dinilai bersamaan)">
+            <MocAuthorityInfo />
             {reviewerPool.length === 0 ? (
               <EmptyPool role="Reviewer" />
             ) : (

@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import MocRiskMatrix from "@/components/MocRiskMatrix";
 import { Plus, X } from "lucide-react";
 import {
   MOC_CHANGE_CATEGORIES,
@@ -10,6 +11,8 @@ import {
   MOC_SIFAT_PERUBAHAN,
   riskLevel,
   riskValue,
+  MOC_LIKELIHOOD_LEVELS,
+  MOC_SEVERITY_LEVELS,
   type MocBarrier,
   type MocFormContent,
 } from "@/lib/domain/moc";
@@ -171,19 +174,8 @@ export default function MocFormFields({
           <Field label="Region">
             <input className={INPUT} disabled={disabled} value={value.region} onChange={(e) => onChange({ region: e.target.value })} />
           </Field>
-          <Field label="Anggaran" hint="Mis. ABO / ABI / ABO Khusus.">
-            <input
-              className={INPUT}
-              disabled={disabled}
-              list="moc-anggaran"
-              value={value.anggaranType}
-              onChange={(e) => onChange({ anggaranType: e.target.value })}
-            />
-            <datalist id="moc-anggaran">
-              <option value="ABO" />
-              <option value="ABI" />
-              <option value="ABO Khusus" />
-            </datalist>
+          <Field label="Anggaran">
+            <AnggaranField value={value.anggaranType} disabled={disabled} onChange={(v) => onChange({ anggaranType: v })} />
           </Field>
           <Field label="Tanggal">
             <input type="date" className={INPUT} disabled={disabled} value={value.tanggal} onChange={(e) => onChange({ tanggal: e.target.value })} />
@@ -237,7 +229,7 @@ export default function MocFormFields({
           </div>
           <div>
             <div className={LABEL}>
-              Masa Berlaku{value.sifatPerubahan === "Sementara" ? " (wajib untuk perubahan Sementara)" : ""}
+              Masa Berlaku{value.sifatPerubahan === "Sementara" ? " (wajib untuk perubahan Sementara)" : value.sifatPerubahan === "Permanen" ? " (opsional, tanpa batas akhir)" : ""}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <input type="date" className={`${INPUT} !w-auto`} disabled={disabled} value={value.validFrom ?? ""} onChange={(e) => onChange({ validFrom: e.target.value || undefined })} />
@@ -292,42 +284,38 @@ export default function MocFormFields({
           <textarea className={INPUT} disabled={disabled} rows={3} value={value.hazardDescription} onChange={(e) => onChange({ hazardDescription: e.target.value })} />
         </Field>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-          <Field label="Tingkat Keparahan (1–5)">
-            <ScaleChips
-              label="Tingkat Keparahan"
-              disabled={disabled}
-              value={value.severity ?? null}
-              onPick={(n) => {
-                const severity = n;
-                onChange({ severity, riskLevel: riskLevel(riskValue(severity, value.probability)) });
-              }}
-            />
-          </Field>
-          <Field label="Probabilitas (1–5)">
-            <ScaleChips
-              label="Probabilitas"
-              disabled={disabled}
-              value={value.probability ?? null}
-              onPick={(n) => {
-                const probability = n;
-                onChange({ probability, riskLevel: riskLevel(riskValue(value.severity, probability)) });
-              }}
-            />
-          </Field>
-          <Field label="Nilai Risiko" hint="Keparahan × Probabilitas.">
-            <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>{nilai ?? "—"}</div>
-          </Field>
-          <Field label="Tingkat Risiko" hint="Otomatis dari Nilai Risiko, sesuai Form MoC 2025.">
-            <div className={`${INPUT} bg-[#E2E8EB] font-semibold flex items-center gap-2`}>
-              {value.riskLevel ? (
-                <>
-                  <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: MOC_RISK_LEVEL_COLOR[value.riskLevel] }} />
-                  {value.riskLevel} — {MOC_RISK_LEVEL_LABEL[value.riskLevel]}
-                </>
-              ) : "—"}
-            </div>
-          </Field>
+        <div className="flex flex-col gap-3">
+          <MocRiskMatrix
+            severity={value.severity ?? null}
+            probability={value.probability ?? null}
+            disabled={disabled}
+            onPick={(severity, probability) => onChange({ severity, probability, riskLevel: riskLevel(riskValue(severity, probability)) })}
+          />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <Field label="Tingkat Keparahan">
+              <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>
+                {value.severity ? `${value.severity} (${MOC_SEVERITY_LEVELS.find((x) => x.value === value.severity)?.label})` : "—"}
+              </div>
+            </Field>
+            <Field label="Probabilitas">
+              <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>
+                {value.probability ? `${value.probability} (${MOC_LIKELIHOOD_LEVELS.find((x) => x.value === value.probability)?.label})` : "—"}
+              </div>
+            </Field>
+            <Field label="Nilai Risiko" hint="Keparahan × Probabilitas.">
+              <div className={`${INPUT} bg-[#E2E8EB] font-mono tabular-nums flex items-center`}>{nilai ?? "—"}</div>
+            </Field>
+            <Field label="Tingkat Risiko" hint="Otomatis dari matriks risiko.">
+              <div className={`${INPUT} bg-[#E2E8EB] font-semibold flex items-center gap-2`}>
+                {value.riskLevel ? (
+                  <>
+                    <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: MOC_RISK_LEVEL_COLOR[value.riskLevel] }} />
+                    {value.riskLevel} — {MOC_RISK_LEVEL_LABEL[value.riskLevel]}
+                  </>
+                ) : "—"}
+              </div>
+            </Field>
+          </div>
         </div>
 
         <BarrierEditor title="Plant Barrier (fasilitas dan peralatan yang diperlukan untuk mitigasi risiko perubahan)" items={value.plantBarriers} disabled={disabled} onChange={(next) => onChange({ plantBarriers: next })} />
@@ -345,26 +333,37 @@ export default function MocFormFields({
   );
 }
 
-// Skala 1–5 sebagai baris tombol (klik angka yang sama lagi = kosongkan) — lebih cepat dan jelas daripada dropdown.
-function ScaleChips({ label, value, onPick, disabled }: { label: string; value: number | null; onPick: (n: number | null) => void; disabled?: boolean }) {
+const ANGGARAN_PRESETS = ["ABO", "ABI", "ABO Khusus"];
+
+// Anggaran: pilihan baku, atau "Lainnya" dengan isian manual (formulir asli menulis "ABO/ABI/ABO Khusus/…").
+function AnggaranField({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const isPreset = ANGGARAN_PRESETS.includes(value);
+  const [other, setOther] = useState(!isPreset && value !== "");
+  const selected = other ? "__other" : isPreset ? value : "";
   return (
-    <div role="radiogroup" aria-label={label} className="flex items-center gap-1.5 min-h-[38px]">
-      {[1, 2, 3, 4, 5].map((n) => {
-        const on = value === n;
-        return (
-          <button
-            key={n}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            disabled={disabled}
-            onClick={() => onPick(on ? null : n)}
-            className={`w-9 h-9 rounded-full border text-[13px] font-mono font-bold transition-colors duration-150 disabled:opacity-60 ${on ? "border-[#0F3B59] bg-[#0F3B59] text-white" : "border-[#C5CED3] bg-white text-[#3a3d40] hover:bg-[#F0F4F6]"}`}
-          >
-            {n}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-1.5">
+      <select
+        className={INPUT}
+        disabled={disabled}
+        value={selected}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__other") {
+            setOther(true);
+            if (isPreset) onChange("");
+          } else {
+            setOther(false);
+            onChange(v);
+          }
+        }}
+      >
+        <option value="">Pilih anggaran…</option>
+        {ANGGARAN_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+        <option value="__other">Lainnya (isi manual)</option>
+      </select>
+      {other && (
+        <input className={INPUT} disabled={disabled} maxLength={100} placeholder="Tuliskan jenis anggaran" value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
     </div>
   );
 }
