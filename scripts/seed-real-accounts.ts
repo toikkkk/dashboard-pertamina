@@ -69,6 +69,7 @@ async function main() {
 
   const plan: Planned[] = [];
   const issues: string[] = [];
+  const skipped: string[] = []; // KBO tanpa padanan: dilewati; --apply butuh --skip-unmapped
   const terminalLocs: string[] = [];
   const used = new Set<string>();
   const uniq = (u: string) => {
@@ -97,7 +98,7 @@ async function main() {
       location = REGIONAL_UNIT_NAME;
       grup = "Regional";
     } else {
-      issues.push(`KBO ${kbo} (${posisi}) tidak cocok dengan lokasi atau fungsi regional di aplikasi; Initiator/Approver-nya dilewati.`);
+      skipped.push(`KBO ${kbo} (${posisi}) tidak cocok dengan lokasi atau fungsi regional di aplikasi; Initiator/Approver-nya dilewati.`);
       continue;
     }
     const base = usernameBase(nama, kbo);
@@ -148,6 +149,7 @@ async function main() {
   console.log(`Rencana: ${plan.length} akun (target 174) | terminal berakun: ${terminalLocs.length} | ${APPLY ? "APPLY" : "SIMULASI"}`);
   console.log("Per peran:", Object.fromEntries(byGrup));
   for (const i of issues) console.log("PERHATIAN:", i);
+  for (const i of skipped) console.log("DILEWATI:", i);
 
   // Dampak penghapusan akun demo.
   const demoIds = (await db.select({ id: users.id }).from(users).where(sql`${users.email} like '%@demo.invalid' or lower(${users.username}) like 'demo-%'`)).map((u) => u.id);
@@ -183,6 +185,7 @@ async function main() {
 
   const pw = process.env.INITIAL_PASSWORD ?? "";
   if (!isPasswordStrong(pw)) throw new Error("INITIAL_PASSWORD kosong/lemah (butuh kapital, kecil, angka, simbol, panjang cukup).");
+  if (skipped.length && !process.argv.includes("--skip-unmapped")) throw new Error("Ada KBO tanpa padanan; tambahkan --skip-unmapped bila memang dilewati: " + skipped.join("; "));
   if (issues.length) throw new Error("Masih ada masalah pada rencana; perbaiki dulu:\n- " + issues.join("\n- "));
   if (!process.env.ACCOUNTS_OUT) throw new Error("Set ACCOUNTS_OUT=<path .json di luar repo> untuk daftar akun (tanpa kata sandi).");
 
