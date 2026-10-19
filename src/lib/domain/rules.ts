@@ -145,6 +145,10 @@ export function passwordPolicyIssues(password: string): string[] {
   return PASSWORD_REQUIREMENTS.filter((r) => !r.met(password)).map((r) => r.label.toLowerCase());
 }
 
+// Email penanda akun sungguhan yang belum diganti pemiliknya (tidak bisa menerima email, tidak pernah terverifikasi).
+export const PLACEHOLDER_EMAIL_DOMAIN = "akun.portal.invalid";
+export const isPlaceholderEmail = (email: string | null | undefined) => (email ?? "").toLowerCase().endsWith(`@${PLACEHOLDER_EMAIL_DOMAIN}`);
+
 export function isPasswordStrong(password: string): boolean {
   return passwordPolicyIssues(password).length === 0;
 }

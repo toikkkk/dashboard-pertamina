@@ -240,7 +240,7 @@
 .hsse-shell .skeleton { display: block; height: 9px; border-radius: 99px; background: #ECEDED; animation: pulse 1.5s ease-in-out infinite; }
 .hsse-shell .loading-row:nth-child(2) .skeleton:first-child { animation-delay: 100ms; }
 .hsse-shell .loading-row:nth-child(3) .skeleton:first-child { animation-delay: 200ms; }
-.hsse-shell .page-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 19px; color: #6B6E72; font-size: 10.5px; }
+.hsse-shell .page-footer { display: flex; align-items: center; justify-content: center; text-align: center; gap: 15px; margin-top: 19px; color: #6B6E72; font-size: 10.5px; }
 .hsse-shell .page-footer span { display: inline-flex; align-items: center; gap: 5px; }
 .hsse-shell .page-footer i { display: inline-block; height: 3px; width: 3px; margin: 0 4px; border-radius: 50%; background: #9A9DA0; }
 .hsse-shell .page-enter { animation: enter .3s cubic-bezier(.23,1,.32,1) both; }
@@ -308,7 +308,7 @@
 .hsse-shell .attention-index { display: none; }
 .hsse-shell .attention-duration { width: auto; flex-basis: auto; font-size: 9.5px; }
 .hsse-shell .attention-reason span { font-size: 9.5px; }
-.hsse-shell .page-footer { align-items: flex-start; flex-direction: column; gap: 7px; }
+.hsse-shell .page-footer { align-items: center; flex-direction: column; gap: 7px; }
 .hsse-shell .page-footer span:last-child { display: none; }
 }
 @media (max-width: 420px) {

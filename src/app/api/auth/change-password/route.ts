@@ -11,7 +11,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { requireSessionUser } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
-import { passwordPolicyIssues } from "@/lib/domain/rules";
+import { isPlaceholderEmail, passwordPolicyIssues } from "@/lib/domain/rules";
 
 const bodySchema = z.object({ currentPassword: z.string().max(200), newPassword: z.string().max(200) });
 
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     const user = await requireSessionUser({ allowMustChange: true });
     const { currentPassword, newPassword } = bodySchema.parse(await req.json());
 
+    if (isPlaceholderEmail(user.email)) throw new HttpError(400, "Ganti email bawaan dengan email aktif Anda dulu di Pengaturan > Keamanan Akun, baru kata sandi bisa diganti.");
     if (!(await verifyPassword(currentPassword, user.passwordHash))) throw new HttpError(400, "Kata sandi saat ini salah.");
     if (currentPassword === newPassword) throw new HttpError(400, "Kata sandi baru harus berbeda dari yang lama.");
     const issues = passwordPolicyIssues(newPassword);

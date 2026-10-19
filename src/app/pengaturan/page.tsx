@@ -31,7 +31,7 @@ function SettingsContent() {
   const tab = tabParam === "keamanan" ? "keamanan" : tabParam === "siklus" && activeUser.isRegionalAdmin ? "siklus" : "profil";
 
   return (
-    <div className={tab === "siklus" ? "max-w-[1000px]" : "max-w-[720px]"}>
+    <div className={`mx-auto w-full ${tab === "siklus" ? "max-w-[1000px]" : "max-w-[720px]"}`}>
       <h1 className="font-heading text-[22px] font-bold text-[#0F172A] mb-4">Pengaturan</h1>
       <div role="tablist" aria-label="Pengaturan" className="flex gap-1 mb-5 border-b border-[#D8E1E4]">
         {TABS.filter((t) => !("adminOnly" in t && t.adminOnly) || activeUser.isRegionalAdmin).map((t) => {

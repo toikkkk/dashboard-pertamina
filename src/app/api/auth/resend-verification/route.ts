@@ -4,10 +4,13 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 import { issueVerificationEmail } from "@/lib/auth/emailVerification";
 import { logAudit } from "@/lib/audit";
+import { HttpError } from "@/lib/api/respond";
+import { isPlaceholderEmail } from "@/lib/domain/rules";
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
+    if (isPlaceholderEmail(user.email)) throw new HttpError(400, "Email akun ini masih email bawaan. Ganti dengan email aktif Anda dulu.");
     if (user.emailVerifiedAt) return NextResponse.json({ message: "Email Anda sudah terverifikasi." });
     const result = await issueVerificationEmail(req.nextUrl.origin, user);
     await logAudit(req, { id: user.id, name: user.name, email: user.email }, "email.verifikasi_dikirim", { detail: { hasil: result } });

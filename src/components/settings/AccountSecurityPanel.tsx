@@ -3,10 +3,10 @@
 // Panel Keamanan Akun (tab di Pengaturan): status verifikasi email dan autentikasi dua faktor (MFA, aplikasi authenticator). Aktivasi 2 langkah:
 // (1) pindai QR / masukkan kunci manual, (2) masukkan kode 6 digit — lalu 8 kode pemulihan ditampilkan SEKALI.
 // Menonaktifkan MFA butuh kata sandi + kode, jadi sesi yang dicuri saja tidak cukup.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import { CheckCircle2, Copy, Download, KeyRound, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
-import { PASSWORD_REQUIREMENTS } from "@/lib/domain/rules";
+import { PASSWORD_REQUIREMENTS, isPlaceholderEmail } from "@/lib/domain/rules";
 
 interface Status {
   mfaEnabled: boolean;
@@ -29,8 +29,10 @@ const input = "w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] roun
 const primary = "px-5 py-2 text-[13px] font-bold rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white disabled:opacity-50 transition-colors";
 
 // Kartu opsional: ganti email (mis. ke Gmail agar bisa menerima verifikasi dan atur ulang sandi).
-function ChangeEmailCard({ currentEmail, onChanged }: { currentEmail?: string; onChanged: () => void }) {
+function ChangeEmailCard({ currentEmail, placeholder, onChanged }: { currentEmail?: string; placeholder: boolean; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
+  // Email bawaan: formulir langsung terbuka supaya pemilik akun tidak perlu mencarinya.
+  useEffect(() => { if (placeholder) setOpen(true); }, [placeholder]);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,7 +79,7 @@ function ChangeEmailCard({ currentEmail, onChanged }: { currentEmail?: string; o
 }
 
 // Kartu opsional: ganti kata sandi sendiri (tidak dipaksa).
-function ChangePasswordCard() {
+function ChangePasswordCard({ locked }: { locked: boolean }) {
   const [open, setOpen] = useState(false);
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
@@ -108,11 +110,15 @@ function ChangePasswordCard() {
         <KeyRound className="w-5 h-5 text-[#0F3B59] mt-0.5" strokeWidth={1.8} />
         <div className="flex-1 min-w-0">
           <h2 className="text-[14px] font-bold text-[#0F172A]">Ganti kata sandi</h2>
-          <p className="text-[12.5px] text-[#6b6e72]">Disarankan bila akun ini masih memakai kata sandi awal.</p>
+          <p className="text-[12.5px] text-[#6b6e72]">{locked ? "Ganti email bawaan dengan email aktif Anda dulu, baru kata sandi bisa diganti." : "Disarankan bila akun ini masih memakai kata sandi awal."}</p>
         </div>
-        {!open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>}
+        {locked ? (
+          <span className="text-[12px] font-bold text-[#B45309] whitespace-nowrap">Ganti email dulu</span>
+        ) : (
+          !open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>
+        )}
       </div>
-      {open && (
+      {open && !locked && (
         <div className="mt-3 flex flex-col gap-2.5">
           <input type="password" autoComplete="current-password" className={input} placeholder="Kata sandi saat ini" value={cur} onChange={(e) => setCur(e.target.value)} aria-label="Kata sandi saat ini" />
           <input type="password" autoComplete="new-password" className={input} placeholder="Kata sandi baru" value={next} onChange={(e) => setNext(e.target.value)} aria-label="Kata sandi baru" />
@@ -172,6 +178,7 @@ export default function AccountSecurityPanel() {
     setCode("");
     await mutate();
   });
+  const placeholder = isPlaceholderEmail(status?.email);
   const resend = () => run(async () => { const r = await post("/api/auth/resend-verification"); setResent(r.message ?? "Email verifikasi dikirim."); });
 
   const copyCodes = () => recovery && navigator.clipboard?.writeText(recovery.join("\n"));
@@ -186,7 +193,12 @@ export default function AccountSecurityPanel() {
   };
 
   return (
-    <div className="max-w-[640px]">
+    <div className="max-w-[640px] mx-auto">
+      {placeholder && (
+        <div role="note" className="mb-4 rounded-[12px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3 text-[13px] text-[#92400E]">
+          <span className="font-bold">Ganti email Anda dulu.</span> Email akun ini masih email bawaan sistem dan tidak bisa menerima pesan. Isi email aktif (mis. Gmail) di bawah supaya verifikasi dan atur ulang kata sandi bisa sampai ke Anda; kata sandi baru bisa diganti setelah email diganti.
+        </div>
+      )}
 
       <section className={`${card} mb-4`}>
         <div className="flex items-start gap-3">
@@ -195,7 +207,9 @@ export default function AccountSecurityPanel() {
             <h2 className="text-[14px] font-bold text-[#0F172A]">Verifikasi email</h2>
             <p className="text-[12.5px] text-[#6b6e72] truncate">{status?.email ?? "…"}</p>
           </div>
-          {status && (status.emailVerified ? (
+          {status && (placeholder ? (
+            <span className="text-[12.5px] font-bold text-[#B45309] whitespace-nowrap">Belum ada email aktif</span>
+          ) : status.emailVerified ? (
             <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#15803D]"><CheckCircle2 className="w-4 h-4" strokeWidth={2.2} /> Terverifikasi</span>
           ) : (
             <button type="button" disabled={busy} onClick={resend} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline disabled:opacity-50">Kirim email verifikasi</button>
@@ -204,8 +218,8 @@ export default function AccountSecurityPanel() {
         {resent && <p className="mt-2 text-[12px] text-[#15663A]">{resent}</p>}
       </section>
 
-      <ChangeEmailCard currentEmail={status?.email} onChanged={() => { setResent(null); mutate(); }} />
-      <ChangePasswordCard />
+      <ChangeEmailCard currentEmail={status?.email} placeholder={placeholder} onChanged={() => { setResent(null); mutate(); }} />
+      <ChangePasswordCard locked={placeholder} />
 
       <section className={card}>
         <div className="flex items-start gap-3">

@@ -44,7 +44,7 @@ export default function UploadPage() {
   // Unit Regional tidak mengunggah dokumen PSI (PSI hanya di terminal); MOC regional dibuat dari menu MOC.
   if (isRegionalUnit(activeUser.location)) {
     return (
-      <div className="max-w-[860px] bg-white border border-[#D8E1E4] rounded-[14px] py-14 px-6 text-center">
+      <div className="max-w-[860px] mx-auto bg-white border border-[#D8E1E4] rounded-[14px] py-14 px-6 text-center">
         <p className="text-[14px] font-bold text-[#0F172A] mb-1">Unit Regional tidak mengunggah dokumen PSI.</p>
         <p className="text-[12.5px] text-[#6b6e72]">
           Dokumen PSI hanya ada di terminal. Untuk pengajuan perubahan, buka menu <Link href="/moc" className="font-bold text-[#0F3B59] underline">MOC</Link>.
@@ -54,7 +54,7 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="max-w-[860px]">
+    <div className="max-w-[860px] mx-auto">
       <h1 className="font-heading text-[22px] font-bold text-[#0F172A] mb-1">Dokumen Baru</h1>
 
       {queued && (

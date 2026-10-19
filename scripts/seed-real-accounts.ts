@@ -213,7 +213,7 @@ async function main() {
     for (const p of plan) {
       const res = await db
         .update(users)
-        .set({ username: p.username, name: p.nama, email: p.email, mustChangePassword: false, emailVerifiedAt: new Date(), updatedAt: new Date() })
+        .set({ username: p.username, name: p.nama, email: p.email, mustChangePassword: false, emailVerifiedAt: null, updatedAt: new Date() })
         .where(sql`lower(${users.username}) = ${p.oldUsername.toLowerCase()}`)
         .returning({ id: users.id });
       if (res.length === 0) console.log("TIDAK DITEMUKAN:", p.oldUsername);
@@ -250,7 +250,7 @@ async function main() {
       mocRoles: p.mocRoles,
       mocFunction: p.mocFunction,
       username: p.username,
-      emailVerifiedAt: new Date(),
+      emailVerifiedAt: null, // email penanda tidak boleh dianggap terverifikasi
       mustChangePassword: true,
     });
   }
