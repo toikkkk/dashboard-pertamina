@@ -44,6 +44,7 @@ interface Planned {
   mocRoles: string[];
   mocFunction: string | null;
   kbo: string;
+  oldUsername: string; // username versi pertama (berbasis nama orang); dipakai mode --rename
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[()]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -51,6 +52,17 @@ const usernameBase = (name: string, kbo: string) => {
   if (/^vacant/i.test(name)) return kbo.toLowerCase();
   const tokens = name.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter((t) => t.length > 1);
   return tokens.slice(0, 2).join(".") || kbo.toLowerCase();
+};
+
+// Aturan penamaan (jawaban client 19 Okt 2026): username SESUAI PERAN + lokasi; nama akun = nama peran, kecuali Approver
+// yang memakai nama pejabatnya. Nama orang Initiator/Reviewer/Controller diketik manual di MOC.
+const LOC_SLUG_OVERRIDE: Record<string, string> = { "Bitumen Plant Gresik": "bitumen-gresik" };
+const locSlug = (loc: string) => LOC_SLUG_OVERRIDE[loc] ?? slug(loc);
+const REGIONAL_SLUG_BY_KBO: Record<string, string> = {
+  PPNEJ0300: "asset-operation", PPNEJ0700: "comm-rel-csr", PPNEJ0400: "finance", PPNEJ0500: "hc", PPNAB0801: "ia", PNA353000: "ia-2",
+  PPNEJ1000: "it-region", PPNEJ0800: "medical", PPNEJ0900: "operation-risk", PPNLL0500: "procurement", PPNEJ0600: "legal",
+  PPNEJ0000: "egm", PPNLL0000: "group-head-ops", PPNLL0100: "aviation", PPNEJ0101: "sam-industry", PND850000: "rel-proj-dev",
+  PPNEJ0100: "corporate-sales", PPNLL0300: "dre", PPNLL0400: "hsse", PPNEJ0200: "retail-sales", PPNLL0200: "supply-dist", PPNEJ0102: "sam-petrochem",
 };
 
 // KBO -> nama lokasi aplikasi utama (lokasi pertama yang memakai KBO itu; Larantuka/subarea IT Surabaya ikut induknya).
@@ -79,6 +91,13 @@ async function main() {
     return c;
   };
   const markEmail = (u: string) => `${u}@${MARK_DOMAIN}`;
+  const usedOld = new Set<string>();
+  const uniqOld = (u: string) => {
+    let c = u;
+    for (let i = 2; usedOld.has(c); i++) c = `${u}${i}`;
+    usedOld.add(c);
+    return c;
+  };
 
   for (const r of rows) {
     const nama = String(r["Name"] ?? "").trim();
@@ -102,14 +121,17 @@ async function main() {
       continue;
     }
     const base = usernameBase(nama, kbo);
-    const displayName = /^vacant/i.test(nama) ? `Vacant (${kbo})` : nama;
-    const ini = uniq(`${base}.ini`);
-    const apv = uniq(`${base}.apv`);
-    const validEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email.toLowerCase() : "";
-    plan.push({ grup: `${grup} - Initiator`, nama: displayName, username: ini, email: validEmail || markEmail(ini), role: INITIATOR, location, isRegionalAdmin: false, mocRoles: [], mocFunction: null, kbo });
+    const oldIni = uniqOld(`${base}.ini`);
+    const oldApv = uniqOld(`${base}.apv`);
+    const pejabat = /^vacant/i.test(nama) ? `Vacant (${kbo})` : nama;
+    const roleSlug = grup === "Terminal" ? locSlug(location as string) : `reg-${REGIONAL_SLUG_BY_KBO[kbo] ?? kbo.toLowerCase()}`;
+    const unitLabel = grup === "Terminal" ? (location as string) : (regionalFn as string);
+    const ini = uniq(`initiator.${roleSlug}`);
+    const apv = uniq(`approver.${roleSlug}`);
+    plan.push({ grup: `${grup} - Initiator`, nama: `Initiator ${unitLabel}`, username: ini, email: markEmail(ini), role: INITIATOR, location, isRegionalAdmin: false, mocRoles: [], mocFunction: null, kbo, oldUsername: oldIni });
     plan.push({
       grup: `${grup} - Approver`,
-      nama: displayName,
+      nama: pejabat,
       username: apv,
       email: markEmail(apv),
       role: INITIATOR,
@@ -118,25 +140,27 @@ async function main() {
       mocRoles: ["Approver"],
       mocFunction: grup === "Terminal" ? "Terminal Manager" : "Manager Fungsi Regional",
       kbo,
+      oldUsername: oldApv,
     });
   }
 
   for (const loc of terminalLocs) {
-    const s = slug(loc);
+    const s = locSlug(loc);
+    const os = slug(loc);
     const kbo = KBO_BY_LOCATION[loc] ?? "";
-    const mk = (grup: string, nama: string, username: string, role: string, mocRoles: string[], mocFunction: string | null) =>
-      plan.push({ grup, nama, username: uniq(username), email: markEmail(username), role, location: loc, isRegionalAdmin: false, mocRoles, mocFunction, kbo });
-    mk("Terminal - Controller", `Controller HSSE ${loc}`, `hsse.${s}`, CONTROLLER, [], null);
-    mk("Terminal - Reviewer", `Reviewer DRE ${loc}`, `rv-dre.${s}`, INITIATOR, ["Reviewer"], "Maintenance Service (DRE)");
-    mk("Terminal - Reviewer", `Reviewer HSSE ${loc}`, `rv-hsse.${s}`, INITIATOR, ["Reviewer"], "HSSE");
+    const mk = (grup: string, nama: string, username: string, oldUsername: string, role: string, mocRoles: string[], mocFunction: string | null) =>
+      plan.push({ grup, nama, username: uniq(username), email: markEmail(username), role, location: loc, isRegionalAdmin: false, mocRoles, mocFunction, kbo, oldUsername });
+    mk("Terminal - Controller", `Controller HSSE ${loc}`, `controller.${s}`, `hsse.${os}`, CONTROLLER, [], null);
+    mk("Terminal - Reviewer", `Reviewer DRE ${loc}`, `rev-dre.${s}`, `rv-dre.${os}`, INITIATOR, ["Reviewer"], "Maintenance Service (DRE)");
+    mk("Terminal - Reviewer", `Reviewer HSSE ${loc}`, `rev-hsse.${s}`, `rv-hsse.${os}`, INITIATOR, ["Reviewer"], "HSSE");
   }
-  const reg = (grup: string, nama: string, username: string, role: string, mocRoles: string[], mocFunction: string | null) =>
-    plan.push({ grup, nama, username: uniq(username), email: markEmail(username), role, location: REGIONAL_UNIT_NAME, isRegionalAdmin: false, mocRoles, mocFunction, kbo: "PPNLL0400" });
-  reg("Regional - Controller", "Controller HSSE Regional", "hsse.regional", CONTROLLER, [], null);
-  reg("Regional - Reviewer", "Reviewer RPD Regional", "rv-dre.regional", INITIATOR, ["Reviewer"], "RPD");
-  reg("Regional - Reviewer", "Reviewer HSSE Regional", "rv-hsse.regional", INITIATOR, ["Reviewer"], "HSSE Regional");
-  reg("Regional - Reviewer", "Reviewer Fungsi IT Regional", "rv-it.regional", INITIATOR, ["Reviewer"], "Fungsi IT");
-  plan.push({ grup: "Admin Regional", nama: "Admin Regional", username: uniq("admin.regional"), email: markEmail("admin.regional"), role: "Admin Regional", location: null, isRegionalAdmin: true, mocRoles: [], mocFunction: null, kbo: "" });
+  const reg = (grup: string, nama: string, username: string, oldUsername: string, role: string, mocRoles: string[], mocFunction: string | null) =>
+    plan.push({ grup, nama, username: uniq(username), email: markEmail(username), role, location: REGIONAL_UNIT_NAME, isRegionalAdmin: false, mocRoles, mocFunction, kbo: "PPNLL0400", oldUsername });
+  reg("Regional - Controller", "Controller HSSE Regional", "controller.regional", "hsse.regional", CONTROLLER, [], null);
+  reg("Regional - Reviewer", "Reviewer RPD Regional", "rev-dre.regional", "rv-dre.regional", INITIATOR, ["Reviewer"], "RPD");
+  reg("Regional - Reviewer", "Reviewer HSSE Regional", "rev-hsse.regional", "rv-hsse.regional", INITIATOR, ["Reviewer"], "HSSE Regional");
+  reg("Regional - Reviewer", "Reviewer Fungsi IT Regional", "rev-it.regional", "rv-it.regional", INITIATOR, ["Reviewer"], "Fungsi IT");
+  plan.push({ grup: "Admin Regional", nama: "Admin Regional", username: uniq("admin.regional"), email: markEmail("admin.regional"), role: "Admin Regional", location: null, isRegionalAdmin: true, mocRoles: [], mocFunction: null, kbo: "", oldUsername: "admin.regional" });
 
   // Pemeriksaan rencana.
   const tooLong = plan.filter((p) => p.username.length > 30);
@@ -174,12 +198,29 @@ async function main() {
   }
   if (blocking.length) issues.push("Rujukan NOT NULL ke akun demo: " + blocking.join(", "));
 
-  const existing = new Set((await db.select({ u: users.username }).from(users).where(inArray(users.username, plan.map((p) => p.username)))).map((r) => r.u));
+  const existing = new Set((await db.select({ u: users.username }).from(users).where(inArray(users.username, plan.filter((p) => p.username !== p.oldUsername).map((p) => p.username)))).map((r) => r.u));
   if (existing.size) issues.push(`Username sudah dipakai akun lain: ${Array.from(existing).join(", ")}`);
 
   if (process.env.ACCOUNTS_PLAN_OUT) {
     writeFileSync(process.env.ACCOUNTS_PLAN_OUT, JSON.stringify(plan, null, 2), "utf-8");
     console.log("Rencana lengkap ditulis ke ACCOUNTS_PLAN_OUT.");
+  }
+  // Mode --rename: akun sudah ada (dibuat versi pertama); ubah username/nama/email ke aturan penamaan peran dan
+  // matikan paksaan ganti sandi. Tidak membuat/menghapus akun, kata sandi tidak disentuh.
+  if (process.argv.includes("--rename")) {
+    if (issues.length) throw new Error("Masih ada masalah pada rencana: " + issues.join("; "));
+    let n = 0;
+    for (const p of plan) {
+      const res = await db
+        .update(users)
+        .set({ username: p.username, name: p.nama, email: p.email, mustChangePassword: false, emailVerifiedAt: new Date(), updatedAt: new Date() })
+        .where(sql`lower(${users.username}) = ${p.oldUsername.toLowerCase()}`)
+        .returning({ id: users.id });
+      if (res.length === 0) console.log("TIDAK DITEMUKAN:", p.oldUsername);
+      n += res.length;
+    }
+    console.log(`Diganti namanya: ${n} dari ${plan.length} akun.`);
+    return;
   }
   if (!APPLY) return;
 

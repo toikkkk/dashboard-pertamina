@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { CheckCircle2, Copy, Download, KeyRound, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
+import { PASSWORD_REQUIREMENTS } from "@/lib/domain/rules";
 
 interface Status {
   mfaEnabled: boolean;
@@ -26,6 +27,112 @@ async function post(url: string, body?: unknown) {
 const card = "bg-white border border-[#D8E1E4] rounded-[14px] p-5";
 const input = "w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] rounded-[8px] bg-white focus:outline-none focus:border-[#0F3B59]";
 const primary = "px-5 py-2 text-[13px] font-bold rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white disabled:opacity-50 transition-colors";
+
+// Kartu opsional: ganti email (mis. ke Gmail agar bisa menerima verifikasi dan atur ulang sandi).
+function ChangeEmailCard({ currentEmail, onChanged }: { currentEmail?: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await post("/api/auth/change-email", { newEmail: email, password: pw });
+      setMsg({ ok: true, text: r.message });
+      setOpen(false);
+      setEmail("");
+      setPw("");
+      onChanged();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Gagal." });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className={`${card} mb-4`}>
+      <div className="flex items-start gap-3">
+        <Mail className="w-5 h-5 text-[#0F3B59] mt-0.5" strokeWidth={1.8} />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[14px] font-bold text-[#0F172A]">Ganti email</h2>
+          <p className="text-[12.5px] text-[#6b6e72]">Pakai email aktif (mis. Gmail) supaya verifikasi dan atur ulang kata sandi bisa sampai ke Anda.</p>
+        </div>
+        {!open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>}
+      </div>
+      {open && (
+        <div className="mt-3 flex flex-col gap-2.5">
+          <input type="email" autoComplete="email" className={input} placeholder={currentEmail ? `Email baru (saat ini ${currentEmail})` : "Email baru"} value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email baru" />
+          <input type="password" autoComplete="current-password" className={input} placeholder="Kata sandi saat ini" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Kata sandi saat ini" />
+          <div className="flex items-center gap-3">
+            <button type="button" className={primary} disabled={busy || !email || !pw} onClick={submit}>{busy ? "Menyimpan…" : "Simpan email"}</button>
+            <button type="button" className="text-[13px] font-bold text-[#0F172A] hover:underline" onClick={() => { setOpen(false); setMsg(null); }}>Batal</button>
+          </div>
+        </div>
+      )}
+      {msg && <p role={msg.ok ? "status" : "alert"} className="mt-2 text-[12px] font-semibold" style={{ color: msg.ok ? "#15663A" : "#DC2626" }}>{msg.text}</p>}
+    </section>
+  );
+}
+
+// Kartu opsional: ganti kata sandi sendiri (tidak dipaksa).
+function ChangePasswordCard() {
+  const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState("");
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const met = PASSWORD_REQUIREMENTS.map((r) => ({ label: r.label, ok: r.met(next) }));
+  const ready = !!cur && met.every((m) => m.ok) && next === again && next !== cur;
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await post("/api/auth/change-password", { currentPassword: cur, newPassword: next });
+      setMsg({ ok: true, text: "Kata sandi diganti." });
+      setOpen(false);
+      setCur("");
+      setNext("");
+      setAgain("");
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Gagal." });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className={`${card} mb-4`}>
+      <div className="flex items-start gap-3">
+        <KeyRound className="w-5 h-5 text-[#0F3B59] mt-0.5" strokeWidth={1.8} />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[14px] font-bold text-[#0F172A]">Ganti kata sandi</h2>
+          <p className="text-[12.5px] text-[#6b6e72]">Disarankan bila akun ini masih memakai kata sandi awal.</p>
+        </div>
+        {!open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>}
+      </div>
+      {open && (
+        <div className="mt-3 flex flex-col gap-2.5">
+          <input type="password" autoComplete="current-password" className={input} placeholder="Kata sandi saat ini" value={cur} onChange={(e) => setCur(e.target.value)} aria-label="Kata sandi saat ini" />
+          <input type="password" autoComplete="new-password" className={input} placeholder="Kata sandi baru" value={next} onChange={(e) => setNext(e.target.value)} aria-label="Kata sandi baru" />
+          <ul className="flex flex-col gap-0.5">
+            {met.map((m) => (
+              <li key={m.label} className="text-[12px] font-semibold" style={{ color: m.ok ? "#15803D" : "#6b6e72" }}>{m.ok ? "✓" : "○"} {m.label}</li>
+            ))}
+          </ul>
+          <input type="password" autoComplete="new-password" className={input} placeholder="Ulangi kata sandi baru" value={again} onChange={(e) => setAgain(e.target.value)} aria-label="Ulangi kata sandi baru" />
+          {again && next !== again && <p className="text-[12px] text-[#DC2626]">Kata sandi tidak sama.</p>}
+          <div className="flex items-center gap-3">
+            <button type="button" className={primary} disabled={busy || !ready} onClick={submit}>{busy ? "Menyimpan…" : "Simpan kata sandi"}</button>
+            <button type="button" className="text-[13px] font-bold text-[#0F172A] hover:underline" onClick={() => { setOpen(false); setMsg(null); }}>Batal</button>
+          </div>
+        </div>
+      )}
+      {msg && <p role={msg.ok ? "status" : "alert"} className="mt-2 text-[12px] font-semibold" style={{ color: msg.ok ? "#15663A" : "#DC2626" }}>{msg.text}</p>}
+    </section>
+  );
+}
 
 export default function AccountSecurityPanel() {
   const { data: status, mutate } = useSWR<Status>("/api/auth/mfa/status", (u: string) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error("gagal")))));
@@ -96,6 +203,9 @@ export default function AccountSecurityPanel() {
         </div>
         {resent && <p className="mt-2 text-[12px] text-[#15663A]">{resent}</p>}
       </section>
+
+      <ChangeEmailCard currentEmail={status?.email} onChanged={() => { setResent(null); mutate(); }} />
+      <ChangePasswordCard />
 
       <section className={card}>
         <div className="flex items-start gap-3">
