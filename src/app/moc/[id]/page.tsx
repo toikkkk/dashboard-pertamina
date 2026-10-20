@@ -10,6 +10,7 @@ import StatusTag from "@/components/StatusTag";
 import MocStageStepper from "@/components/MocStageStepper";
 import MocFormViewer from "@/components/MocFormViewer";
 import MocActionsPanel from "@/components/MocActionsPanel";
+import MocOfflineContinue from "@/components/MocOfflineContinue";
 import SuccessPopup from "@/components/SuccessPopup";
 import MocAttachments from "@/components/MocAttachments";
 import MocImplementationPrep from "@/components/MocImplementationPrep";
@@ -123,6 +124,8 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
           </p>
         )}
       </section>
+
+      {moc.isOffline && <MocOfflineContinue moc={moc} onNotice={setNotice} />}
 
       {/* 3. Yang perlu dilakukan user (hanya bila ada) */}
       {hasAction && !submitMode && (

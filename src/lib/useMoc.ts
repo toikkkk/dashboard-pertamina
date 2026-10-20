@@ -87,6 +87,9 @@ export const mocApi = {
     sifatPerubahan: "Permanen" | "Sementara" | "Darurat"; registerStatus: string; initiatorName: string; deskripsi: string;
     tanggalDisetujui: string; tanggalDitutup: string; form5: string[]; form6: string[]; form7: string[];
   }) => post("/api/moc/offline", body),
+  // Lanjutkan catatan offline: naikkan status dan/atau tambah Form 6/7 (Controller lokasi / Admin Regional).
+  continueOffline: (id: string, body: { registerStatus: string; tanggalDisetujui: string; tanggalDitutup: string; form6: string[]; form7: string[] }) =>
+    post(`/api/moc/${id}/offline-continue`, body),
   update: (id: string, patch: Partial<MocFormContent>) =>
     mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then(afterMutation),
   // Simpan otomatis pilihan reviewer/approver yang belum diajukan (tidak mengubah status).
