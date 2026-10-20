@@ -22,6 +22,7 @@ import {
   type MocImplementationPlan,
   type MocRequest,
 } from "../src/lib/domain/moc";
+import { mocInsights } from "../src/lib/domain/dashboard";
 
 const LOC = "IT Surabaya";
 const by = { recordedById: "u-init", recordedByName: "Ina", recordedAt: "2026-10-13T00:00:00.000Z" };
@@ -33,7 +34,7 @@ function moc(patch: Partial<MocRequest> = {}): MocRequest {
     id: "m1", mocNumber: "MOC-SURABAYA-2026-001", location: LOC, createdBy: "u-init", createdByName: "Ina", stateSince: null,
     registerStatus: "Inisiasi & Validasi", validationState: "registered", round: 1,
     approverUserId: "u-appr", approverName: "Budi", performerUserId: "u-perf", performerName: "Wahyu", approverNote: null,
-    plannedReviewers: [], plannedApproverId: null, approverManualName: null, approverManualJabatan: null, communication: null, implementationPlan: null, monitoring: [], finalReview: null, closure: null, halt: null,
+    plannedReviewers: [], plannedApproverId: null, approverManualName: null, approverManualJabatan: null, communication: null, implementationPlan: null, monitoring: [], finalReview: null, closure: null, halt: null, isOffline: false,
     createdAt: "", updatedAt: "", reviews: [], history: [], evidence: [],
     unitOperasi: "", fungsi: "", region: "Jatimbalinus", anggaranType: "", tanggal: "2026-10-01", judul: "Uji", latarBelakang: "",
     changeCategories: [], sifatPerubahan: "Permanen", deskripsi: "", prosesTerdampak: "", peraturanRelevan: "", stakeholderReviewer: "",
@@ -195,3 +196,16 @@ const tutup = moc({ ...base, finalReview: frR([resp("Sesuai", "u-rv")]), closure
 assert.ok(mocActionsFor(tutup, controller).includes("finalizeClosure"));
 assert.ok(!mocActionsFor(tutup, approverActor).includes("close")); // sudah disetujui
 assert.ok(!mocActionsFor(tutup, initiator).includes("finalizeClosure"));
+
+// ---- Dashboard MOC: label tepat untuk tiap tindakan baru dan penantian pihak lain ----
+const att = (m: MocRequest, a: MocActor) => mocInsights([m], a, Date.now()).attention.map((x) => `${x.kind}:${x.detail}`);
+assert.ok(att(pemUnsigned, controller).includes("mine:Unggah Form Pemantauan bertanda tangan"));
+assert.ok(att(pemUnsigned, initiator).includes("waiting:Menunggu Controller mengunggah Form Pemantauan ke-1 bertanda tangan"));
+assert.ok(att(pend, rv).includes("mine:Menunggu review Tinjauan Akhir Anda"));
+assert.ok(att(pend, approverActor).some((x) => x.startsWith("waiting:Menunggu review Tinjauan Akhir")));
+assert.ok(att(semua, approverActor).includes("mine:Setujui penutupan MOC"));
+assert.ok(att(tutup, controller).includes("mine:Finalisasi penutupan: unggah form bertanda tangan"));
+assert.ok(att(haltReq, approverActor).includes("mine:Putuskan penundaan/penghentian"));
+assert.ok(att(haltReq, initiator).some((x) => x.startsWith("waiting:Menunggu keputusan Approver")));
+assert.ok(att(moc({ validationState: "halted", registerStatus: "Pemantauan" }), initiator).some((x) => x.startsWith("waiting:Ditunda")));
+assert.ok(!att(perlu, initiator).includes("mine:Perlu diperbaiki lalu diajukan ulang")); // tidak jatuh ke teks bawaan

@@ -149,6 +149,7 @@ export const MOC_HISTORY_ACTIONS = [
   "Dilanjutkan Kembali",
   "Review Tinjauan Akhir",
   "Penutupan Disetujui",
+  "Dicatat Offline",
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
 
@@ -484,6 +485,8 @@ export interface MocRequest extends MocFormContent {
   monitoring: MocMonitoringEntry[];
   finalReview: MocFinalReview | null;
   halt: MocHalt | null;
+  // Dicatat dari dokumen offline: tidak ada alur/tindakan di aplikasi, hanya Register dan dokumennya.
+  isOffline: boolean;
   closure: MocClosure | null;
   approvedAt?: string;
   createdAt: string;
@@ -569,6 +572,7 @@ function isLocationMember(moc: Pick<MocRequest, "location">, user: MocActor): bo
 // Aksi apa saja yang boleh dilakukan user ini pada MOC ini sekarang. Klien memakainya
 // untuk menampilkan tombol; API route WAJIB memanggilnya lagi sebelum mengubah data.
 export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
+  if (moc.isOffline) return []; // catatan offline: tidak diproses di aplikasi
   if (!isLocationMember(moc, user)) return [];
   const actions: MocAction[] = [];
   const isController = user.role.includes("Controller");
@@ -870,6 +874,7 @@ const fmtYmdId = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString
 // Ringkasan jelas: MOC ini SEKARANG menunggu siapa dan apa — supaya user tidak
 // bingung apakah input mereka sudah masuk.
 export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; done: boolean } {
+  if (moc.isOffline) return { title: `Dicatat dari dokumen offline — ${moc.registerStatus}`, detail: "MOC ini dicatat dari dokumen offline sehingga tidak diproses di aplikasi; dokumennya tersimpan di bawah.", done: moc.registerStatus === "Closed" };
   const owner = moc.createdByName ? `${moc.createdByName} (pembuat MOC)` : "Pembuat MOC";
   switch (moc.validationState) {
     case "draft":

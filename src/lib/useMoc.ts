@@ -81,6 +81,11 @@ const post = (url: string, body: unknown) => mocFetch<MocRequest>(url, { method:
 
 export const mocApi = {
   create: (patch: Partial<MocFormContent>) => post("/api/moc", patch),
+  // Catat MOC offline (Controller lokasi / Admin Regional): nomor + dokumen, tanpa alur aplikasi.
+  createOffline: (body: {
+    location: string; fungsi: string; judul: string; tanggal: string; sequence: number; month: number; year: number;
+    sifatPerubahan: "Permanen" | "Sementara" | "Darurat"; registerStatus: string; initiatorName: string; deskripsi: string; fileIds: string[];
+  }) => post("/api/moc/offline", body),
   update: (id: string, patch: Partial<MocFormContent>) =>
     mocFetch<MocRequest>(`/api/moc/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).then(afterMutation),
   // Simpan otomatis pilihan reviewer/approver yang belum diajukan (tidak mengubah status).

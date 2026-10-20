@@ -18,8 +18,8 @@ gsap.registerPlugin(Flip);
 type Insights = ReturnType<typeof mocInsights>;
 
 const KIND_SEVERITY: Record<MocAttentionKind, Severity> = { mine: "peringatan", sla: "kritis", temp: "peringatan", waiting: "revisi" };
-const KIND_LABEL: Record<MocAttentionKind, string> = { mine: "Untuk Anda", sla: "Lewat batas waktu", temp: "Masa berlaku sementara", waiting: "Menunggu perbaikan" };
-const STATE_SEVERITY: Record<string, Severity> = { draft: "peringatan", in_review: "peringatan", returned: "revisi", pending_approval: "peringatan", rejected: "kritis", approved: "peringatan", registered: "baik" };
+const KIND_LABEL: Record<MocAttentionKind, string> = { mine: "Untuk Anda", sla: "Lewat batas waktu", temp: "Masa berlaku sementara", waiting: "Menunggu pihak lain" };
+const STATE_SEVERITY: Record<string, Severity> = { draft: "peringatan", in_review: "peringatan", returned: "revisi", pending_approval: "peringatan", rejected: "kritis", approved: "peringatan", registered: "baik", halt_requested: "peringatan", halted: "revisi" };
 
 const fmtWib = (s: string) => {
   const d = new Date(s.replace(" ", "T") + ":00+07:00");
@@ -61,7 +61,7 @@ function StageRail({ stages, active, closed }: { stages: Insights["stageCounts"]
 function AttentionList({ items, nowMs }: { items: Insights["attention"]; nowMs: number }) {
   const shown = items.slice(0, 7);
   return (
-    <SectionCard title="Perlu perhatian" action={<span className="attention-count"><span>{items.length}</span> item</span>} className="span-7" state={shown.length > 0 ? "ready" : "empty"} emptyLabel="MOC yang perlu perhatian">
+    <SectionCard title="Perlu perhatian" action={<span className="attention-count"><span>{items.length}</span> item{items.length > shown.length && <> · <Link href={items.some((i) => i.kind === "mine") ? "/moc?perlu=1" : "/moc"} className="card-action">Lihat semua</Link></>}</span>} className="span-7" state={shown.length > 0 ? "ready" : "empty"} emptyLabel="MOC yang perlu perhatian">
       <div className="attention-list">
         {shown.map(({ moc, kind, detail }, index) => {
           const since = moc.stateSince ? new Date(moc.stateSince).getTime() : 0;

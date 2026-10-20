@@ -380,6 +380,8 @@ export const mocRequests = pgTable(
     closure: jsonb("closure"),
     // Pengajuan penundaan/penghentian MOC saat Pemantauan (Gelombang B).
     halt: jsonb("halt"),
+    // MOC yang dicatat dari dokumen offline (Controller/Admin): hanya catatan Register + dokumen, tanpa alur di aplikasi.
+    isOffline: boolean("is_offline").notNull().default(false),
     // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
     communication: jsonb("communication"),
     implementationPlan: jsonb("implementation_plan"),

@@ -11,6 +11,8 @@ import {
   mocMonitoringOverdueDays,
   mocPendingActions,
   mocStageIndex,
+  mocUnsignedMonitoring,
+  type MocAction,
   type MocActor,
   type MocRequest,
   type MocRiskLevel,
@@ -203,6 +205,43 @@ export interface MocAttentionItem {
 
 const RISK_ORDER: MocRiskLevel[] = ["H", "MTH", "M", "LTM", "L"];
 
+const MINE_LABELS: [MocAction, string][] = [
+  ["review", "Menunggu review Anda"],
+  ["decide", "Menunggu keputusan Anda"],
+  ["reviewFinal", "Menunggu review Tinjauan Akhir Anda"],
+  ["decideHalt", "Putuskan penundaan/penghentian"],
+  ["decideHaltProxy", "Catat keputusan penundaan/penghentian atas nama Approver"],
+  ["signMonitoring", "Unggah Form Pemantauan bertanda tangan"],
+  ["finalizeClosure", "Finalisasi penutupan: unggah form bertanda tangan"],
+  ["close", "Setujui penutupan MOC"],
+  ["closeProxy", "Setujui penutupan atas nama Approver"],
+  ["reviewFinalProxy", "Catat review Tinjauan Akhir atas nama reviewer"],
+  ["reviewProxy", "Catat review atas nama reviewer"],
+  ["decideProxy", "Catat keputusan atas nama Approver"],
+  ["register", "Menunggu registrasi Anda"],
+  ["monitor", "Catat pemantauan MOC"],
+  ["finalReview", "Catat Tinjauan Akhir"],
+  ["communicate", "Catat komunikasi MOC"],
+  ["planImplementation", "Catat rencana implementasi"],
+];
+
+// Penantian yang bukan giliran user ini (tampil sebagai "Menunggu pihak lain"). null = tidak sedang menunggu apa pun.
+function mocOthersWaiting(m: MocRequest): string | null {
+  if (m.validationState === "halt_requested") return "Menunggu keputusan Approver atas penundaan/penghentian";
+  if (m.validationState === "halted") return m.halt?.kind === "Hentikan" ? "Dihentikan; menunggu Initiator melanjutkan (mengulang Validasi)" : "Ditunda; menunggu Initiator melanjutkan (mengulang Validasi)";
+  if (m.validationState !== "registered") return null;
+  if (m.registerStatus === "Pemantauan") {
+    const u = mocUnsignedMonitoring(m);
+    return u ? `Menunggu Controller mengunggah Form Pemantauan ke-${u.no} bertanda tangan` : null;
+  }
+  if (m.registerStatus === "Tinjauan Akhir") {
+    if (m.closure) return "Menunggu Controller mengunggah form penutupan bertanda tangan";
+    const pending = (m.finalReview?.responses ?? []).filter((r) => r.outcome === "Pending");
+    if (pending.length > 0) return `Menunggu review Tinjauan Akhir: ${pending.map((r) => r.fungsi).join(", ")}`;
+  }
+  return null;
+}
+
 export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) {
   const closed = (m: MocRequest) => m.validationState === "registered" && m.registerStatus === "Closed";
   const active = mocs.filter((m) => !closed(m));
@@ -221,31 +260,12 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
   };
 
   for (const m of active) {
+    if (m.isOffline) continue; // catatan offline tidak punya tindakan/penantian di aplikasi
     const acts = mocPendingActions(m, actor);
     if (acts.length > 0) {
-      const label = acts.includes("review")
-        ? "Menunggu review Anda"
-        : acts.includes("decide")
-          ? "Menunggu keputusan Anda"
-          : acts.includes("monitor")
-            ? "Catat pemantauan MOC"
-            : acts.includes("finalReview")
-              ? "Catat Tinjauan Akhir"
-              : acts.includes("close") || acts.includes("closeProxy")
-                ? "Menunggu penutupan MOC"
-                : acts.includes("reviewProxy")
-            ? "Catat review atas nama reviewer"
-            : acts.includes("decideProxy")
-              ? "Catat keputusan atas nama Approver"
-              : acts.includes("register")
-            ? "Menunggu registrasi Anda"
-            : acts.includes("communicate")
-              ? "Catat komunikasi MOC"
-              : acts.includes("planImplementation")
-                ? "Catat rencana implementasi"
-                : m.validationState === "draft"
-              ? "Draf belum diajukan"
-              : "Perlu diperbaiki lalu diajukan ulang";
+      // Label mengikuti tindakan pertama yang cocok; urutan = prioritas. Semua tindakan baru (Gelombang B) terdaftar
+      // supaya tidak jatuh ke teks bawaan "perlu diperbaiki".
+      const label = MINE_LABELS.find(([act]) => acts.includes(act))?.[1] ?? (m.validationState === "draft" ? "Draf belum diajukan" : "Perlu diperbaiki lalu diajukan ulang");
       push(m, "mine", label);
     }
 
@@ -258,6 +278,11 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
       if (waited > MOC_APPROVAL_SLA_DAYS) push(m, "sla", `Persetujuan lewat ${waited - MOC_APPROVAL_SLA_DAYS} hari kerja dari batas ${MOC_APPROVAL_SLA_DAYS} hari`);
     } else if ((m.validationState === "returned" || m.validationState === "rejected") && waited >= 1) {
       push(m, "waiting", `Menunggu perbaikan ${m.createdByName ?? "pembuat"} selama ${waited} hari kerja`);
+    }
+
+    if (acts.length === 0) {
+      const wait = mocOthersWaiting(m);
+      if (wait) push(m, "waiting", wait);
     }
 
     const monDue = mocMonitoringDue(m);

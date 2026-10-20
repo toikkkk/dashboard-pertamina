@@ -132,6 +132,7 @@ function toRequest(
     finalReview: (row.finalReview as MocRequest["finalReview"]) ?? null,
     closure: (row.closure as MocRequest["closure"]) ?? null,
     halt: (row.halt as MocRequest["halt"]) ?? null,
+    isOffline: row.isOffline,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
     createdAt: fmtTs(row.createdAt),
     updatedAt: fmtTs(row.updatedAt),

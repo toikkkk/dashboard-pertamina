@@ -69,7 +69,7 @@ function RegisterSummary({
     { label: "Perlu tindakan Anda", n: needCount, color: "#B45309", active: mineOnly, patch: { ...clear, perlu: "1" } },
     { label: "Lewat batas waktu", n: attention.sla, color: "#DC2626", active: perhatian === "sla", patch: { ...clear, perhatian: "sla" } },
     { label: "Masa berlaku sementara", n: attention.temp, color: "#B45309", active: perhatian === "temp", patch: { ...clear, perhatian: "temp" } },
-    { label: "Menunggu perbaikan", n: attention.waiting, color: "#6D28D9", active: perhatian === "waiting", patch: { ...clear, perhatian: "waiting" } },
+    { label: "Menunggu pihak lain", n: attention.waiting, color: "#6D28D9", active: perhatian === "waiting", patch: { ...clear, perhatian: "waiting" } },
   ];
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
@@ -234,6 +234,14 @@ function MocRegisterContent() {
           >
             <Download className="w-4 h-4" strokeWidth={2.2} /> Ekspor Register
           </button>
+        {(activeUser.isRegionalAdmin || (activeUser.role.includes("Controller") && !!activeUser.location)) && (
+          <Link
+            href="/moc/offline"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#C5CED3] bg-white text-[#0F3B59] hover:bg-[#E2E8EB] text-[13px] font-bold transition-colors"
+          >
+            Catat MOC Offline
+          </Link>
+        )}
         {canCreate && (
           <Link
             href="/moc/new"
@@ -326,7 +334,7 @@ function MocRegisterContent() {
                   {g.rows.map(({ moc: m, ...r }) => (
                     <Link key={m.id} href={`/moc/${m.id}`} className="block p-3.5 hover:bg-[#E2E8EB]/50 transition-colors">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <span className="font-mono text-[11px] text-[#9a9da0]">{m.mocNumber ?? "Belum bernomor"}</span>
+                        <span className="font-mono text-[11px] text-[#9a9da0]">{m.mocNumber ?? "Belum bernomor"}{m.isOffline ? " · Offline" : ""}</span>
                         <StateTag m={m} />
                       </div>
                       <div className="font-semibold text-[13.5px] text-[#0F172A] mb-1">{m.judul || "(tanpa judul)"}</div>
@@ -354,7 +362,7 @@ function MocRegisterContent() {
                             onClick={(e) => { if (!(e.target as HTMLElement).closest("a")) go(m.id); }}
                             className="border-b border-[#f0f0f1] last:border-0 hover:bg-[#E2E8EB]/60 transition-colors align-top cursor-pointer"
                           >
-                            <td className="px-3 py-3 font-mono text-[11.5px] text-[#3a3d40] whitespace-nowrap">{m.mocNumber ?? "—"}</td>
+                            <td className="px-3 py-3 font-mono text-[11.5px] text-[#3a3d40] whitespace-nowrap">{m.mocNumber ?? "—"}{m.isOffline && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-[1px] rounded-full bg-[#E2E8EB] text-[#0F3B59] font-sans">Offline</span>}</td>
                             <td className="px-3 py-3 whitespace-nowrap">{m.location}</td>
                             <td className="px-3 py-3">{m.sifatPerubahan}</td>
                             <td className="px-3 py-3 whitespace-nowrap">{m.anggaranType || "—"}</td>
