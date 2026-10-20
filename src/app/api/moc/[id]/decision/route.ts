@@ -29,10 +29,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     if (!note) throw new HttpError(400, decision === "reject" ? "Catatan wajib diisi saat menolak." : "Catatan persetujuan wajib diisi.");
     if (decision === "reject") {
-      await db
+      const rejected = await db
         .update(mocRequests)
         .set({ validationState: "rejected", approverNote: note, updatedAt: new Date() })
-        .where(eq(mocRequests.id, moc.id));
+        .where(and(eq(mocRequests.id, moc.id), eq(mocRequests.validationState, moc.validationState)))
+        .returning({ id: mocRequests.id });
+      if (rejected.length === 0) throw new HttpError(409, "Keputusan untuk MOC ini sudah tercatat. Muat ulang halaman.");
       await recordMocHistory(moc.id, user, "Ditolak", { notes: `${note}${onBehalf}`, fromState: moc.validationState, toState: "rejected" });
     } else {
       if (!performer) throw new HttpError(400, "Tunjuk MoC Performer sebelum menyetujui.");
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
         performerName = p.name;
       }
-      await db
+      const approved = await db
         .update(mocRequests)
         .set({
           validationState: "approved",
@@ -59,7 +61,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           approvedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(mocRequests.id, moc.id));
+        .where(and(eq(mocRequests.id, moc.id), eq(mocRequests.validationState, moc.validationState)))
+        .returning({ id: mocRequests.id });
+      if (approved.length === 0) throw new HttpError(409, "Keputusan untuk MOC ini sudah tercatat. Muat ulang halaman.");
       await recordMocHistory(moc.id, user, "Disetujui", {
         notes: `Performer: ${performerName}.${note ? ` ${note}` : ""}${onBehalf}`,
         fromState: moc.validationState,

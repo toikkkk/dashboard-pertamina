@@ -37,6 +37,9 @@ import { duplicateMessage, findDuplicateFile } from "@/lib/api/fileVerify";
 
 const MAX_PROXY_BYTES = 500 * 1024 * 1024;
 
+// Pemeriksaan isi berkas besar (hingga 50MB dibaca penuh dari penyimpanan) perlu lebih lama dari batas bawaan platform.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();

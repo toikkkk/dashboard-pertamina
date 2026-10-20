@@ -12,6 +12,9 @@ import { withErrorHandling } from "@/lib/api/respond";
 import { verifyUploadedObject } from "@/lib/api/fileVerify";
 import { canUploadEncryptedPdf } from "@/lib/security/fileScan";
 
+// Pemeriksaan isi berkas besar (hingga 50MB dibaca penuh dari penyimpanan) perlu lebih lama dari batas bawaan platform.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();

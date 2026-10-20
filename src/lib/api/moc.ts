@@ -240,6 +240,12 @@ export async function loadMocList(): Promise<MocRequest[]> {
     .select({ mocId: mocHistory.mocId, toState: mocHistory.toState, timestamp: mocHistory.timestamp })
     .from(mocHistory)
     .where(inArray(mocHistory.mocId, rows.map((r) => r.id)));
+  // Bukti ringan (hanya slot + tahap) agar aturan berbasis bukti (mis. Form Pemantauan sudah bertanda tangan atau belum)
+  // bernilai sama di daftar, badge, dan dashboard seperti di halaman detail.
+  const evidenceRows = await db
+    .select({ mocId: mocEvidence.mocId, id: mocEvidence.id, slot: mocEvidence.slot, stage: mocEvidence.stage, fileId: mocEvidence.fileId })
+    .from(mocEvidence)
+    .where(inArray(mocEvidence.mocId, rows.map((r) => r.id)));
   const historyByMoc = new Map<string, { toState: string | null; timestamp: Date }[]>();
   for (const h of historyRows) historyByMoc.set(h.mocId, [...(historyByMoc.get(h.mocId) ?? []), h]);
   return rows.map((row) =>
@@ -247,7 +253,9 @@ export async function loadMocList(): Promise<MocRequest[]> {
       row,
       reviewRows.filter((rv) => rv.mocId === row.id).map(toReview),
       [],
-      [],
+      evidenceRows
+        .filter((e) => e.mocId === row.id)
+        .map((e) => ({ id: e.id, slot: e.slot as MocEvidenceSlot, stage: e.stage ?? undefined, fileId: e.fileId, fileName: "", fileUrl: "", uploadedByName: "", uploadedAt: "" })),
       names.get(row.approverUserId ?? "") ?? null,
       names.get(row.createdBy ?? "") ?? null,
       stateSinceOf(row, historyByMoc.get(row.id) ?? [])

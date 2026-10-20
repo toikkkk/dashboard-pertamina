@@ -216,6 +216,7 @@ export default function MocOfflinePage() {
         ]).map(({ slot, title, required }) => (
           <div key={slot}>
             <label className={LABEL}>{title} <span className="font-normal text-[#6b6e72]">{required ? "— wajib" : "— opsional"}</span></label>
+            <p className="text-[11.5px] text-[#6b6e72] mb-1.5">Maksimal 500 MB per berkas. Jenis berkas: PDF, Word (.docx), Excel (.xlsx), PNG, JPG.</p>
             <label
               onDragOver={(e) => { e.preventDefault(); if (!uploading && !busy) setDragSlot(slot); }}
               onDragLeave={() => setDragSlot((cur) => (cur === slot ? null : cur))}

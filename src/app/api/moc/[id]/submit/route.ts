@@ -73,6 +73,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const isFirst = moc.validationState === "draft";
     const round = isFirst ? moc.round : moc.round + 1;
 
+    // Kunci status DULU secara bersyarat: dua permintaan Ajukan yang hampir bersamaan (klik ganda) hanya boleh satu yang
+    // lolos, supaya baris review tidak ganda.
+    const locked = await db
+      .update(mocRequests)
+      .set({
+        validationState: "in_review",
+        round,
+        approverUserId: approverUserId ?? null,
+        approverManualName: approverManual?.name ?? null,
+        approverManualJabatan: approverManual?.jabatan ?? null,
+        approverNote: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(mocRequests.id, moc.id), eq(mocRequests.validationState, moc.validationState)))
+      .returning({ id: mocRequests.id });
+    if (locked.length === 0) throw new HttpError(409, "MOC ini sudah diajukan atau statusnya berubah. Muat ulang halaman.");
+
     await db.insert(mocReviews).values(
       reviewers.map((r) => ({
         mocId: moc.id,
@@ -84,18 +101,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         reviewerJabatan: r.jabatan || (r.manual ? "" : (byId.get(r.userId as string)?.mocFunction ?? "")),
       }))
     );
-    await db
-      .update(mocRequests)
-      .set({
-        validationState: "in_review",
-        round,
-        approverUserId: approverUserId ?? null,
-        approverManualName: approverManual?.name ?? null,
-        approverManualJabatan: approverManual?.jabatan ?? null,
-        approverNote: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(mocRequests.id, moc.id));
 
     await recordMocHistory(moc.id, user, isFirst ? "Diajukan" : "Diperbarui Initiator", {
       notes: `Review putaran ${round}: ${reviewers.map((r) => `${r.functionLabel}${r.manual ? " (tanpa akun)" : ""}`).join(", ")}.${approverManual ? ` Approver tanpa akun: ${approverManual.name}.` : ""}`,

@@ -34,15 +34,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       : reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === user.id && r.outcome === "Pending");
     if (!mine) throw new HttpError(409, reviewId ? "Review untuk pihak tanpa akun ini sudah tercatat." : "Review Anda pada putaran ini sudah tercatat.");
 
-    await db
+    const updated = await db
       .update(mocReviews)
       .set({ outcome, recommendation, reviewedAt: new Date() })
-      .where(and(eq(mocReviews.id, mine.id), eq(mocReviews.outcome, "Pending")));
+      .where(and(eq(mocReviews.id, mine.id), eq(mocReviews.outcome, "Pending")))
+      .returning({ id: mocReviews.id });
+    if (updated.length === 0) throw new HttpError(409, "Review ini sudah tercatat. Muat ulang halaman.");
 
-    const after = reviewsOfCurrentRound({
-      round: moc.round,
-      reviews: moc.reviews.map((r) => (r.id === mine.id ? { ...r, outcome } : r)),
-    });
+    // Hitung hasil putaran dari data TERBARU di database, bukan salinan di memori: bila dua reviewer menilai hampir
+    // bersamaan, masing-masing akan melihat penilaian yang lain, sehingga MOC tidak macet di "menunggu review".
+    const fresh = await db.select({ outcome: mocReviews.outcome, round: mocReviews.round }).from(mocReviews).where(and(eq(mocReviews.mocId, moc.id), eq(mocReviews.round, moc.round)));
+    const after = reviewsOfCurrentRound({ round: moc.round, reviews: fresh as never });
     const resolution = resolveReviewRound(after);
     const nextState =
       resolution === "all_ok" ? "pending_approval" : resolution === "needs_changes" ? "returned" : moc.validationState;
@@ -53,7 +55,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       toState: nextState,
     });
     if (nextState !== moc.validationState) {
-      await db.update(mocRequests).set({ validationState: nextState, updatedAt: new Date() }).where(eq(mocRequests.id, moc.id));
+      // Hanya bila masih di "in_review": mencegah penulisan ganda saat dua permintaan selesai bersamaan.
+      await db.update(mocRequests).set({ validationState: nextState, updatedAt: new Date() }).where(and(eq(mocRequests.id, moc.id), eq(mocRequests.validationState, "in_review")));
     }
     await handleEvidence(moc.id, "reviewer", evidenceFileId, user, mine.id);
 

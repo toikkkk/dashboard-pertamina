@@ -124,6 +124,13 @@ async function uploadViaServerProxy(file: File, opts: UploadOptions, abandonedFi
   const res = await xhrSend("POST", "/api/files/upload", form, {}, opts);
   let body: { error?: string; fileId?: string } = {};
   try { body = JSON.parse(res.text); } catch { /* respons bukan JSON */ }
-  if (res.status < 200 || res.status >= 300 || !body.fileId) throw new Error(body.error || "Gagal mengunggah berkas.");
+  if (res.status < 200 || res.status >= 300 || !body.fileId) {
+    // Jalur cadangan dibatasi platform (~4,5MB). Bila berkas lebih besar dan responsnya bukan galat aplikasi, penyebab
+    // sebenarnya adalah unggahan langsung ke penyimpanan yang terblokir di jaringan pengguna — katakan itu terang-terangan.
+    if (!body.error && file.size > 4 * 1024 * 1024) {
+      throw new Error("Unggahan langsung ke penyimpanan terblokir di jaringan/peramban ini, dan jalur cadangan hanya menerima berkas sampai sekitar 4 MB. Coba jaringan lain (mis. hotspot) atau peramban lain, atau hubungi admin.");
+    }
+    throw new Error(body.error || "Gagal mengunggah berkas.");
+  }
   return body.fileId;
 }

@@ -63,7 +63,9 @@ export async function POST(req: NextRequest) {
     const [dup] = await db.select({ id: mocRequests.id }).from(mocRequests).where(eq(mocRequests.mocNumber, number)).limit(1);
     if (dup) throw new HttpError(409, `Nomor MoC ${number} sudah ada di Register.`);
 
-    const [created] = await db
+    let created: { id: string };
+    try {
+      [created] = await db
       .insert(mocRequests)
       .values({
         location: b.location,
@@ -85,6 +87,10 @@ export async function POST(req: NextRequest) {
           : null,
       })
       .returning({ id: mocRequests.id });
+    } catch (err) {
+      if (/duplicate key|unique/i.test(String((err as Error)?.message ?? err))) throw new HttpError(409, `Nomor MoC ${number} sudah ada di Register.`);
+      throw err;
+    }
 
     const uploads = [...b.form5.map((f) => [f, "Offline-Form5"]), ...b.form6.map((f) => [f, "Offline-Form6"]), ...b.form7.map((f) => [f, "Offline-Form7"])];
     for (const [fileId, stage] of uploads) {
