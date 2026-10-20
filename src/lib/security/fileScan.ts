@@ -147,7 +147,15 @@ function pdfSurface(raw: string): string {
 }
 
 // head = awal berkas, tail = akhir berkas (sama dengan head bila berkas dipindai utuh).
-export function scanContent(kind: UploadKind, head: Buffer, tail: Buffer): string | null {
+// Opsi pemindaian. allowEncryptedPdf: izinkan PDF ber-/Encrypt (mis. PDF bertanda tangan dari sistem lain yang tetap bisa
+// dibuka tanpa kata sandi). Pemindai tidak bisa melihat ke dalam isi terenkripsi, jadi HANYA dipakai untuk unggahan akun
+// tepercaya (Controller / Admin Regional); pola berbahaya pada bagian yang tidak terenkripsi tetap ditolak.
+export interface ScanOptions {
+  allowEncryptedPdf?: boolean;
+}
+export const canUploadEncryptedPdf = (user: { isRegionalAdmin?: boolean | null; role: string }): boolean => !!user.isRegionalAdmin || user.role.includes("Controller");
+
+export function scanContent(kind: UploadKind, head: Buffer, tail: Buffer, opts: ScanOptions = {}): string | null {
   const bad = (m: string) => `Berkas ditolak: ${m}`;
   const text = latin1(head) + (tail === head ? "" : "\n" + latin1(tail));
   switch (kind.ext) {
@@ -156,7 +164,7 @@ export function scanContent(kind: UploadKind, head: Buffer, tail: Buffer): strin
       const surface = pdfSurface(text);
       if (PDF_BAD.test(surface)) return bad("PDF berisi skrip, berkas tertanam, atau aksi otomatis yang tidak diizinkan.");
       if (SCRIPT_TEXT.test(surface)) return bad("PDF berisi teks skrip yang mencurigakan.");
-      if (/\/Encrypt(?![A-Za-z])/.test(surface)) return bad("PDF terenkripsi tidak dapat diperiksa keamanannya.");
+      if (!opts.allowEncryptedPdf && /\/Encrypt(?![A-Za-z])/.test(surface)) return bad("PDF terenkripsi tidak dapat diperiksa keamanannya.");
       return null;
     }
     case ".png": {
@@ -186,6 +194,6 @@ export function scanContent(kind: UploadKind, head: Buffer, tail: Buffer): strin
 }
 
 // Untuk jalur unggah lewat server (seluruh byte sudah ada di memori).
-export function scanWholeBuffer(kind: UploadKind, buf: Buffer): string | null {
-  return scanContent(kind, buf, buf);
+export function scanWholeBuffer(kind: UploadKind, buf: Buffer, opts: ScanOptions = {}): string | null {
+  return scanContent(kind, buf, buf, opts);
 }

@@ -32,7 +32,7 @@ import { sanitizeFilename } from "@/lib/r2/keys";
 import { requireSessionUser } from "@/lib/auth/session";
 import { assertOnboarded } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
-import { scanWholeBuffer, validateUploadMeta } from "@/lib/security/fileScan";
+import { canUploadEncryptedPdf, scanWholeBuffer, validateUploadMeta } from "@/lib/security/fileScan";
 import { duplicateMessage, findDuplicateFile } from "@/lib/api/fileVerify";
 
 const MAX_PROXY_BYTES = 500 * 1024 * 1024;
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     // Periksa ISI berkas sebelum menyentuh bucket: tanda-byte harus cocok dengan
     // ekstensi dan tidak boleh membawa skrip/makro/berkas tertanam.
-    const problem = scanWholeBuffer(meta.kind, bytes);
+    const problem = scanWholeBuffer(meta.kind, bytes, { allowEncryptedPdf: canUploadEncryptedPdf(user) });
     if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
     // Duplikat ISI (bukan nama) dengan berkas yang sudah ada di arsip/unggahan lain —

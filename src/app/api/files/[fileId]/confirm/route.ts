@@ -10,6 +10,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { ForbiddenError } from "@/lib/auth/rbac";
 import { withErrorHandling } from "@/lib/api/respond";
 import { verifyUploadedObject } from "@/lib/api/fileVerify";
+import { canUploadEncryptedPdf } from "@/lib/security/fileScan";
 
 export async function POST(req: NextRequest, { params }: { params: { fileId: string } }) {
   return withErrorHandling(async () => {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { fileId: str
       // Periksa isi nyata di bucket (ukuran + tanda-byte + pola berbahaya + duplikat
       // isi dengan berkas lain yang sudah ada — lihat fileVerify.ts) sebelum dianggap
       // sah. Sudah menulis checksum_sha256 sendiri kalau lolos, jangan ditimpa di sini.
-      const problem = await verifyUploadedObject(file);
+      const problem = await verifyUploadedObject(file, { allowEncryptedPdf: canUploadEncryptedPdf(user) });
       if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 

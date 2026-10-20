@@ -8,7 +8,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { fileRegistry } from "@/lib/db/schema";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
-import { FULL_SCAN_MAX_BYTES, SCAN_EDGE_BYTES, kindOfFilename, scanContent } from "@/lib/security/fileScan";
+import { FULL_SCAN_MAX_BYTES, SCAN_EDGE_BYTES, kindOfFilename, scanContent, type ScanOptions } from "@/lib/security/fileScan";
 
 type FileRow = typeof fileRegistry.$inferSelect;
 
@@ -47,7 +47,7 @@ async function reject(file: FileRow, message: string): Promise<string> {
 }
 
 // Mengembalikan null bila berkas aman, atau pesan galat (berkas sudah dihapus).
-export async function verifyUploadedObject(file: FileRow): Promise<string | null> {
+export async function verifyUploadedObject(file: FileRow, scanOpts: ScanOptions = {}): Promise<string | null> {
   const kind = kindOfFilename(file.originalFilename);
   if (!kind) return reject(file, "Jenis berkas tidak diizinkan.");
 
@@ -66,11 +66,11 @@ export async function verifyUploadedObject(file: FileRow): Promise<string | null
   let fullBuf: Buffer | null = null;
   if (actual <= FULL_SCAN_MAX_BYTES) {
     fullBuf = await readRange(file.r2ObjectKey);
-    problem = scanContent(kind, fullBuf, fullBuf);
+    problem = scanContent(kind, fullBuf, fullBuf, scanOpts);
   } else {
     const head = await readRange(file.r2ObjectKey, `bytes=0-${SCAN_EDGE_BYTES - 1}`);
     const tail = await readRange(file.r2ObjectKey, `bytes=${actual - SCAN_EDGE_BYTES}-${actual - 1}`);
-    problem = scanContent(kind, head, tail);
+    problem = scanContent(kind, head, tail, scanOpts);
   }
   if (problem) return reject(file, problem);
 
