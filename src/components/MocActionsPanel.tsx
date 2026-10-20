@@ -4,7 +4,7 @@ import MenuSelect from "@/components/ui/MenuSelect";
 import useSWR from "swr";
 import Link from "next/link";
 import { kboForMoc } from "@/lib/domain/kbo";
-import MocAuthorityInfo from "@/components/MocAuthorityInfo";
+import MocAuthorityInfo, { AuthorityHint } from "@/components/MocAuthorityInfo";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X, Paperclip } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
@@ -432,6 +432,7 @@ export default function MocActionsPanel({
                         onChange={(v) => pickReviewer(i, v)}
                       />
                     )}
+                    <AuthorityHint highlight="MoC Reviewer" />
                     <button
                       type="button"
                       onClick={() => setRow(i, r.manual ? { manual: false, name: "", userId: "", functionLabel: "", jabatan: "" } : { manual: true, userId: "", name: "", functionLabel: "", jabatan: "" })}
@@ -465,6 +466,8 @@ export default function MocActionsPanel({
 
           <Step n={2} label="Siapa yang menyetujui?">
             <div className="flex flex-col gap-2">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
               {approverMode === "akun" ? (
                 approverPool.length === 0 ? (
                   <EmptyPool role="Approver" />
@@ -484,6 +487,9 @@ export default function MocActionsPanel({
                   <input className={INPUT} placeholder="Jabatan" maxLength={200} value={approverManual.jabatan} onChange={(e) => { touch(); setApproverManual({ ...approverManual, jabatan: e.target.value }); }} />
                 </div>
               )}
+                </div>
+                <AuthorityHint highlight="MoC Approver" />
+              </div>
               <button type="button" onClick={() => { touch(); setApproverMode(approverMode === "akun" ? "manual" : "akun"); }} className="self-start text-[12.5px] font-semibold text-[#0F3B59] hover:underline">
                 {approverMode === "akun" ? "Tidak ada di daftar? Isi nama manual" : "Pilih dari akun terdaftar"}
               </button>
