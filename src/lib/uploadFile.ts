@@ -30,6 +30,10 @@ export interface UploadOptions {
   allowDuplicate?: boolean;
 }
 
+const PROXY_SINGLE_MAX = 4 * 1024 * 1024;
+const CHUNK_SIZE = 4_000_000;
+const CHUNKED_MAX = 150 * 1024 * 1024;
+
 export async function uploadFileToR2(file: File, opts: UploadOptions = {}): Promise<string> {
   try {
     return await uploadViaPresignedPut(file, opts);
@@ -37,7 +41,10 @@ export async function uploadFileToR2(file: File, opts: UploadOptions = {}): Prom
     if (!isLikelyCorsOrNetworkFailure(err)) throw err;
     // Preflight/network-blocked: retry through the server, which has no CORS gate.
     opts.onProgress?.(0);
-    return await uploadViaServerProxy(file, opts, err instanceof R2TransportError ? err.fileId : undefined);
+    const pendingId = err instanceof R2TransportError ? err.fileId : undefined;
+    // Berkas > ~4MB tidak muat sekali kirim lewat server (batas platform): kirim berpotongan lewat server sendiri.
+    if (pendingId && file.size > PROXY_SINGLE_MAX && file.size <= CHUNKED_MAX) return await uploadViaChunks(file, pendingId, opts);
+    return await uploadViaServerProxy(file, opts, pendingId);
   }
 }
 
@@ -99,6 +106,12 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
   if (put.status === 0) throw new R2TransportError("Unggahan langsung ke penyimpanan diblokir.", fileId);
   if (put.status < 200 || put.status >= 300) throw new Error("Gagal mengunggah berkas ke penyimpanan.");
 
+  return await confirmUpload(fileId, opts);
+}
+
+
+// Langkah terakhir semua jalur: server memeriksa ukuran, isi, dan duplikat lalu menandai berkas "uploaded".
+async function confirmUpload(fileId: string, opts: UploadOptions): Promise<string> {
   const confirmRes = await fetch(`/api/files/${fileId}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -112,7 +125,38 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
     throw new Error(body.error || "Berkas terunggah tetapi gagal dikonfirmasi.");
   }
 
-  return fileId as string;
+  return fileId;
+}
+
+// Kirim berkas per potongan lewat server sendiri (bukan langsung ke R2), lalu server merakitnya. Tiap potongan dicoba
+// ulang sampai 3 kali; progres mengikuti potongan yang terkirim.
+async function uploadViaChunks(file: File, fileId: string, opts: UploadOptions): Promise<string> {
+  const total = Math.ceil(file.size / CHUNK_SIZE);
+  for (let i = 0; i < total; i++) {
+    const blob = file.slice(i * CHUNK_SIZE, Math.min(file.size, (i + 1) * CHUNK_SIZE));
+    let done = false;
+    let lastError = "";
+    for (let attempt = 0; attempt < 3 && !done; attempt++) {
+      const res = await xhrSend("POST", `/api/files/${fileId}/chunk?i=${i}`, blob, { "Content-Type": "application/octet-stream" }, {
+        ...opts,
+        onProgress: (f) => opts.onProgress?.((i + f) / total),
+      });
+      if (res.status >= 200 && res.status < 300) done = true;
+      else {
+        try { lastError = JSON.parse(res.text).error ?? ""; } catch { /* bukan JSON */ }
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break; // galat permanen
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      }
+    }
+    if (!done) throw new Error(lastError || "Gagal mengirim sebagian berkas. Periksa koneksi lalu coba lagi.");
+  }
+  const asm = await fetch(`/api/files/${fileId}/assemble`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chunks: total }) });
+  if (!asm.ok) {
+    const body = await asm.json().catch(() => ({}));
+    throw new Error(body.error || "Gagal menyatukan berkas di server. Coba unggah ulang.");
+  }
+  opts.onProgress?.(1);
+  return await confirmUpload(fileId, opts);
 }
 
 async function uploadViaServerProxy(file: File, opts: UploadOptions, abandonedFileId?: string): Promise<string> {
