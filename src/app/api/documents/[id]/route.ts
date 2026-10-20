@@ -39,6 +39,7 @@ const patchSchema = z
     // "Berlaku sampai" manual (menimpa hitungan terbit + siklus): hanya Admin Regional.
     expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     dateVerified: z.boolean().optional(),
+    notes: z.string().trim().max(500).optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: "Tidak ada perubahan." });
 
@@ -144,7 +145,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         location: docRow.location,
         action: "Revised",
         // "Dikoreksi:" = koreksi data, tidak dihitung sebagai pembaruan nyata di dashboard (lihat isRealUpdate).
-        notes: onlyCategory ? "Pembaruan sub-kategori dokumen" : "Dikoreksi: perubahan data dokumen",
+        notes: (onlyCategory ? "Pembaruan sub-kategori dokumen" : "Dikoreksi: perubahan data dokumen") + (body.notes ? `. Catatan: ${body.notes}` : ""),
         fileId: docRow.primaryFileId,
         version: docRow.currentVersion,
       })

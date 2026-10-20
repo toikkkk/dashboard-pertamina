@@ -46,6 +46,7 @@ export default function EditDocumentDialog({
   const [psiType, setPsiType] = useState<string>(PSI_TYPES[1]);
   const [issue, setIssue] = useState("");
   const [verified, setVerified] = useState(false);
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +81,7 @@ export default function EditDocumentDialog({
     if (estimated && verified) changes.dateVerified = true;
   }
   const nothing = Object.keys(changes).length === 0;
+  if (!nothing && notes.trim()) changes.notes = notes.trim();
 
   const submit = async () => {
     if (!title.trim() || !number.trim()) return setError("Judul dan nomor dokumen wajib diisi.");
@@ -169,6 +171,10 @@ export default function EditDocumentDialog({
                   <span><strong>Tanggal terbit dokumen ini masih perkiraan.</strong> Centang bila sudah Anda periksa dengan isi dokumen — label &ldquo;perkiraan&rdquo; akan dihapus.</span>
                 </label>
               )}
+              <div>
+                <div className={label}>Catatan perubahan (opsional)</div>
+                <textarea value={notes} disabled={busy} maxLength={500} rows={2} onChange={(e) => setNotes(e.target.value)} placeholder="Mis. alasan perubahan; tercatat di Riwayat Proses" className={`${field} py-2 resize-y`} />
+              </div>
               {error && <p role="alert" className="text-[11.5px] font-semibold text-[#DC2626]">{error}</p>}
             </div>
             <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[#EEF2F4]">
