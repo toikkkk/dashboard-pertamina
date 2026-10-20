@@ -1,18 +1,19 @@
-// Tahap H Penutupan: MoC Approver (berakun) menutup MOC, atau Controller atas nama Approver
-// tanpa akun (closeProxy). Syarat: Tinjauan Akhir sudah dicatat (ditegakkan mocActionsFor).
+// Tahap H Penutupan, langkah 1: MoC Approver (berakun) menyetujui penutupan MOC setelah semua Reviewer Sesuai, atau
+// Controller atas nama Approver tanpa akun (closeProxy). MOC BELUM Closed: Controller memfinalisasi dengan mengunggah
+// form penutupan bertanda tangan (close/finalize).
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { mocRequests } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
-import { attachStageFiles, loadMocItem, mocCloseSchema, recordMocHistory, requireMocAction, sessionUserToMocActor } from "@/lib/api/moc";
+import { loadMocItem, mocCloseSchema, recordMocHistory, requireMocAction, sessionUserToMocActor } from "@/lib/api/moc";
 import { mocActionsFor, type MocClosure } from "@/lib/domain/moc";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser();
-    const { note, evidenceFileId } = mocCloseSchema.parse(await req.json());
+    const { note } = mocCloseSchema.parse(await req.json());
     const loaded = await loadMocItem(params.id);
     if (!loaded) throw new HttpError(404, "MOC tidak ditemukan.");
     const allowed = mocActionsFor(loaded, sessionUserToMocActor(user));
@@ -26,13 +27,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       closedByName: user.name,
       onBehalfOf: proxy ? moc.approverManualName ?? moc.approverName ?? null : null,
     };
-    await db.update(mocRequests).set({ closure, registerStatus: "Closed", updatedAt: new Date() }).where(eq(mocRequests.id, moc.id));
-    await recordMocHistory(moc.id, user, "Ditutup", {
-      notes: `${proxy ? `Dicatat Controller atas nama Approver ${closure.onBehalfOf ?? ""}. ` : ""}${note}`.trim(),
-      fromState: moc.registerStatus,
-      toState: "Closed",
+    await db.update(mocRequests).set({ closure, updatedAt: new Date() }).where(eq(mocRequests.id, moc.id));
+    await recordMocHistory(moc.id, user, "Penutupan Disetujui", {
+      notes: `${proxy ? `Dicatat Controller atas nama Approver ${closure.onBehalfOf ?? ""}. ` : ""}${note} Menunggu Controller mengunggah form penutupan bertanda tangan.`.trim(),
     });
-    if (evidenceFileId) await attachStageFiles(moc.id, [evidenceFileId], user, "Penutupan");
     return NextResponse.json(await loadMocItem(moc.id));
   });
 }

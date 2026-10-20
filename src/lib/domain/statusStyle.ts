@@ -39,4 +39,6 @@ export const MOC_STATE_META: Record<MocValidationState, { label: string; color: 
   rejected: { label: MOC_VALIDATION_STATE_LABEL.rejected, color: "#DC2626" },
   approved: { label: MOC_VALIDATION_STATE_LABEL.approved, color: "#0F3B59" },
   registered: { label: MOC_VALIDATION_STATE_LABEL.registered, color: "#15803D" },
+  halt_requested: { label: MOC_VALIDATION_STATE_LABEL.halt_requested, color: "#B45309" },
+  halted: { label: MOC_VALIDATION_STATE_LABEL.halted, color: "#6b6e72" },
 };

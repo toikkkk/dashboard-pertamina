@@ -131,6 +131,7 @@ function toRequest(
     monitoring: (row.monitoring as MocRequest["monitoring"]) ?? [],
     finalReview: (row.finalReview as MocRequest["finalReview"]) ?? null,
     closure: (row.closure as MocRequest["closure"]) ?? null,
+    halt: (row.halt as MocRequest["halt"]) ?? null,
     approvedAt: row.approvedAt ? fmtTs(row.approvedAt) : undefined,
     createdAt: fmtTs(row.createdAt),
     updatedAt: fmtTs(row.updatedAt),

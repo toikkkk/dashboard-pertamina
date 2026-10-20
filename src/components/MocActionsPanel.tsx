@@ -18,6 +18,7 @@ import {
   MOC_MONITOR_OUTCOME_LABEL,
   hasMocRole,
   mocFormGaps,
+  mocUnsignedMonitoring,
   mocExtensionsUsed,
   mocFinalReviewIssues,
   mocMonitoringDue,
@@ -710,6 +711,12 @@ export default function MocActionsPanel({
       )}
 
       {actions.includes("monitor") && <MonitorPanel moc={moc} busy={busy} run={run} />}
+      {actions.includes("requestHalt") && <HaltRequestPanel moc={moc} busy={busy} run={run} />}
+      {actions.includes("signMonitoring") && <SignMonitoringPanel moc={moc} busy={busy} run={run} />}
+      {(actions.includes("decideHalt") || actions.includes("decideHaltProxy")) && <HaltDecisionPanel moc={moc} proxy={!actions.includes("decideHalt")} busy={busy} run={run} />}
+      {actions.includes("resume") && <ResumePanel moc={moc} busy={busy} run={run} />}
+      {(actions.includes("reviewFinal") || actions.includes("reviewFinalProxy")) && <FinalResponsePanel moc={moc} own={actions.includes("reviewFinal")} userId={activeUser.id} busy={busy} run={run} />}
+      {actions.includes("finalizeClosure") && <FinalizePanel moc={moc} busy={busy} run={run} />}
       {actions.includes("finalReview") &&
         (moc.finalReview ? (
           <EditRecorded label={`Ubah Tinjauan Akhir (dicatat ${moc.finalReview.recordedByName})`}>
@@ -912,9 +919,9 @@ function ClosePanel({ moc, proxy, busy, run, onEvidence, evidence }: { moc: MocR
   const { data: aff } = useSWR<{ items: { documentNumber: string; updated: boolean }[] }>(`/api/moc/${moc.id}/affected`, (u: string) => fetch(u, { credentials: "same-origin" }).then((r) => r.json()));
   const stale = (aff?.items ?? []).filter((d) => !d.updated);
   return (
-    <Panel title={proxy ? `Tutup MOC atas nama ${moc.approverManualName ?? "Approver"}` : "Setujui penutupan MOC"}>
+    <Panel title={proxy ? `Setujui penutupan MOC atas nama ${moc.approverManualName ?? "Approver"}` : "Setujui penutupan MOC"}>
       <p className="text-[12.5px] text-[#3a3d40]">
-        Tinjauan Akhir sudah dicatat{moc.finalReview ? ` oleh ${moc.finalReview.recordedByName}` : ""}. Penutupan mengubah status Register menjadi Closed dan tidak dapat dibatalkan.
+        Tinjauan Akhir sudah dicatat{moc.finalReview ? ` oleh ${moc.finalReview.recordedByName}` : ""} dan semua Reviewer menyatakan Sesuai. Setelah Anda menyetujui, Controller mengunggah form penutupan bertanda tangan untuk menutup MOC.
       </p>
       {stale.length > 0 && (
         <div className="rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3 text-[12.5px] text-[#92400E]">
@@ -1024,5 +1031,171 @@ function PartiesEditor({
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Gelombang B (catatan client 20 Okt 2026): form bertanda tangan, penundaan/penghentian, review Tinjauan Akhir.
+// ---------------------------------------------------------------------------------------------------------------
+function PrintLink({ moc, form, no, children }: { moc: MocRequest; form: "pemantauan" | "tinjauan" | "pengusulan"; no?: number; children: React.ReactNode }) {
+  return (
+    <a
+      href={`/moc/${moc.id}/cetak?form=${form}${no ? `&no=${no}` : ""}`}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3B59] hover:underline"
+    >
+      {children}
+    </a>
+  );
+}
+
+// Controller: unggah Form Pemantauan bertanda tangan lengkap; wajib sebelum pemantauan berikutnya / Tinjauan Akhir.
+function SignMonitoringPanel({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const entry = mocUnsignedMonitoring(moc);
+  const [fileId, setFileId] = useState<string | undefined>();
+  if (!entry) return null;
+  return (
+    <Panel title={`Unggah Form Pemantauan ke-${entry.no} bertanda tangan`}>
+      <p className="text-[12.5px] text-[#3a3d40]">
+        {entry.recordedByName} (Initiator) sudah mengisi Form Pemantauan ke-{entry.no}. Cetak, tandatangani lengkap di luar aplikasi, lalu unggah di sini.{" "}
+        {entry.outcome === "Tutup" ? "Setelah diunggah, MOC lanjut ke Tinjauan Akhir." : "Setelah diunggah, Initiator dapat mencatat pemantauan berikutnya."}
+      </p>
+      <PrintLink moc={moc} form="pemantauan" no={entry.no}>Buka / cetak Form Pemantauan ke-{entry.no}</PrintLink>
+      <Step n={1} label="Form Pemantauan bertanda tangan (PDF / gambar) — wajib">
+        <EvidenceInput onFileId={setFileId} disabled={busy} />
+      </Step>
+      <div>
+        <button type="button" className={BTN} disabled={busy || !fileId} onClick={() => run(() => mocApi.signMonitoring(moc.id, { fileId: fileId as string }), () => (entry.outcome === "Tutup" ? "Form diterima. MOC masuk Tinjauan Akhir." : "Form Pemantauan bertanda tangan tersimpan."))}>
+          {busy ? "Mengunggah…" : "Unggah & lanjutkan"}
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+// Initiator: ajukan penundaan atau penghentian ke Approver (tersembunyi di dalam kartu lipat agar tidak mengganggu).
+function HaltRequestPanel({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const [kind, setKind] = useState<"Tunda" | "Hentikan">("Tunda");
+  const [reason, setReason] = useState("");
+  return (
+    <EditRecorded label="Ajukan penundaan / penghentian MOC ke Approver">
+      <p className="text-[12.5px] text-[#3a3d40]">Bila disetujui Approver, MOC ditunda atau dihentikan. Untuk melanjutkan lagi, MOC harus mengulang Penilaian Risiko dan Validasi.</p>
+      <div role="radiogroup" className="flex flex-wrap gap-2">
+        <Choice selected={kind === "Tunda"} onSelect={() => setKind("Tunda")} title="Tunda" tone="warn" />
+        <Choice selected={kind === "Hentikan"} onSelect={() => setKind("Hentikan")} title="Hentikan" tone="bad" />
+      </div>
+      <NoteField label="Alasan" value={reason} onChange={setReason} placeholder="Mengapa MOC perlu ditunda / dihentikan…" rows={2} />
+      <div>
+        <button type="button" className={BTN} disabled={busy || reason.trim().length < 5} onClick={() => run(() => mocApi.requestHalt(moc.id, { kind, reason: reason.trim() }), () => "Pengajuan dikirim ke Approver.")}>
+          {busy ? "Mengirim…" : "Kirim ke Approver"}
+        </button>
+      </div>
+    </EditRecorded>
+  );
+}
+
+// Approver (atau Controller atas nama): setujui atau tolak pengajuan penundaan/penghentian.
+function HaltDecisionPanel({ moc, proxy, busy, run }: { moc: MocRequest; proxy: boolean; busy: boolean; run: RunFn }) {
+  const [decision, setDecision] = useState<"Disetujui" | "Ditolak">("Disetujui");
+  const [note, setNote] = useState("");
+  const h = moc.halt;
+  if (!h) return null;
+  return (
+    <Panel title={`${proxy ? "Catat keputusan atas nama Approver: " : ""}${h.kind === "Hentikan" ? "Penghentian" : "Penundaan"} MOC`}>
+      <div className="rounded-[10px] bg-[#F4F7F8] px-4 py-3 text-[12.5px] text-[#3a3d40]">
+        <div className="font-bold text-[#0F172A]">Diajukan {h.requestedByName}</div>
+        <div className="whitespace-pre-line mt-0.5">{h.reason}</div>
+      </div>
+      <div role="radiogroup" className="flex flex-wrap gap-2">
+        <Choice selected={decision === "Disetujui"} onSelect={() => setDecision("Disetujui")} title={h.kind === "Hentikan" ? "Setujui penghentian" : "Setujui penundaan"} tone="good" />
+        <Choice selected={decision === "Ditolak"} onSelect={() => setDecision("Ditolak")} title="Tolak (lanjutkan pemantauan)" tone="bad" />
+      </div>
+      <NoteField label={decision === "Ditolak" ? "Catatan" : "Catatan (opsional)"} value={note} onChange={setNote} rows={2} />
+      <div>
+        <button type="button" className={BTN} disabled={busy || (decision === "Ditolak" && !note.trim())} onClick={() => run(() => mocApi.decideHalt(moc.id, { decision, note: note.trim() }), () => "Keputusan tercatat.")}>
+          {busy ? "Menyimpan…" : "Simpan keputusan"}
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+// Initiator: lanjutkan kembali MOC yang ditunda/dihentikan (mengulang Penilaian Risiko & Validasi).
+function ResumePanel({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <Panel title={moc.halt?.kind === "Hentikan" ? "MOC dihentikan" : "MOC ditunda"}>
+      <p className="text-[12.5px] text-[#3a3d40]">
+        Melanjutkan kembali berarti MOC mengulang <strong>Penilaian Risiko dan Validasi</strong>. Komunikasi, rencana implementasi, dan tinjauan akhir perlu diisi ulang; riwayat pemantauan dan bukti tetap tersimpan.
+      </p>
+      {!confirm ? (
+        <div><button type="button" className={BTN} disabled={busy} onClick={() => setConfirm(true)}>Lanjutkan kembali MOC</button></div>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap p-3.5 rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30">
+          <span className="text-[13px] font-semibold text-[#92400E]">MOC kembali ke tahap Inisiasi &amp; Validasi. Lanjutkan?</span>
+          <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.resume(moc.id), () => "MOC dilanjutkan. Perbarui Penilaian Risiko lalu ajukan lagi.")}>{busy ? "Memproses…" : "Ya, lanjutkan"}</button>
+          <button type="button" disabled={busy} onClick={() => setConfirm(false)} className="px-3 py-2 text-[13px] font-bold text-[#0F172A] hover:underline">Batal</button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+// Reviewer menanggapi Tinjauan Akhir (own) atau Initiator/Controller mencatat atas nama Reviewer tanpa akun (proxy).
+function FinalResponsePanel({ moc, own, userId, busy, run }: { moc: MocRequest; own: boolean; userId: string; busy: boolean; run: RunFn }) {
+  const rows = (moc.finalReview?.responses ?? [])
+    .map((r, index) => ({ r, index }))
+    .filter(({ r }) => r.outcome === "Pending" && (own ? r.userId === userId : !r.userId));
+  const [outcome, setOutcome] = useState<Record<number, "Sesuai" | "Perlu Perubahan">>({});
+  const [note, setNote] = useState<Record<number, string>>({});
+  if (rows.length === 0) return null;
+  return (
+    <Panel title={own ? "Review Tinjauan Akhir" : "Catat review Tinjauan Akhir atas nama Reviewer"}>
+      <p className="text-[12.5px] text-[#3a3d40]">
+        Tinjauan Akhir dicatat {moc.finalReview?.recordedByName}.{" "}
+        <PrintLink moc={moc} form="tinjauan">Lihat Form Tinjauan Akhir</PrintLink>
+      </p>
+      {rows.map(({ r, index }) => {
+        const o = outcome[index] ?? "Sesuai";
+        const n = note[index] ?? "";
+        return (
+          <div key={index} className="rounded-[10px] border border-[#C5CED3] p-3 flex flex-col gap-2.5">
+            <div className="text-[13px] font-bold text-[#0F172A]">{r.fungsi}{r.name ? ` — ${r.name}` : ""}</div>
+            <div role="radiogroup" className="flex flex-wrap gap-2">
+              <Choice selected={o === "Sesuai"} onSelect={() => setOutcome({ ...outcome, [index]: "Sesuai" })} title="Sesuai" tone="good" />
+              <Choice selected={o === "Perlu Perubahan"} onSelect={() => setOutcome({ ...outcome, [index]: "Perlu Perubahan" })} title="Perlu Perubahan" tone="warn" />
+            </div>
+            <NoteField label={o === "Perlu Perubahan" ? "Catatan perubahan" : "Catatan (opsional)"} value={n} onChange={(v) => setNote({ ...note, [index]: v })} rows={2} />
+            <div>
+              <button type="button" className={BTN} disabled={busy || (o === "Perlu Perubahan" && !n.trim())} onClick={() => run(() => mocApi.reviewFinal(moc.id, { outcome: o, note: n.trim(), ...(own ? {} : { index }) }), () => "Review tersimpan.")}>
+                {busy ? "Menyimpan…" : "Simpan review"}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </Panel>
+  );
+}
+
+// Controller: finalisasi penutupan dengan mengunggah form penutupan bertanda tangan lengkap.
+function FinalizePanel({ moc, busy, run }: { moc: MocRequest; busy: boolean; run: RunFn }) {
+  const [fileId, setFileId] = useState<string | undefined>();
+  return (
+    <Panel title="Finalisasi penutupan MOC">
+      <p className="text-[12.5px] text-[#3a3d40]">
+        Approver sudah menyetujui penutupan{moc.closure ? ` (${moc.closure.closedByName})` : ""}. Cetak Form Tinjauan Akhir &amp; Penutupan, lengkapi tanda tangan di luar aplikasi, lalu unggah di sini untuk menutup MOC.
+      </p>
+      <PrintLink moc={moc} form="tinjauan">Buka / cetak Form Tinjauan Akhir &amp; Penutupan</PrintLink>
+      <Step n={1} label="Form Tinjauan Akhir & Penutupan bertanda tangan (PDF / gambar) — wajib">
+        <EvidenceInput onFileId={setFileId} disabled={busy} />
+      </Step>
+      <div>
+        <button type="button" className={BTN} disabled={busy || !fileId} onClick={() => run(() => mocApi.finalizeClosure(moc.id, { fileId: fileId as string }), () => "MOC ditutup.")}>
+          {busy ? "Mengunggah…" : "Unggah & tutup MOC"}
+        </button>
+      </div>
+    </Panel>
   );
 }

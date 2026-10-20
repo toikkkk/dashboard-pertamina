@@ -26,6 +26,13 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+// Nama form untuk berkas bukti bertanda tangan: Lampiran 5 (validasi), Lampiran 6 (tiap pemantauan), Lampiran 7 (penutupan).
+function signedFormLabel(e: { slot: string; stage?: string }): string {
+  if (e.stage?.startsWith("Pemantauan-")) return `Form Pemantauan ke-${e.stage.slice("Pemantauan-".length)} (Lampiran 6)`;
+  if (e.stage === "Penutupan") return "Form Tinjauan Akhir & Penutupan (Lampiran 7)";
+  return `Bukti tanda tangan ${e.slot} (Lampiran 5)`;
+}
+
 export default function MocDetailPage({ params }: { params: { id: string } }) {
   const { moc, isLoading, error } = useMocItem(params.id);
   const actions = useMocActions(moc);
@@ -179,7 +186,7 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className={`${CARD} p-5`}>
-            <h2 className="text-[13.5px] font-bold text-[#0F172A] mb-3">Bukti tanda tangan</h2>
+            <h2 className="text-[13.5px] font-bold text-[#0F172A] mb-3">Form bertanda tangan</h2>
             {signatureEvidence.length === 0 ? (
               <p className="text-[12.5px] text-[#9a9da0]">Belum ada berkas bukti yang diunggah.</p>
             ) : (
@@ -188,7 +195,7 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
                   <li key={e.id} className="text-[12.5px] flex items-center gap-2 flex-wrap">
                     <Paperclip className="w-3.5 h-3.5 text-[#6b6e72]" strokeWidth={2} />
                     <a href={e.fileUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#0F3B59] hover:underline">{e.fileName ?? "Berkas"}</a>
-                    <span className="text-[#6b6e72]">{e.slot} · {e.uploadedByName} · {e.uploadedAt}</span>
+                    <span className="text-[#6b6e72]">{signedFormLabel(e)} · {e.uploadedByName} · {e.uploadedAt}</span>
                   </li>
                 ))}
               </ul>

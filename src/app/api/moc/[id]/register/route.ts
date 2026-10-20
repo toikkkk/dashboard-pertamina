@@ -38,7 +38,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Nomor urut berikutnya untuk KBO dan tahun ini; diulang bila bentrok dengan registrasi yang bersamaan.
     let number = "";
-    for (let attempt = 0; attempt < 5; attempt++) {
+    // MOC yang dilanjutkan kembali sesudah ditunda (mengulang Validasi) tetap memakai Nomor MoC-nya.
+    if (moc.mocNumber) {
+      await db.update(mocRequests).set({ validationState: "registered", updatedAt: new Date() }).where(eq(mocRequests.id, moc.id));
+      number = moc.mocNumber;
+    }
+    for (let attempt = 0; attempt < 5 && !moc.mocNumber; attempt++) {
       const existing = await db
         .select({ n: mocRequests.mocNumber })
         .from(mocRequests)

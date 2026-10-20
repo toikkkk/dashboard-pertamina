@@ -6,6 +6,7 @@ import {
   addMonthsYmd,
   mocActionsFor,
   mocAdvanceIssues,
+  mocUnsignedMonitoring,
   mocExtensionsUsed,
   mocFinalReviewDue,
   mocFinalReviewIssues,
@@ -32,7 +33,7 @@ function moc(patch: Partial<MocRequest> = {}): MocRequest {
     id: "m1", mocNumber: "MOC-SURABAYA-2026-001", location: LOC, createdBy: "u-init", createdByName: "Ina", stateSince: null,
     registerStatus: "Inisiasi & Validasi", validationState: "registered", round: 1,
     approverUserId: "u-appr", approverName: "Budi", performerUserId: "u-perf", performerName: "Wahyu", approverNote: null,
-    plannedReviewers: [], plannedApproverId: null, approverManualName: null, approverManualJabatan: null, communication: null, implementationPlan: null, monitoring: [], finalReview: null, closure: null,
+    plannedReviewers: [], plannedApproverId: null, approverManualName: null, approverManualJabatan: null, communication: null, implementationPlan: null, monitoring: [], finalReview: null, closure: null, halt: null,
     createdAt: "", updatedAt: "", reviews: [], history: [], evidence: [],
     unitOperasi: "", fungsi: "", region: "Jatimbalinus", anggaranType: "", tanggal: "2026-10-01", judul: "Uji", latarBelakang: "",
     changeCategories: [], sifatPerubahan: "Permanen", deskripsi: "", prosesTerdampak: "", peraturanRelevan: "", stakeholderReviewer: "",
@@ -50,24 +51,28 @@ const regionalAdmin: MocActor = { id: "u-adm", name: "Ari", role: MOC_INITIATOR_
 
 // Siapa boleh apa, sebelum & sesudah komunikasi.
 assert.deepEqual(mocActionsFor(moc(), initiator), ["communicate", "advance"]);
-assert.deepEqual(mocActionsFor(moc(), controller), ["communicate", "advance"]);
+assert.deepEqual(mocActionsFor(moc(), controller), []); // Komunikasi/Rencana/serah ke Performer = Initiator pembuat (client 20 Okt)
 assert.deepEqual(mocActionsFor(moc({ communication: comm }), initiator), ["communicate", "planImplementation", "advance"]);
 assert.deepEqual(mocActionsFor(moc(), otherInitiator), []); // bukan pembuat MOC
 assert.deepEqual(mocActionsFor(moc(), outsider), []); // lokasi lain
 assert.deepEqual(mocActionsFor(moc(), regionalAdmin), []); // Admin Regional lihat-saja
 
-// Tahap sesudah Implementasi tetap seperti dulu: hanya Controller yang memajukan.
-assert.deepEqual(mocActionsFor(moc({ registerStatus: "Implementasi" }), initiator), []);
-assert.deepEqual(mocActionsFor(moc({ registerStatus: "Implementasi" }), controller), ["advance"]);
+// Implementasi -> Pemantauan dimajukan Initiator pembuat MOC (bukan Controller).
+assert.deepEqual(mocActionsFor(moc({ registerStatus: "Implementasi" }), otherInitiator), []);
+assert.deepEqual(mocActionsFor(moc({ registerStatus: "Implementasi" }), controller), []);
+assert.deepEqual(mocActionsFor(moc({ registerStatus: "Implementasi" }), initiator), ["advance"]);
 
 // Gerbang Implementasi.
 assert.deepEqual(mocAdvanceIssues(moc()), ["Komunikasi belum dicatat.", "Rencana implementasi belum dicatat."]);
-assert.deepEqual(mocAdvanceIssues(moc({ communication: comm, implementationPlan: plan })), []);
-assert.equal(mocAdvanceIssues(moc({ communication: comm, implementationPlan: plan, performerName: null })).length, 1);
+const evKom = [{ id: "ek", slot: "lampiran" as const, stage: "Komunikasi", fileId: "f", fileName: "n.pdf", fileUrl: "/n", uploadedByName: "I", uploadedAt: "" }];
+assert.deepEqual(mocAdvanceIssues(moc({ communication: comm, implementationPlan: plan })), ["Bukti komunikasi belum dilampirkan."]); // bukti wajib
+assert.deepEqual(mocAdvanceIssues(moc({ communication: comm, implementationPlan: plan, evidence: evKom })), []);
+assert.equal(mocAdvanceIssues(moc({ communication: comm, implementationPlan: plan, evidence: evKom, performerName: null })).length, 1);
 assert.deepEqual(mocAdvanceIssues(moc({ registerStatus: "Implementasi" })), []); // MOC lama tidak terdampak
 
 // Kelengkapan isian.
 assert.deepEqual(mocCommunicationIssues(comm), []);
+assert.equal(mocCommunicationIssues(comm, false).length, 1); // tanpa bukti ditolak
 assert.equal(mocCommunicationIssues({ ...comm, items: [], media: ["Lainnya"], date: "", audience: " " }).length, 4);
 assert.deepEqual(mocImplementationPlanIssues(plan), []);
 assert.equal(mocImplementationPlanIssues({ ...plan, milestones: [{ label: "PSSR", targetDate: "" }] }).length, 1);
@@ -106,16 +111,16 @@ const performer: MocActor = { id: "u-perf", name: "Wahyu", role: MOC_INITIATOR_R
 const approverActor: MocActor = { id: "u-appr", name: "Budi", role: MOC_INITIATOR_ROLE, location: LOC };
 const pem = moc({ registerStatus: "Pemantauan" });
 assert.ok(mocActionsFor(pem, initiator).includes("monitor"));
-assert.ok(mocActionsFor(pem, controller).includes("monitor"));
-assert.ok(mocActionsFor(pem, performer).includes("monitor"));
+assert.ok(!mocActionsFor(pem, controller).includes("monitor")); // pemantauan oleh Initiator
+assert.ok(!mocActionsFor(pem, performer).includes("monitor"));
 assert.ok(!mocActionsFor(pem, otherInitiator).includes("monitor")); // bukan pembuat/Performer/Controller
 assert.deepEqual(mocActionsFor(pem, outsider), []); // lokasi lain
 assert.ok(!mocActionsFor(pem, controller).includes("advance")); // Pemantauan -> Tinjauan Akhir hanya lewat formulir pemantauan
-assert.ok(mocActionsFor(moc({ registerStatus: "Implementasi" }), controller).includes("advance"));
+assert.ok(!mocActionsFor(moc({ registerStatus: "Implementasi" }), controller).includes("advance"));
 
 const tin = moc({ registerStatus: "Tinjauan Akhir" });
 assert.ok(mocActionsFor(tin, initiator).includes("finalReview"));
-assert.ok(mocActionsFor(tin, controller).includes("finalReview"));
+assert.ok(!mocActionsFor(tin, controller).includes("finalReview")); // Tinjauan Akhir diisi Initiator
 assert.ok(!mocActionsFor(tin, approverActor).includes("close")); // belum ada tinjauan akhir
 const fr = { date: "2026-10-01", answers: [], followUps: [], reviewers: [], notes: "", recordedById: "x", recordedByName: "X", recordedAt: "2026-10-01T00:00:00.000Z" };
 const tinDone = moc({ registerStatus: "Tinjauan Akhir", finalReview: fr });
@@ -152,3 +157,41 @@ assert.equal(mocFinalReviewIssues({ date: "2026-10-01", answers: [ans(true), ans
 assert.equal(mocExtensionsUsed({ monitoring: [monEntry, { ...monEntry, no: 2, outcome: "Perpanjang" as const }] }), 1);
 assert.equal(addMonthsYmd("2026-12-31", 6), "2027-06-30"); // dijepit ke akhir bulan
 assert.equal(addMonthsYmd("2027-01-31", 1), "2027-02-28");
+
+// ---- Gelombang B ----
+const ev = (stage: string) => ({ id: "e", slot: "controller" as const, stage, fileId: "f", fileName: "x.pdf", fileUrl: "/x", uploadedByName: "C", uploadedAt: "" });
+// Form Pemantauan: Initiator mengisi, Controller wajib mengunggah form bertanda tangan sebelum lanjut.
+const pemUnsigned = moc({ registerStatus: "Pemantauan", monitoring: [monEntry] });
+assert.ok(!mocActionsFor(pemUnsigned, initiator).includes("monitor") && !mocActionsFor(pemUnsigned, initiator).includes("requestHalt"));
+assert.ok(mocActionsFor(pemUnsigned, controller).includes("signMonitoring"));
+const pemSigned = moc({ registerStatus: "Pemantauan", monitoring: [monEntry], evidence: [ev("Pemantauan-1")] });
+assert.ok(mocActionsFor(pemSigned, initiator).includes("monitor") && mocActionsFor(pemSigned, initiator).includes("requestHalt"));
+assert.ok(!mocActionsFor(pemSigned, controller).includes("signMonitoring"));
+assert.equal(mocUnsignedMonitoring(pemUnsigned)?.no, 1);
+assert.equal(mocUnsignedMonitoring(pemSigned), null);
+// Penundaan/penghentian.
+const haltReq = moc({ validationState: "halt_requested", registerStatus: "Pemantauan", approverUserId: "u-appr" });
+assert.ok(mocActionsFor(haltReq, approverActor).includes("decideHalt"));
+assert.ok(!mocActionsFor(haltReq, controller).includes("decideHaltProxy")); // Approver berakun
+assert.ok(mocActionsFor(moc({ validationState: "halt_requested", registerStatus: "Pemantauan", approverUserId: null, approverManualName: "Bu Sari" }), controller).includes("decideHaltProxy"));
+assert.ok(mocActionsFor(moc({ validationState: "halted", registerStatus: "Pemantauan" }), initiator).includes("resume"));
+assert.ok(!mocActionsFor(moc({ validationState: "halted", registerStatus: "Pemantauan" }), controller).includes("resume"));
+// Tinjauan Akhir: Initiator mengisi -> Reviewer menanggapi -> Approver setuju -> Controller finalisasi.
+const resp = (outcome: "Pending" | "Sesuai" | "Perlu Perubahan", userId: string | null) => ({ userId, name: "R", fungsi: "HSSE", jabatan: "", outcome, note: "" });
+const frR = (responses: ReturnType<typeof resp>[]) => ({ ...fr, responses });
+const base = { registerStatus: "Tinjauan Akhir" as const, approverUserId: "u-appr" };
+const rv: MocActor = { id: "u-rv", name: "Rev", role: MOC_INITIATOR_ROLE, location: LOC };
+const pend = moc({ ...base, finalReview: frR([resp("Pending", "u-rv"), resp("Pending", null)]) });
+assert.ok(mocActionsFor(pend, rv).includes("reviewFinal"));
+assert.ok(mocActionsFor(pend, controller).includes("reviewFinalProxy") && mocActionsFor(pend, initiator).includes("reviewFinalProxy"));
+assert.ok(!mocActionsFor(pend, approverActor).includes("close")); // belum semua Sesuai
+assert.ok(!mocActionsFor(pend, initiator).includes("finalReview")); // tunggu review
+const perlu = moc({ ...base, finalReview: frR([resp("Sesuai", "u-rv"), resp("Perlu Perubahan", null)]) });
+assert.ok(mocActionsFor(perlu, initiator).includes("finalReview")); // Initiator mengisi ulang
+assert.ok(!mocActionsFor(perlu, approverActor).includes("close"));
+const semua = moc({ ...base, finalReview: frR([resp("Sesuai", "u-rv")]) });
+assert.ok(mocActionsFor(semua, approverActor).includes("close"));
+const tutup = moc({ ...base, finalReview: frR([resp("Sesuai", "u-rv")]), closure: { note: "ok", closedAt: "", closedById: "u-appr", closedByName: "B", onBehalfOf: null } });
+assert.ok(mocActionsFor(tutup, controller).includes("finalizeClosure"));
+assert.ok(!mocActionsFor(tutup, approverActor).includes("close")); // sudah disetujui
+assert.ok(!mocActionsFor(tutup, initiator).includes("finalizeClosure"));

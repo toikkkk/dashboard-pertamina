@@ -14,11 +14,14 @@ export default function MocFormViewer({
   initialForm = "pengusulan",
   standalone = false,
   autoPrint = false,
+  monitoringNo,
 }: {
   moc: MocRequest;
   initialForm?: MocFormKey;
   standalone?: boolean;
   autoPrint?: boolean;
+  /** Nomor pemantauan yang dicetak pada Lampiran 6 (bawaan: terbaru). */
+  monitoringNo?: number;
 }) {
   const [form, setForm] = useState<MocFormKey>(initialForm);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -76,14 +79,14 @@ export default function MocFormViewer({
 
       {form !== "pengusulan" && (
         <p className="no-print text-[11.5px] text-[#6b6e72] mb-2.5">
-          Bagian informasi MoC terisi otomatis dari data MOC ini. Tabel kegiatan, tindak lanjut, dan tanggapan dikosongkan untuk diisi
-          dan ditandatangani di luar web — tahap Pemantauan dan Tinjauan Akhir belum dikelola di web.
+          Informasi MoC dan isian yang sudah dicatat di aplikasi terisi otomatis. Bagian yang belum dicatat dibiarkan kosong; tanda tangan dilakukan
+          di luar aplikasi, lalu form bertanda tangan diunggah Controller.
         </p>
       )}
 
       <div className="overflow-x-auto print:overflow-visible">
         <div ref={sheetRef} className="moc-min-w" style={{ minWidth: 860 }}>
-          <MocFormSheet moc={moc} form={form} />
+          <MocFormSheet moc={moc} form={form} no={monitoringNo} />
         </div>
       </div>
     </div>

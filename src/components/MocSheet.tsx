@@ -9,6 +9,7 @@ import {
   reviewsOfCurrentRound,
   type MocBarrier,
   type MocRequest,
+  type MocTrackedItem,
 } from "@/lib/domain/moc";
 
 // Lembar formulir MoC dalam HTML/tabel, mengikuti tata letak formulir aslinya pada TKO
@@ -421,7 +422,8 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
 /* ------------------------------------------------------------------ */
 /* Lampiran 6 — Formulir MoC: Pemantauan                               */
 /* ------------------------------------------------------------------ */
-function ActivityTable({ head, rows, firstLabel }: { head: string; rows: number; firstLabel: string }) {
+function ActivityTable({ head, rows, firstLabel, data = [] }: { head: string; rows: number; firstLabel: string; data?: MocTrackedItem[] }) {
+  const total = Math.max(rows, data.length);
   return (
     <>
       <tr><td colSpan={12} className="gray">{head}</td></tr>
@@ -433,16 +435,26 @@ function ActivityTable({ head, rows, firstLabel }: { head: string; rows: number;
         <td colSpan={2} className="ctr"><b>Target Date</b></td>
         <td colSpan={1} className="ctr"><b>Status</b></td>
       </tr>
-      {Array.from({ length: rows }, (_, i) => (
-        <tr key={i} style={{ height: 20 }}>
-          <td colSpan={3} /><td colSpan={3} /><td colSpan={2} /><td colSpan={1} /><td colSpan={2} /><td colSpan={1} />
-        </tr>
-      ))}
+      {Array.from({ length: total }, (_, i) => {
+        const d = data[i];
+        return (
+          <tr key={i} style={{ height: 20 }}>
+            <td colSpan={3}>{d?.item ?? ""}</td>
+            <td colSpan={3}>{d?.keterangan ?? ""}</td>
+            <td colSpan={2}>{d?.tahapan ?? ""}</td>
+            <td colSpan={1}>{d?.pic ?? ""}</td>
+            <td colSpan={2}>{d?.targetDate ? dmy(d.targetDate) : ""}</td>
+            <td colSpan={1}>{d?.status ?? ""}</td>
+          </tr>
+        );
+      })}
     </>
   );
 }
 
-export function MocSheetPemantauan({ moc }: { moc: MocRequest }) {
+export function MocSheetPemantauan({ moc, no }: { moc: MocRequest; no?: number }) {
+  // Pemantauan yang dicetak: nomor yang diminta, atau yang terbaru. Tanpa data = formulir kosong untuk diisi manual.
+  const entry = (no ? moc.monitoring.find((m) => m.no === no) : undefined) ?? moc.monitoring[moc.monitoring.length - 1];
   return (
     <div className="moc-sheet-wrap" data-sheet="lampiran-6">
       <style>{SHEET_CSS}</style>
@@ -460,13 +472,13 @@ export function MocSheetPemantauan({ moc }: { moc: MocRequest }) {
           <tr><td colSpan={12} className="band">Tahap Pemantauan</td></tr>
           <tr>
             <td colSpan={3}>Pemantauan Ke-</td>
-            <td colSpan={5} />
+            <td colSpan={5}>{entry ? entry.no : ""}</td>
             <td colSpan={1}>Tanggal</td>
-            <td colSpan={3} style={{ color: "#888" }}>DD/MM/YYYY</td>
+            <td colSpan={3} style={entry ? undefined : { color: "#888" }}>{entry ? dmy(entry.date) : "DD/MM/YYYY"}</td>
           </tr>
-          <ActivityTable head="Aktivitas Yang Dipantau" rows={10} firstLabel="Kegiatan" />
-          <ActivityTable head="Aksi Tindak Lanjut dari Tahap / Pemantauan Sebelumnya Selain Yang Sudah Termasuk di Aktivitas di Atas" rows={8} firstLabel="Deskripsi Aksi Tindak Lanjut" />
-          <tr style={{ height: 40 }}><td colSpan={3}>Catatan lain / tambahan</td><td colSpan={9} /></tr>
+          <ActivityTable head="Aktivitas Yang Dipantau" rows={10} firstLabel="Kegiatan" data={entry?.activities} />
+          <ActivityTable head="Aksi Tindak Lanjut dari Tahap / Pemantauan Sebelumnya Selain Yang Sudah Termasuk di Aktivitas di Atas" rows={8} firstLabel="Deskripsi Aksi Tindak Lanjut" data={entry?.followUps} />
+          <tr style={{ height: 40 }}><td colSpan={3}>Catatan lain / tambahan</td><td colSpan={9}>{entry?.notes ?? ""}</td></tr>
           <tr><td colSpan={6} className="gray">MoC Performer</td><td colSpan={6} className="gray">MoC Initiator</td></tr>
           <tr>
             <td colSpan={2} className="ctr"><b>Nama</b></td><td colSpan={2} className="ctr"><b>Jabatan</b></td><td colSpan={2} className="ctr"><b>Tanda Tangan</b></td>
@@ -496,6 +508,11 @@ const FINAL_QUESTIONS = [
 ];
 
 export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
+  const fr = moc.finalReview;
+  const responses = fr?.responses ?? [];
+  const reviewerRows = responses.length > 0
+    ? responses.map((r) => ({ fungsi: r.fungsi, nama: r.name, tanggapan: r.outcome === "Pending" ? "" : `${r.outcome}${r.note ? ` — ${r.note}` : ""}`, tanggal: r.at ?? "" }))
+    : (fr?.reviewers ?? []).map((r) => ({ fungsi: r.fungsi, nama: r.keterangan, tanggapan: r.tanggapan, tanggal: r.tanggal }));
   return (
     <div className="moc-sheet-wrap" data-sheet="lampiran-7">
       <style>{SHEET_CSS}</style>
@@ -513,12 +530,15 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
           <tr>
             <td colSpan={9} className="band">Tahap Tinjauan Akhir</td>
             <td colSpan={1} className="ctr">Tanggal</td>
-            <td colSpan={2} className="ctr" style={{ color: "#888" }}>DD/MM/YYYY</td>
+            <td colSpan={2} className="ctr" style={fr ? undefined : { color: "#888" }}>{fr ? dmy(fr.date) : "DD/MM/YYYY"}</td>
           </tr>
-          {FINAL_QUESTIONS.map((q) => (
-            <tr key={q} style={{ height: 28 }}><td colSpan={4}>{q}</td><td colSpan={8} /></tr>
+          {FINAL_QUESTIONS.map((q, i) => (
+            <tr key={q} style={{ height: 28 }}>
+              <td colSpan={4}>{q}</td>
+              <td colSpan={8}>{fr?.answers[i] ? `${fr.answers[i].yes ? "Ya" : "Tidak"}${fr.answers[i].keterangan ? ` — ${fr.answers[i].keterangan}` : ""}` : ""}</td>
+            </tr>
           ))}
-          <ActivityTable head="Aksi Tindak Lanjut dari Tahap Sebelumnya" rows={5} firstLabel="Deskripsi Aksi Tindak Lanjut" />
+          <ActivityTable head="Aksi Tindak Lanjut dari Tahap Sebelumnya" rows={5} firstLabel="Deskripsi Aksi Tindak Lanjut" data={fr?.followUps} />
           <tr><td colSpan={12} className="gray">MoC Reviewer &amp; Tim Peninjau Akhir</td></tr>
           <tr>
             <td colSpan={2} className="ctr"><b>Fungsi</b></td>
@@ -527,9 +547,14 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
             <td colSpan={2} className="ctr"><b>Tanggal</b></td>
             <td colSpan={2} className="ctr"><b>Tanda Tangan</b></td>
           </tr>
-          {Array.from({ length: 3 }, (_, i) => (
-            <tr key={i} style={{ height: 42 }}><td colSpan={2} /><td colSpan={3} /><td colSpan={3} /><td colSpan={2} /><td colSpan={2} /></tr>
-          ))}
+          {Array.from({ length: Math.max(3, reviewerRows.length) }, (_, i) => {
+            const r = reviewerRows[i];
+            return (
+              <tr key={i} style={{ height: 42 }}>
+                <td colSpan={2}>{r?.fungsi ?? ""}</td><td colSpan={3}>{r?.nama ?? ""}</td><td colSpan={3}>{r?.tanggapan ?? ""}</td><td colSpan={2}>{r?.tanggal ? dmy(r.tanggal) : ""}</td><td colSpan={2} />
+              </tr>
+            );
+          })}
           <tr><td colSpan={6} className="gray">MoC Performer</td><td colSpan={6} className="gray">MoC Initiator</td></tr>
           <tr>
             <td colSpan={2} className="ctr"><b>Nama</b></td><td colSpan={2} className="ctr"><b>Jabatan</b></td><td colSpan={2} className="ctr"><b>Tanda Tangan</b></td>
@@ -542,7 +567,7 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
           <tr><td colSpan={12} className="band">Tahap Penutupan MoC</td></tr>
           <tr><td colSpan={12} className="gray">MoC Approver</td></tr>
           <tr><td colSpan={3} className="ctr"><b>Nama</b></td><td colSpan={3} className="ctr"><b>Jabatan</b></td><td colSpan={3} className="ctr"><b>Tanggal</b></td><td colSpan={3} className="ctr"><b>Tanda Tangan</b></td></tr>
-          <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan || moc.approverJabatan || ""}</td><td colSpan={3} /><td colSpan={3} /></tr>
+          <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan || moc.approverJabatan || ""}</td><td colSpan={3}>{moc.closure ? dmy(moc.closure.closedAt) : ""}</td><td colSpan={3} /></tr>
           <ControllerRows />
           <tr><td colSpan={12} className="foot">Selanjutnya: MoC Controller melakukan dokumentasi atas penutupan MoC</td></tr>
         </tbody>
@@ -563,6 +588,6 @@ export const MOC_FORMS: { key: MocFormKey; label: string; lampiran: string; file
   { key: "tinjauan", label: "Tinjauan Akhir & Penutupan", lampiran: "Lampiran 7", filename: `Lampiran-7_TKO-${TKO_DOC_NO}_Formulir-Tinjauan-Akhir-dan-Penutupan-MoC` },
 ];
 
-export function MocFormSheet({ moc, form }: { moc: MocRequest; form: MocFormKey }) {
-  return form === "pemantauan" ? <MocSheetPemantauan moc={moc} /> : form === "tinjauan" ? <MocSheetTinjauan moc={moc} /> : <MocSheet moc={moc} />;
+export function MocFormSheet({ moc, form, no }: { moc: MocRequest; form: MocFormKey; no?: number }) {
+  return form === "pemantauan" ? <MocSheetPemantauan moc={moc} no={no} /> : form === "tinjauan" ? <MocSheetTinjauan moc={moc} /> : <MocSheet moc={moc} />;
 }

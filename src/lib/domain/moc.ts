@@ -106,6 +106,9 @@ export const MOC_VALIDATION_STATES = [
   "rejected",
   "approved",
   "registered",
+  // Gelombang B (catatan client 20 Okt 2026): pengajuan penundaan/penghentian saat Pemantauan.
+  "halt_requested",
+  "halted",
 ] as const;
 export type MocValidationState = (typeof MOC_VALIDATION_STATES)[number];
 
@@ -117,6 +120,8 @@ export const MOC_VALIDATION_STATE_LABEL: Record<MocValidationState, string> = {
   rejected: "Ditolak Approver",
   approved: "Disetujui, menunggu registrasi",
   registered: "Terdaftar",
+  halt_requested: "Menunggu keputusan penundaan/penghentian",
+  halted: "Ditunda / dihentikan",
 };
 
 export const MOC_REVIEW_OUTCOMES = ["Pending", "Sesuai", "Perlu Perubahan"] as const;
@@ -138,6 +143,12 @@ export const MOC_HISTORY_ACTIONS = [
   "Tinjauan Akhir Dicatat",
   "Ditutup",
   "PSI Terdampak Diubah",
+  "Form Pemantauan Ditandatangani",
+  "Penundaan/Penghentian Diajukan",
+  "Penundaan/Penghentian Diputuskan",
+  "Dilanjutkan Kembali",
+  "Review Tinjauan Akhir",
+  "Penutupan Disetujui",
 ] as const;
 export type MocHistoryAction = (typeof MOC_HISTORY_ACTIONS)[number];
 
@@ -262,13 +273,42 @@ export interface MocFinalReviewInput {
   reviewers: MocFinalReviewerRow[]; // MoC Reviewer & Tim Peninjau Akhir
   notes: string;
 }
-export type MocFinalReview = MocFinalReviewInput & MocRecordedBy;
+// Tanggapan Reviewer atas Tinjauan Akhir (satu per Reviewer pada putaran review terakhir).
+export interface MocFinalResponse {
+  userId: string | null; // null = Reviewer tanpa akun (dicatat Initiator/Controller atas namanya)
+  name: string;
+  fungsi: string;
+  jabatan: string;
+  outcome: MocReviewOutcome;
+  note: string;
+  at?: string; // ISO
+  byName?: string; // pencatat bila atas nama
+}
+export type MocFinalReview = MocFinalReviewInput & MocRecordedBy & { responses?: MocFinalResponse[] };
+export type MocHaltKind = "Tunda" | "Hentikan";
+// Pengajuan penundaan/penghentian MOC saat Pemantauan ke Approver. Bila disetujui MOC "halted"; melanjutkan lagi
+// berarti mengulang Penilaian Risiko dan Validasi.
+export interface MocHalt {
+  kind: MocHaltKind;
+  reason: string;
+  requestedById: string;
+  requestedByName: string;
+  requestedAt: string;
+  decision: "Disetujui" | "Ditolak" | null;
+  decisionNote: string;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  onBehalfOf: string | null;
+}
 export interface MocClosure {
   note: string;
   closedAt: string; // ISO
   closedById: string;
   closedByName: string;
   onBehalfOf: string | null; // nama Approver tanpa akun bila Controller yang mencatat
+  // Penutupan = persetujuan Approver (closedAt) lalu FINALISASI Controller dengan form penutupan bertanda tangan.
+  finalizedAt?: string;
+  finalizedByName?: string;
 }
 
 // PSI terdampak (Tahap 4): dokumen Direktori yang berubah akibat MOC. `updated` = sudah ada revisi nyata sesudah ditandai.
@@ -441,6 +481,7 @@ export interface MocRequest extends MocFormContent {
   // Tahap F-H: catatan pemantauan berurutan (ke-1, ke-2, ...), tinjauan akhir, dan penutupan.
   monitoring: MocMonitoringEntry[];
   finalReview: MocFinalReview | null;
+  halt: MocHalt | null;
   closure: MocClosure | null;
   approvedAt?: string;
   createdAt: string;
@@ -473,7 +514,15 @@ export type MocAction =
   | "monitor"
   | "finalReview"
   | "close"
-  | "closeProxy";
+  | "closeProxy"
+  | "signMonitoring"
+  | "requestHalt"
+  | "decideHalt"
+  | "decideHaltProxy"
+  | "resume"
+  | "reviewFinal"
+  | "reviewFinalProxy"
+  | "finalizeClosure";
 
 export const MOC_INITIATOR_ROLE = "Penanggung Jawab PSI (Initiator)";
 
@@ -565,19 +614,56 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
     if (isOwner) actions.push("advance"); // Implementasi -> Pemantauan oleh Initiator
   }
 
+  const owner = user.role === MOC_INITIATOR_ROLE && moc.createdBy === user.id;
+  const isApproverAccount = !!moc.approverUserId && moc.approverUserId === user.id;
+  const approverManual = !moc.approverUserId && !!moc.approverManualName;
+
+  // Penundaan/penghentian: Approver memutuskan; bila ditunda/dihentikan Initiator dapat mengulang dari Penilaian Risiko.
+  if (moc.validationState === "halt_requested") {
+    if (isApproverAccount) actions.push("decideHalt");
+    else if (approverManual && isController) actions.push("decideHaltProxy");
+  }
+  if (moc.validationState === "halted" && owner) actions.push("resume");
+
   if (moc.validationState === "registered") {
-    const isPerformer = !!moc.performerUserId && moc.performerUserId === user.id;
-    if (moc.registerStatus === "Pemantauan" && isOwner) actions.push("monitor"); // pemantauan oleh Initiator pembuat MOC
+    if (moc.registerStatus === "Pemantauan") {
+      // Form Pemantauan diisi Initiator lalu diserahkan ke Controller, yang WAJIB mengunggah form bertanda tangan sebelum lanjut.
+      const unsigned = mocUnsignedMonitoring(moc);
+      if (owner && !unsigned) actions.push("monitor", "requestHalt");
+      if (isController && unsigned) actions.push("signMonitoring");
+    }
     if (moc.registerStatus === "Tinjauan Akhir") {
-      if (isOwner || isController) actions.push("finalReview");
-      // Penutupan: kewenangan MoC Approver; bila Approver tanpa akun, Controller mencatat atas namanya.
-      if (moc.finalReview) {
-        if (moc.approverUserId && moc.approverUserId === user.id) actions.push("close");
-        else if (!moc.approverUserId && moc.approverManualName && isController) actions.push("closeProxy");
+      const fr = moc.finalReview;
+      const responses = fr?.responses ?? [];
+      const needsRevision = responses.some((r) => r.outcome === "Perlu Perubahan");
+      // Initiator mengisi Tinjauan Akhir (lagi bila Reviewer meminta perubahan).
+      if (owner && !moc.closure && (!fr || needsRevision)) actions.push("finalReview");
+      if (fr && !moc.closure && !needsRevision) {
+        if (responses.some((r) => r.outcome === "Pending" && r.userId && r.userId === user.id)) actions.push("reviewFinal");
+        if (responses.some((r) => r.outcome === "Pending" && !r.userId) && (owner || isController)) actions.push("reviewFinalProxy");
+        // Setelah semua Reviewer Sesuai: Approver menyetujui penutupan (data lama tanpa tanggapan dianggap sudah sesuai).
+        if (responses.every((r) => r.outcome === "Sesuai")) {
+          if (isApproverAccount) actions.push("close");
+          else if (approverManual && isController) actions.push("closeProxy");
+        }
       }
+      // Controller memfinalisasi penutupan dengan mengunggah form penutupan bertanda tangan.
+      if (moc.closure && isController) actions.push("finalizeClosure");
     }
   }
   return actions;
+}
+
+// Bukti Form Pemantauan bertanda tangan disimpan sebagai evidence dengan stage "Pemantauan-<no>".
+export const monitoringEvidenceStage = (no: number) => `Pemantauan-${no}`;
+export const CLOSURE_EVIDENCE_STAGE = "Penutupan";
+export function mocIsMonitoringSigned(moc: Pick<MocRequest, "evidence">, no: number): boolean {
+  return moc.evidence.some((e) => e.stage === monitoringEvidenceStage(no));
+}
+// Pemantauan terakhir yang formnya belum diunggah bertanda tangan (null = semua sudah, atau belum ada pemantauan).
+export function mocUnsignedMonitoring(moc: Pick<MocRequest, "monitoring" | "evidence">): MocMonitoringEntry | null {
+  const last = moc.monitoring[moc.monitoring.length - 1];
+  return last && !mocIsMonitoringSigned(moc, last.no) ? last : null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -702,6 +788,8 @@ export function mocStageIndex(moc: Pick<MocRequest, "validationState" | "registe
       return 2;
     case "approved":
       return 3;
+    case "halt_requested":
+    case "halted":
     case "registered": {
       // Terdaftar tapi belum Implementasi = masih di tahap Registrasi & Komunikasi.
       const later = MOC_LATER_STAGES.indexOf(moc.registerStatus as (typeof MOC_LATER_STAGES)[number]);
@@ -799,6 +887,10 @@ export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; 
       return { title: "Menunggu persetujuan Approver", detail: `${moc.approverName ?? "Approver"} memutuskan setuju atau tolak dan menunjuk MoC Performer.`, done: false };
     case "approved":
       return { title: "Disetujui — menunggu registrasi", detail: "MoC Controller mencatat MOC ke daftar MoC dan memberi Nomor MoC.", done: false };
+    case "halt_requested":
+      return { title: "Menunggu keputusan penundaan/penghentian", detail: `${moc.approverName ?? "MoC Approver"} memutuskan pengajuan ${moc.halt?.kind === "Hentikan" ? "penghentian" : "penundaan"} MOC.`, done: false };
+    case "halted":
+      return { title: moc.halt?.kind === "Hentikan" ? "MOC dihentikan" : "MOC ditunda", detail: `${owner} dapat melanjutkan kembali; MOC lalu mengulang Penilaian Risiko dan Validasi.`, done: false };
     case "registered":
       if (moc.registerStatus === "Closed") return { title: "MOC selesai (Closed)", detail: MOC_LATER_STAGE_INFO.Closed, done: true };
       if (moc.registerStatus === "Inisiasi & Validasi") {
@@ -811,19 +903,33 @@ export function mocWaitingOn(moc: MocRequest): { title: string; detail: string; 
         return { title: "Siap diserahkan ke Performer", detail: `${owner} atau MoC Controller menyerahkan rencana ke ${moc.performerName ?? "MoC Performer"} dan memulai Implementasi.`, done: false };
       }
       if (moc.registerStatus === "Pemantauan") {
+        const unsigned = mocUnsignedMonitoring(moc);
+        if (unsigned) {
+          return {
+            title: `Menunggu Form Pemantauan ke-${unsigned.no} bertanda tangan`,
+            detail: `${owner} sudah mengisi Form Pemantauan ke-${unsigned.no}. MoC Controller mengunggah form yang sudah ditandatangani lengkap; ${unsigned.outcome === "Tutup" ? "setelah itu MOC lanjut ke Tinjauan Akhir" : "setelah itu pemantauan berikutnya dapat dicatat"}.`,
+            done: false,
+          };
+        }
         const due = mocMonitoringDue(moc);
         const ke = moc.monitoring.length + 1;
         return {
           title: due ? `Pemantauan ke-${ke}, paling lambat ${fmtYmdId(due)}` : `Pemantauan ke-${ke}`,
-          detail: `Pembuat MOC, MoC Performer, atau Controller mencatat pemantauan (minimal 1× per ${MOC_MONITOR_INTERVAL_MONTHS} bulan). Hasilnya: lanjutkan, perpanjang ${MOC_EXTENSION_MONTHS} bulan (maks ${MOC_MAX_EXTENSIONS}×), atau tutup menuju Tinjauan Akhir.`,
+          detail: `${owner} mengisi Form Pemantauan (minimal 1× per ${MOC_MONITOR_INTERVAL_MONTHS} bulan), lalu menyerahkannya ke Controller untuk diunggah bertanda tangan. Hasilnya: lanjutkan, perpanjang ${MOC_EXTENSION_MONTHS} bulan (maks ${MOC_MAX_EXTENSIONS}×), atau tutup menuju Tinjauan Akhir. Penundaan atau penghentian dapat diajukan ke Approver.`,
           done: false,
         };
       }
       if (moc.registerStatus === "Tinjauan Akhir") {
         const due = mocFinalReviewDue(moc);
-        return moc.finalReview
-          ? { title: "Tinjauan Akhir dicatat, menunggu penutupan Approver", detail: `${moc.approverName ?? "MoC Approver"} menyetujui penutupan MOC${!moc.approverUserId ? " (dicatat Controller atas nama Approver)" : ""}.`, done: false }
-          : { title: due ? `Menunggu Tinjauan Akhir, paling lambat ${fmtYmdId(due)}` : "Menunggu Tinjauan Akhir", detail: `${owner} atau Controller mencatat hasil Tinjauan Akhir (Lampiran 7).`, done: false };
+        const fr = moc.finalReview;
+        const resp = fr?.responses ?? [];
+        if (!fr) return { title: due ? `Menunggu Tinjauan Akhir, paling lambat ${fmtYmdId(due)}` : "Menunggu Tinjauan Akhir", detail: `${owner} mengisi hasil Tinjauan Akhir (Lampiran 7).`, done: false };
+        if (moc.closure) return { title: "Penutupan disetujui, menunggu form bertanda tangan", detail: "MoC Controller mengunggah Form Tinjauan Akhir & Penutupan yang sudah ditandatangani lengkap untuk menutup MOC.", done: false };
+        const perlu = resp.filter((r) => r.outcome === "Perlu Perubahan");
+        if (perlu.length > 0) return { title: "Tinjauan Akhir perlu diperbarui", detail: `${owner} memperbarui Tinjauan Akhir sesuai catatan Reviewer: ${perlu.map((r) => `${r.fungsi}: ${r.note}`).join("; ")}.`, done: false };
+        const pending = resp.filter((r) => r.outcome === "Pending");
+        if (pending.length > 0) return { title: `Menunggu review Tinjauan Akhir (${pending.length} Reviewer)`, detail: `${pending.map((r) => r.fungsi + (r.name ? ` (${r.name})` : "")).join(", ")} menanggapi Tinjauan Akhir.`, done: false };
+        return { title: "Tinjauan Akhir sesuai, menunggu penutupan Approver", detail: `${moc.approverName ?? "MoC Approver"} menyetujui penutupan MOC${!moc.approverUserId ? " (dicatat Controller atas nama Approver)" : ""}.`, done: false };
       }
       return {
         title: `Tahap ${moc.registerStatus}`,
@@ -861,7 +967,15 @@ export const MOC_ACTION_LABEL: Record<MocAction, string> = {
   monitor: "Catat pemantauan",
   finalReview: "Catat tinjauan akhir",
   close: "Tutup MOC",
-  closeProxy: "Tutup MOC atas nama Approver",
+  closeProxy: "Setujui penutupan MOC atas nama Approver",
+  signMonitoring: "Unggah Form Pemantauan bertanda tangan",
+  requestHalt: "Ajukan penundaan/penghentian",
+  decideHalt: "Putuskan penundaan/penghentian",
+  decideHaltProxy: "Catat keputusan penundaan/penghentian atas nama Approver",
+  resume: "Lanjutkan kembali MOC",
+  reviewFinal: "Review Tinjauan Akhir",
+  reviewFinalProxy: "Catat review Tinjauan Akhir atas nama reviewer",
+  finalizeClosure: "Finalisasi penutupan MOC",
 };
 
 // Tindakan yang benar-benar "menunggu" user (tanpa 'edit' dan 'advance' yang selalu
@@ -881,6 +995,12 @@ export function mocPendingActions(moc: MocRequest, actor: MocActor): MocAction[]
       (a === "monitor" && mocMonitoringOverdueDays(moc) > 0) ||
       a === "finalReview" ||
       a === "close" ||
-      a === "closeProxy"
+      a === "closeProxy" ||
+      a === "signMonitoring" ||
+      a === "decideHalt" ||
+      a === "decideHaltProxy" ||
+      a === "reviewFinal" ||
+      a === "reviewFinalProxy" ||
+      a === "finalizeClosure"
   );
 }

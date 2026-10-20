@@ -41,11 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const patch: Partial<typeof mocRequests.$inferInsert> = { monitoring: [...moc.monitoring, entry], updatedAt: new Date() };
 
     let notes = `Pemantauan ke-${entry.no} (${entry.date}): ${input.outcome}.`;
-    let toState: string | undefined;
     if (input.outcome === "Tutup") {
-      patch.registerStatus = "Tinjauan Akhir";
-      toState = "Tinjauan Akhir";
-      notes += " Pemantauan ditutup, lanjut ke Tinjauan Akhir.";
+      // Pindah ke Tinjauan Akhir baru terjadi setelah Controller mengunggah Form Pemantauan bertanda tangan.
+      notes += " Menunggu Form Pemantauan bertanda tangan dari Controller sebelum lanjut ke Tinjauan Akhir.";
     } else if (input.outcome === "Perpanjang" && moc.sifatPerubahan === "Sementara" && moc.validUntil) {
       const next = addMonthsYmd(moc.validUntil, MOC_EXTENSION_MONTHS);
       patch.validUntil = next;
@@ -54,10 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (input.notes) notes += ` ${input.notes}`;
 
     await db.update(mocRequests).set(patch).where(eq(mocRequests.id, moc.id));
-    await recordMocHistory(moc.id, user, "Pemantauan Dicatat", {
-      notes,
-      ...(toState ? { fromState: moc.registerStatus, toState } : {}),
-    });
+    await recordMocHistory(moc.id, user, "Pemantauan Dicatat", { notes });
     await attachStageFiles(moc.id, attachmentFileIds, user, "Pemantauan");
     return NextResponse.json(await loadMocItem(moc.id));
   });

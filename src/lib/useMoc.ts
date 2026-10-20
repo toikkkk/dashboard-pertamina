@@ -127,6 +127,13 @@ export const mocApi = {
   monitor: (id: string, body: MocMonitoringInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/monitoring`, body),
   finalReview: (id: string, body: MocFinalReviewInput & { attachmentFileIds?: string[] }) => post(`/api/moc/${id}/final-review`, body),
   close: (id: string, body: { note: string; evidenceFileId?: string }) => post(`/api/moc/${id}/close`, body),
+  // Gelombang B: form bertanda tangan, penundaan/penghentian, review Tinjauan Akhir.
+  signMonitoring: (id: string, body: { fileId: string }) => post(`/api/moc/${id}/monitoring/sign`, body),
+  requestHalt: (id: string, body: { kind: "Tunda" | "Hentikan"; reason: string }) => post(`/api/moc/${id}/halt`, body),
+  decideHalt: (id: string, body: { decision: "Disetujui" | "Ditolak"; note: string }) => post(`/api/moc/${id}/halt/decision`, body),
+  resume: (id: string) => post(`/api/moc/${id}/resume`, {}),
+  reviewFinal: (id: string, body: { outcome: "Sesuai" | "Perlu Perubahan"; note: string; index?: number }) => post(`/api/moc/${id}/final-review/review`, body),
+  finalizeClosure: (id: string, body: { fileId: string }) => post(`/api/moc/${id}/close/finalize`, body),
   attachEvidence: (id: string, body: { slot: "initiator" | "reviewer" | "approver" | "controller" | "lampiran"; fileId: string; reviewId?: string }) =>
     post(`/api/moc/${id}/evidence`, body),
 };

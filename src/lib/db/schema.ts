@@ -378,6 +378,8 @@ export const mocRequests = pgTable(
     monitoring: jsonb("monitoring"),
     finalReview: jsonb("final_review"),
     closure: jsonb("closure"),
+    // Pengajuan penundaan/penghentian MOC saat Pemantauan (Gelombang B).
+    halt: jsonb("halt"),
     // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
     communication: jsonb("communication"),
     implementationPlan: jsonb("implementation_plan"),
@@ -398,7 +400,7 @@ export const mocRequests = pgTable(
     ),
     check(
       "moc_validation_state_check",
-      sql`${t.validationState} IN ('draft','in_review','returned','pending_approval','rejected','approved','registered')`
+      sql`${t.validationState} IN ('draft','in_review','returned','pending_approval','rejected','approved','registered','halt_requested','halted')`
     ),
   ]
 );
