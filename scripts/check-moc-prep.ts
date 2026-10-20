@@ -5,6 +5,8 @@ import {
   MOC_INITIATOR_ROLE,
   addMonthsYmd,
   mocActionsFor,
+  MOC_CHANGE_CATEGORIES,
+  MOC_CHANGE_CATEGORY_SCOPE,
   mocAdvanceIssues,
   mocUnsignedMonitoring,
   mocExtensionsUsed,
@@ -209,3 +211,8 @@ assert.ok(att(haltReq, approverActor).includes("mine:Putuskan penundaan/penghent
 assert.ok(att(haltReq, initiator).some((x) => x.startsWith("waiting:Menunggu keputusan Approver")));
 assert.ok(att(moc({ validationState: "halted", registerStatus: "Pemantauan" }), initiator).some((x) => x.startsWith("waiting:Ditunda")));
 assert.ok(!att(perlu, initiator).includes("mine:Perlu diperbaiki lalu diajukan ulang")); // tidak jatuh ke teks bawaan
+
+// Nomor scope TKO Tabel 1: tiap kategori punya nomor unik 1-13, dan "Sistem / aplikasi..." = 13 (penentu Reviewer Fungsi IT).
+assert.deepEqual(MOC_CHANGE_CATEGORIES.map((c) => MOC_CHANGE_CATEGORY_SCOPE[c]).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+assert.equal(MOC_CHANGE_CATEGORY_SCOPE["Sistem / aplikasi / teknologi / metode kerja baru"], 13);
+assert.equal(MOC_CHANGE_CATEGORY_SCOPE["Penggantian peralatan / komponen bukan inkind replacement"], 8);

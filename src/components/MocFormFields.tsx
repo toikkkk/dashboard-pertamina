@@ -7,6 +7,7 @@ import MocRiskMatrix from "@/components/MocRiskMatrix";
 import { Plus, X } from "lucide-react";
 import { mocFormGaps,
   MOC_CHANGE_CATEGORIES,
+  MOC_CHANGE_CATEGORY_SCOPE,
   MOC_RISK_IMPACTS,
   MOC_RISK_LEVEL_COLOR,
   MOC_RISK_LEVEL_LABEL,
@@ -232,7 +233,7 @@ export default function MocFormFields({
                   checked={value.changeCategories.includes(c)}
                   onChange={() => onChange({ changeCategories: toggle(value.changeCategories, c) })}
                 />
-                <span>{c}</span>
+                <span><span className="font-mono text-[11px] text-[#9a9da0] mr-1.5 tabular-nums" aria-label={`Scope ${MOC_CHANGE_CATEGORY_SCOPE[c]}`}>{MOC_CHANGE_CATEGORY_SCOPE[c]}</span>{c}</span>
               </label>
             ))}
           </div>

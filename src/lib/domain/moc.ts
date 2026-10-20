@@ -30,6 +30,23 @@ export const MOC_CHANGE_CATEGORIES = [
   "Penggantian peralatan / komponen bukan inkind replacement",
 ] as const;
 export type MocChangeCategory = (typeof MOC_CHANGE_CATEGORIES)[number];
+// Nomor scope menurut TKO B13.3-07 Tabel 1 (dipakai Tabel 3 Kewenangan Validasi: scope 1-12 dan 13). Urutan kotak di formulir
+// (Lampiran 5) berbeda dari nomor ini, jadi nomor yang ditampilkan di layar HARUS memakai peta ini, bukan urutan tampil.
+export const MOC_CHANGE_CATEGORY_SCOPE: Record<MocChangeCategory, number> = {
+  "Penambahan Fasilitas Baru": 1,
+  "Akuisisi": 2,
+  "Modifikasi rekayasa / engineering": 3,
+  "Perubahan diluar rancangan": 4,
+  "Downgrade situation": 5,
+  "Penggunaan B3 baru": 6,
+  "Perubahan Instrumen / Alarm": 7,
+  "Penggantian peralatan / komponen bukan inkind replacement": 8,
+  "Kelebihan Aset": 9,
+  "Perubahan peralatan instalasi": 10,
+  "Perubahan gedung / struktur": 11,
+  "Perubahan sumber bahan baku / pemasok": 12,
+  "Sistem / aplikasi / teknologi / metode kerja baru": 13,
+};
 
 export const MOC_SIFAT_PERUBAHAN = ["Permanen", "Sementara", "Darurat"] as const;
 export type MocSifatPerubahan = (typeof MOC_SIFAT_PERUBAHAN)[number];
