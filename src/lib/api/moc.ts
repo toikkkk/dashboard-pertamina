@@ -219,10 +219,11 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
   // Jabatan kosong pada lembar cetak: pakai fungsi yang tercatat di akun Approver/Reviewer.
   const funcIds = [row.approverUserId, ...reviewRows.map((r) => r.reviewerUserId)].filter((v): v is string => !!v);
   if (funcIds.length > 0) {
-    const fns = await db.select({ id: users.id, fn: users.mocFunction }).from(users).where(inArray(users.id, funcIds));
+    const fns = await db.select({ id: users.id, fn: users.mocFunction, username: users.username }).from(users).where(inArray(users.id, funcIds));
     const fnOf = new Map(fns.map((f) => [f.id, f.fn]));
+    const unameOf = new Map(fns.map((f) => [f.id, f.username]));
     result.approverJabatan = row.approverUserId ? fnOf.get(row.approverUserId) ?? null : null;
-    result.reviews = result.reviews.map((r) => (!r.reviewerJabatan && r.reviewerUserId ? { ...r, reviewerJabatan: fnOf.get(r.reviewerUserId) ?? "" } : r));
+    result.reviews = result.reviews.map((r) => (r.reviewerUserId ? { ...r, reviewerJabatan: r.reviewerJabatan || (fnOf.get(r.reviewerUserId) ?? ""), reviewerUsername: unameOf.get(r.reviewerUserId) ?? null } : r));
   }
   return result;
 }

@@ -102,6 +102,8 @@ export interface SimulatedUser {
   /** Hanya dikirim ke Admin Regional (layar Kelola User). */
   emailVerifiedAt?: string | null;
   mfaEnabled?: boolean;
+  /** Username masuk (dikirim ke rekan satu lokasi agar jelas akun mana yang dipilih sebagai Reviewer). */
+  username?: string | null;
   /** Akun dengan sandi awal: harus ganti sandi sebelum memakai portal. */
   mustChangePassword?: boolean;
   /** Self-selected preferences from the Register form, shown to the Admin Regional as

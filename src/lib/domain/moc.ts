@@ -391,6 +391,8 @@ export interface MocReview {
   reviewerUserId: string | null;
   reviewerName: string;
   reviewerJabatan: string;
+  // Username akun yang diminta mereview (supaya jelas harus login dengan akun mana).
+  reviewerUsername?: string | null;
   outcome: MocReviewOutcome;
   recommendation: string;
   reviewedAt?: string;
@@ -657,6 +659,8 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
 // Bukti Form Pemantauan bertanda tangan disimpan sebagai evidence dengan stage "Pemantauan-<no>".
 export const monitoringEvidenceStage = (no: number) => `Pemantauan-${no}`;
 export const CLOSURE_EVIDENCE_STAGE = "Penutupan";
+// Form Pengusulan & Validasi (Lampiran 5) bertanda tangan lengkap, diunggah Controller saat Registrasi (wajib).
+export const PENGUSULAN_EVIDENCE_STAGE = "Pengusulan";
 export function mocIsMonitoringSigned(moc: Pick<MocRequest, "evidence">, no: number): boolean {
   return moc.evidence.some((e) => e.stage === monitoringEvidenceStage(no));
 }

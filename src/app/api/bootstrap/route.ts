@@ -58,7 +58,7 @@ export async function GET() {
               .select({ id: users.id, name: users.name, email: users.email, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, requestedRole: users.requestedRole, requestedLocation: users.requestedLocation, requestedMocRoles: users.requestedMocRoles, requestedMocFunction: users.requestedMocFunction, mocRoles: users.mocRoles, mocFunction: users.mocFunction, emailVerifiedAt: users.emailVerifiedAt, mfaEnabled: users.mfaEnabled })
               .from(users)
           : db
-              .select({ id: users.id, name: users.name, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
+              .select({ id: users.id, name: users.name, role: users.role, location: users.location, isRegionalAdmin: users.isRegionalAdmin, mocRoles: users.mocRoles, mocFunction: users.mocFunction, username: users.username })
               .from(users)
               .where(eq(users.location, sessionUser.location!)),
       db.select().from(locations),

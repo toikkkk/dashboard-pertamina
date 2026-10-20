@@ -443,6 +443,9 @@ export default function MocActionsPanel({
                       <X className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
+                  {!r.manual && r.userId && reviewerPool.find((x) => x.id === r.userId)?.username && (
+                    <p className="text-[11.5px] text-[#6b6e72]">Reviewer ini masuk dengan akun <span className="font-mono font-semibold">{reviewerPool.find((x) => x.id === r.userId)?.username}</span></p>
+                  )}
                   {!r.manual && r.userId && (
                     <input className={INPUT} placeholder="Nama pekerja yang mereview (wajib)" maxLength={200} value={r.name ?? ""} onChange={(e) => setRow(i, { name: e.target.value })} aria-label="Nama orang yang mereview" />
                   )}
@@ -649,9 +652,15 @@ export default function MocActionsPanel({
               {kboForMoc(moc.location, moc.fungsi) ? `NNN/MOC/${kboForMoc(moc.location, moc.fungsi)}/bulan/tahun pengajuan` : "KBO belum ditetapkan"}
             </span>
           </div>
-          <Optional label="Lampirkan bukti tanda tangan (opsional)"><EvidenceInput onFileId={setEvidence} disabled={busy} /></Optional>
+          <p className="text-[12.5px] text-[#3a3d40]">
+            Cetak Form Pengusulan &amp; Validasi, lengkapi tanda tangan di luar aplikasi, lalu unggah di sini.{" "}
+            <PrintLink moc={moc} form="pengusulan">Buka / cetak formulir</PrintLink>
+          </p>
+          <Step n={1} label="Form Pengusulan & Validasi bertanda tangan lengkap (PDF / gambar) — wajib">
+            <EvidenceInput onFileId={setEvidence} disabled={busy} />
+          </Step>
           <div>
-            <button type="button" className={BTN} disabled={busy} onClick={() => run(() => mocApi.register(moc.id, { evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}.`)}>
+            <button type="button" className={BTN} disabled={busy || !evidence} onClick={() => run(() => mocApi.register(moc.id, { evidenceFileId: evidence }), (s) => `MOC terdaftar dengan Nomor ${s.mocNumber}.`)}>
               {busy ? "Mendaftarkan…" : "Daftarkan MOC"}
             </button>
           </div>

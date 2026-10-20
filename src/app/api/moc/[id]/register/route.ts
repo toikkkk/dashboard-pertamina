@@ -9,7 +9,8 @@ import { db } from "@/lib/db/client";
 import { mocHistory, mocRequests } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
-import { handleEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
+import { attachMocEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
+import { PENGUSULAN_EVIDENCE_STAGE } from "@/lib/domain/moc";
 import { formatMocNumber, kboForMoc, parseMocSequence, wibMonthYear } from "@/lib/domain/kbo";
 
 const bodySchema = z.object({
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const user = await requireSessionUser();
     const moc = await requireMocAction(params.id, user, "register");
     const { evidenceFileId } = bodySchema.parse(await req.json().catch(() => ({})));
+    // Form Pengusulan & Validasi (Lampiran 5) bertanda tangan lengkap WAJIB diunggah saat registrasi.
+    if (!evidenceFileId) throw new HttpError(400, "Unggah Form Pengusulan & Validasi (Lampiran 5) yang sudah bertanda tangan lengkap.");
+    if (!(await attachMocEvidence(moc.id, "controller", evidenceFileId, user, undefined, PENGUSULAN_EVIDENCE_STAGE))) {
+      throw new HttpError(400, "Berkas tidak valid atau bukan unggahan Anda.");
+    }
 
     const kbo = kboForMoc(moc.location, moc.fungsi);
     if (!kbo) throw new HttpError(422, "KBO untuk lokasi atau fungsi MOC ini belum ditetapkan, sehingga Nomor MoC tidak dapat dibuat.");
@@ -63,7 +69,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       fromState: moc.validationState,
       toState: "registered",
     });
-    await handleEvidence(moc.id, "controller", evidenceFileId, user);
 
     return NextResponse.json(await loadMocItem(moc.id));
   });

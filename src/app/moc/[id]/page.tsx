@@ -29,6 +29,7 @@ type TabKey = (typeof TABS)[number]["key"];
 // Nama form untuk berkas bukti bertanda tangan: Lampiran 5 (validasi), Lampiran 6 (tiap pemantauan), Lampiran 7 (penutupan).
 function signedFormLabel(e: { slot: string; stage?: string }): string {
   if (e.stage?.startsWith("Pemantauan-")) return `Form Pemantauan ke-${e.stage.slice("Pemantauan-".length)} (Lampiran 6)`;
+  if (e.stage === "Pengusulan") return "Form Pengusulan & Validasi (Lampiran 5)";
   if (e.stage === "Penutupan") return "Form Tinjauan Akhir & Penutupan (Lampiran 7)";
   return `Bukti tanda tangan ${e.slot} (Lampiran 5)`;
 }
@@ -173,6 +174,7 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
                           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
                             <strong className="text-[#0F172A]">{r.functionLabel}</strong>
                             <span className="text-[#6b6e72]">{r.reviewerName}</span>
+                            {r.reviewerUsername && <span className="text-[11.5px] text-[#6b6e72] font-mono">akun: {r.reviewerUsername}</span>}
                             <StatusTag color={OUTCOME_COLOR[r.outcome]} label={r.outcome === "Pending" ? "Menunggu" : r.outcome} size="sm" />
                           </div>
                           {r.recommendation && <div className="text-[#3a3d40] mt-0.5">“{r.recommendation}”</div>}
