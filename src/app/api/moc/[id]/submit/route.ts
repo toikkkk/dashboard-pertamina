@@ -20,7 +20,7 @@ const reviewerSchema = z
     functionLabel: z.string().trim().min(1).max(100),
     jabatan: z.string().trim().max(200).default(""),
   })
-  .refine((r) => (r.manual ? !!r.name : !!r.userId), { message: "Reviewer harus berupa akun terdaftar atau nama yang diketik manual." });
+  .refine((r) => (r.manual ? !!r.name : !!r.userId && !!r.name?.trim()), { message: "Reviewer harus berupa akun terdaftar dengan nama pekerja, atau nama yang diketik manual." });
 
 const bodySchema = z
   .object({

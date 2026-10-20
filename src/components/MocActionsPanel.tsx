@@ -2,6 +2,7 @@
 
 import MenuSelect from "@/components/ui/MenuSelect";
 import useSWR from "swr";
+import Link from "next/link";
 import { kboForMoc } from "@/lib/domain/kbo";
 import MocAuthorityInfo from "@/components/MocAuthorityInfo";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +17,7 @@ import {
   MOC_MONITOR_OUTCOMES,
   MOC_MONITOR_OUTCOME_LABEL,
   hasMocRole,
+  mocFormGaps,
   mocExtensionsUsed,
   mocFinalReviewIssues,
   mocMonitoringDue,
@@ -288,15 +290,20 @@ export default function MocActionsPanel({
   const myReview = reviewsOfCurrentRound(moc).find((r) => r.reviewerUserId === activeUser.id && r.outcome === "Pending");
   const next = nextRegisterStatus(moc.registerStatus);
   const startsImplementation = moc.registerStatus === "Inisiasi & Validasi";
+  // Semua isian formulir wajib; kekurangannya ditampilkan dan dituju lewat tautan sebelum bisa diajukan.
+  const formGaps = mocFormGaps(moc, moc.location);
+  // Reviewer dari daftar: nama pekerja wajib diketik (daftar hanya menampilkan jabatan/fungsi).
   const canSubmit =
     !busy &&
+    formGaps.length === 0 &&
     (approverMode === "akun" ? !!approverId : !!approverManual.name.trim()) &&
     reviewers.length > 0 &&
-    reviewers.every((r) => (r.manual ? !!r.name?.trim() : !!r.userId) && r.functionLabel.trim());
+    reviewers.every((r) => (r.manual ? !!r.name?.trim() : !!r.userId && !!r.name?.trim()) && r.functionLabel.trim());
   const proxyReviews = reviewsOfCurrentRound(moc).filter((r) => !r.reviewerUserId && r.outcome === "Pending");
   const performerReady = performerId === "__manual" ? !!performerManual.trim() : !!performerId;
   const reviseNotes = moc.reviews.filter((r) => r.round === moc.round && r.outcome === "Perlu Perubahan");
-  const commIssues = mocCommunicationIssues(comm);
+  const hasCommEvidence = moc.evidence.some((e) => e.stage === "Komunikasi");
+  const commIssues = mocCommunicationIssues(comm, !!stageFile || hasCommEvidence);
   const planIssues = mocImplementationPlanIssues({ ...plan, milestones: plan.milestones.filter((m) => m.label.trim() || m.targetDate) });
   const advanceIssues = mocAdvanceIssues(moc);
   const attachments = stageFile ? [stageFile] : [];
@@ -319,7 +326,10 @@ export default function MocActionsPanel({
       <Optional label="Catatan tambahan (opsional)">
         <textarea className={INPUT} rows={2} value={comm.notes} onChange={(e) => setComm({ ...comm, notes: e.target.value })} />
       </Optional>
-      <Optional label="Lampirkan bukti komunikasi, mis. notulen / daftar hadir (opsional)"><EvidenceInput onFileId={setStageFile} disabled={busy} /></Optional>
+      <Step n={4} label="Bukti komunikasi (wajib), mis. notulen / daftar hadir / dokumentasi">
+        <EvidenceInput onFileId={setStageFile} disabled={busy} />
+        {hasCommEvidence && !stageFile && <p className="text-[11.5px] text-[#15663A] mt-1">Bukti sudah terlampir sebelumnya. Unggah lagi hanya bila ingin menambah.</p>}
+      </Step>
       <div className="flex items-center gap-3 flex-wrap">
         <button
           type="button"
@@ -380,6 +390,18 @@ export default function MocActionsPanel({
         <Panel
           title={moc.validationState === "draft" ? "Ajukan MOC untuk direview" : "Ajukan ulang setelah perbaikan"}
         >
+          {formGaps.length > 0 && (
+            <div role="alert" className="rounded-[10px] bg-[#FEF2F2] border border-[#DC2626]/30 px-4 py-3">
+              <div className="text-[12.5px] font-bold text-[#991B1B] mb-1">Formulir belum lengkap ({formGaps.length} bagian). Lengkapi dulu sebelum diajukan:</div>
+              <ul className="text-[12.5px] text-[#3a3d40] flex flex-col gap-0.5">
+                {formGaps.map((g) => (
+                  <li key={g.field}>
+                    <Link href={`/moc/${moc.id}/ubah?lengkapi=1#mf-${g.field}`} className="font-semibold text-[#0F3B59] hover:underline">{g.message}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {(reviseNotes.length > 0 || (moc.validationState === "rejected" && moc.approverNote)) && (
             <div className="rounded-[10px] bg-[#FEF3C7] border border-[#B45309]/30 px-4 py-3">
               <div className="text-[12px] font-bold text-[#92400E] mb-1">Yang perlu diperbaiki</div>
@@ -405,7 +427,7 @@ export default function MocActionsPanel({
                         fullWidth
                         minWidth={200}
                         value={r.userId}
-                        options={[{ value: "", label: "Pilih reviewer…" }, ...reviewerPool.map((u) => ({ value: u.id, label: `${u.name}${u.mocFunction ? ` — ${u.mocFunction}` : ""}`, disabled: reviewers.some((x, idx) => idx !== i && x.userId === u.id) }))]}
+                        options={[{ value: "", label: "Pilih reviewer…" }, ...reviewerPool.map((u) => ({ value: u.id, label: u.mocFunction ?? u.name, disabled: reviewers.some((x, idx) => idx !== i && x.userId === u.id) }))]}
                         onChange={(v) => pickReviewer(i, v)}
                       />
                     )}
@@ -421,7 +443,7 @@ export default function MocActionsPanel({
                     </button>
                   </div>
                   {!r.manual && r.userId && (
-                    <input className={INPUT} placeholder="Nama orang yang mereview (opsional)" maxLength={200} value={r.name ?? ""} onChange={(e) => setRow(i, { name: e.target.value })} aria-label="Nama orang yang mereview" />
+                    <input className={INPUT} placeholder="Nama pekerja yang mereview (wajib)" maxLength={200} value={r.name ?? ""} onChange={(e) => setRow(i, { name: e.target.value })} aria-label="Nama orang yang mereview" />
                   )}
                   {r.manual && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -478,7 +500,7 @@ export default function MocActionsPanel({
                       reviewers: reviewers.map((r) =>
                         r.manual
                           ? { manual: true, name: (r.name ?? "").trim(), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
-                          : { userId: r.userId, ...((r.name ?? "").trim() ? { name: (r.name ?? "").trim() } : {}), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
+                          : { userId: r.userId, name: (r.name ?? "").trim(), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
                       ),
                       ...(approverMode === "akun"
                         ? { approverUserId: approverId }

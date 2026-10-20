@@ -5,7 +5,7 @@ import { REGIONAL_KBO_FUNCTIONS } from "@/lib/domain/kbo";
 import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 import MocRiskMatrix from "@/components/MocRiskMatrix";
 import { Plus, X } from "lucide-react";
-import {
+import { mocFormGaps,
   MOC_CHANGE_CATEGORIES,
   MOC_RISK_IMPACTS,
   MOC_RISK_LEVEL_COLOR,
@@ -82,12 +82,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function Field({ label, children, hint, fid, error }: { label: string; children: React.ReactNode; hint?: string; fid?: string; error?: string }) {
   return (
-    <div>
+    <div id={fid ? `mf-${fid}` : undefined} className={error ? "rounded-[8px] ring-2 ring-[#DC2626]/60 ring-offset-4 ring-offset-white" : undefined}>
       <label className={LABEL}>{label}</label>
       {children}
       {hint && <p className="text-[11px] text-[#6b6e72] mt-1">{hint}</p>}
+      {error && <p role="alert" className="text-[12px] font-semibold text-[#DC2626] mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// Pembungkus bagian non-Field (kotak centang, matriks, penghalang) agar bisa ditandai dan dituju.
+function Gap({ fid, error, children }: { fid: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div id={`mf-${fid}`} className={error ? "rounded-[8px] ring-2 ring-[#DC2626]/60 ring-offset-4 ring-offset-white" : undefined}>
+      {children}
+      {error && <p role="alert" className="text-[12px] font-semibold text-[#DC2626] mt-1">{error}</p>}
     </div>
   );
 }
@@ -155,13 +166,18 @@ export default function MocFormFields({
   onChange,
   disabled,
   location,
+  showGaps,
 }: {
   value: MocFormContent;
   onChange: (patch: Partial<MocFormContent>) => void;
   disabled?: boolean;
   /** Lokasi MOC; untuk unit Regional, Fungsi berupa pilihan yang menentukan KBO nomor MoC. */
   location?: string;
+  /** Tandai bagian yang belum terisi (dipakai saat diarahkan dari tombol Ajukan). */
+  showGaps?: boolean;
 }) {
+  const gapMap = new Map(showGaps ? mocFormGaps(value, location).map((x) => [x.field, x.message] as [string, string]) : []);
+  const e = (f: string) => gapMap.get(f);
   const toggle = <T extends string>(list: T[], item: T): T[] => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
   const nilai = riskValue(value.severity, value.probability);
   const num = (v: string): number | null => (v === "" ? null : Number(v));
@@ -170,10 +186,10 @@ export default function MocFormFields({
     <div className="flex flex-col gap-4">
       <Section title="Informasi Formulir">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <Field label="Unit Operasi">
+          <Field fid="unitOperasi" error={e("unitOperasi")} label="Unit Operasi">
             <input className={INPUT} disabled={disabled} value={value.unitOperasi} onChange={(e) => onChange({ unitOperasi: e.target.value })} />
           </Field>
-          <Field label="Fungsi">
+          <Field fid="fungsi" error={e("fungsi")} label="Fungsi">
             {location && isRegionalUnit(location) ? (
               <select className={INPUT} disabled={disabled} value={value.fungsi} onChange={(e) => onChange({ fungsi: e.target.value })}>
                 <option value="">Pilih fungsi pengusul…</option>
@@ -184,27 +200,27 @@ export default function MocFormFields({
               <input className={INPUT} disabled={disabled} value={value.fungsi} onChange={(e) => onChange({ fungsi: e.target.value })} />
             )}
           </Field>
-          <Field label="Region">
+          <Field fid="region" error={e("region")} label="Region">
             <input className={INPUT} disabled={disabled} value={value.region} onChange={(e) => onChange({ region: e.target.value })} />
           </Field>
-          <Field label="Anggaran">
+          <Field fid="anggaranType" error={e("anggaranType")} label="Anggaran">
             <AnggaranField value={value.anggaranType} disabled={disabled} onChange={(v) => onChange({ anggaranType: v })} />
           </Field>
-          <Field label="Tanggal">
+          <Field fid="tanggal" error={e("tanggal")} label="Tanggal">
             <input type="date" className={INPUT} disabled={disabled} value={value.tanggal} onChange={(e) => onChange({ tanggal: e.target.value })} />
           </Field>
         </div>
       </Section>
 
       <Section title="Tahap Inisiasi">
-        <Field label="Judul Perubahan">
+        <Field fid="judul" error={e("judul")} label="Judul Perubahan">
           <input className={INPUT} disabled={disabled} maxLength={300} value={value.judul} onChange={(e) => onChange({ judul: e.target.value })} />
         </Field>
-        <Field label="Latar Belakang / Tujuan Perubahan">
+        <Field fid="latarBelakang" error={e("latarBelakang")} label="Latar Belakang / Tujuan Perubahan">
           <textarea className={INPUT} disabled={disabled} rows={3} value={value.latarBelakang} onChange={(e) => onChange({ latarBelakang: e.target.value })} />
         </Field>
 
-        <div>
+        <Gap fid="changeCategories" error={e("changeCategories")}>
           <div className={LABEL}>Aktivitas / Ruang Lingkup Perubahan</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
             {MOC_CHANGE_CATEGORIES.map((c) => (
@@ -220,7 +236,7 @@ export default function MocFormFields({
               </label>
             ))}
           </div>
-        </div>
+        </Gap>
 
         <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-x-6 gap-y-3 items-start">
           <div>
@@ -240,49 +256,49 @@ export default function MocFormFields({
               ))}
             </div>
           </div>
-          <div>
+          <Gap fid="masaBerlaku" error={e("masaBerlaku")}>
             <div className={LABEL}>
               Masa Berlaku{value.sifatPerubahan === "Sementara" ? " (wajib untuk perubahan Sementara)" : value.sifatPerubahan === "Permanen" ? " (opsional, tanpa batas akhir)" : ""}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <input type="date" className={`${INPUT} !w-auto`} disabled={disabled} value={value.validFrom ?? ""} onChange={(e) => onChange({ validFrom: e.target.value || undefined })} />
               <span className="text-[12px] text-[#6b6e72]">sampai</span>
-              <input type="date" className={`${INPUT} !w-auto`} disabled={disabled} value={value.validUntil ?? ""} onChange={(e) => onChange({ validUntil: e.target.value || undefined })} />
+              <input type="date" className={`${INPUT} !w-auto`} disabled={disabled} value={value.validUntil ?? ""} onChange={(ev) => onChange({ validUntil: ev.target.value || undefined })} />
             </div>
-          </div>
+          </Gap>
         </div>
 
-        <Field label="1. Deskripsi Perubahan (termasuk ruang lingkup dan persyaratan)" hint="Lampirkan detail metode / langkah kerja.">
+        <Field fid="deskripsi" error={e("deskripsi")} label="1. Deskripsi Perubahan (termasuk ruang lingkup dan persyaratan)" hint="Lampirkan detail metode / langkah kerja.">
           <textarea className={INPUT} disabled={disabled} rows={5} value={value.deskripsi} onChange={(e) => onChange({ deskripsi: e.target.value })} />
         </Field>
-        <Field label="2. Proses, dokumen, dan pihak yang terkait / terdampak akibat perubahan">
+        <Field fid="prosesTerdampak" error={e("prosesTerdampak")} label="2. Proses, dokumen, dan pihak yang terkait / terdampak akibat perubahan">
           <textarea className={INPUT} disabled={disabled} rows={3} value={value.prosesTerdampak} onChange={(e) => onChange({ prosesTerdampak: e.target.value })} />
         </Field>
-        <Field label="3. Peraturan / regulasi / perizinan / sertifikasi peralatan yang relevan dengan perubahan">
+        <Field fid="peraturanRelevan" error={e("peraturanRelevan")} label="3. Peraturan / regulasi / perizinan / sertifikasi peralatan yang relevan dengan perubahan">
           <textarea className={INPUT} disabled={disabled} rows={3} value={value.peraturanRelevan} onChange={(e) => onChange({ peraturanRelevan: e.target.value })} />
         </Field>
-        <Field label="4. Stakeholder / Subject Matter Expert / Tenaga Ahli (MoC Reviewer)">
+        <Field fid="stakeholderReviewer" error={e("stakeholderReviewer")} label="4. Stakeholder / Subject Matter Expert / Tenaga Ahli (MoC Reviewer)">
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.stakeholderReviewer} onChange={(e) => onChange({ stakeholderReviewer: e.target.value })} />
         </Field>
-        <Field label="5. Studi kelayakan teknis / kajian risiko yang diperlukan">
+        <Field fid="studiKajian" error={e("studiKajian")} label="5. Studi kelayakan teknis / kajian risiko yang diperlukan">
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.studiKajian} onChange={(e) => onChange({ studiKajian: e.target.value })} />
         </Field>
-        <Field label="6. Usulan tim pelaksana perubahan (MoC Performer)">
+        <Field fid="usulanPerformer" error={e("usulanPerformer")} label="6. Usulan tim pelaksana perubahan (MoC Performer)">
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.usulanPerformer} onChange={(e) => onChange({ usulanPerformer: e.target.value })} />
         </Field>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <Field label="Nama MoC Initiator" hint="Akun Initiator dipakai bersama; tuliskan nama pengusul sebenarnya.">
+          <Field fid="initiatorName" error={e("initiatorName")} label="Nama MoC Initiator" hint="Akun Initiator dipakai bersama; tuliskan nama pengusul sebenarnya.">
             <input className={INPUT} disabled={disabled} value={value.initiatorName} onChange={(e) => onChange({ initiatorName: e.target.value })} />
           </Field>
-          <Field label="Jabatan MoC Initiator">
+          <Field fid="initiatorJabatan" error={e("initiatorJabatan")} label="Jabatan MoC Initiator">
             <input className={INPUT} disabled={disabled} value={value.initiatorJabatan} onChange={(e) => onChange({ initiatorJabatan: e.target.value })} />
           </Field>
         </div>
       </Section>
 
       <Section title="Tahap Penilaian Risiko dan Penentuan Pengendalian">
-        <div>
+        <Gap fid="riskImpacts" error={e("riskImpacts")}>
           <div className={LABEL}>Jenis Dampak Risiko</div>
           <div className="flex gap-x-5 gap-y-1.5 flex-wrap">
             {MOC_RISK_IMPACTS.map((r) => (
@@ -292,11 +308,12 @@ export default function MocFormFields({
               </label>
             ))}
           </div>
-        </div>
-        <Field label="Deskripsi Bahaya">
+        </Gap>
+        <Field fid="hazardDescription" error={e("hazardDescription")} label="Deskripsi Bahaya">
           <textarea className={INPUT} disabled={disabled} rows={3} value={value.hazardDescription} onChange={(e) => onChange({ hazardDescription: e.target.value })} />
         </Field>
 
+        <Gap fid="riskMatrix" error={e("riskMatrix")}>
         <div className="flex flex-col gap-3">
           <MocRiskMatrix
             severity={value.severity ?? null}
@@ -330,15 +347,16 @@ export default function MocFormFields({
             </Field>
           </div>
         </div>
+        </Gap>
 
-        <BarrierEditor title="Plant Barrier (fasilitas dan peralatan yang diperlukan untuk mitigasi risiko perubahan)" items={value.plantBarriers} disabled={disabled} onChange={(next) => onChange({ plantBarriers: next })} />
-        <BarrierEditor title="Process Barrier (sistem manajemen dan prosedur kerja yang diperlukan untuk mitigasi risiko perubahan)" items={value.processBarriers} disabled={disabled} onChange={(next) => onChange({ processBarriers: next })} />
-        <BarrierEditor title="People Barrier (kompetensi dan organisasi yang diperlukan untuk mitigasi risiko perubahan)" items={value.peopleBarriers} disabled={disabled} onChange={(next) => onChange({ peopleBarriers: next })} />
+        <Gap fid="plantBarriers" error={e("plantBarriers")}><BarrierEditor title="Plant Barrier (fasilitas dan peralatan yang diperlukan untuk mitigasi risiko perubahan)" items={value.plantBarriers} disabled={disabled} onChange={(next) => onChange({ plantBarriers: next })} /></Gap>
+        <Gap fid="processBarriers" error={e("processBarriers")}><BarrierEditor title="Process Barrier (sistem manajemen dan prosedur kerja yang diperlukan untuk mitigasi risiko perubahan)" items={value.processBarriers} disabled={disabled} onChange={(next) => onChange({ processBarriers: next })} /></Gap>
+        <Gap fid="peopleBarriers" error={e("peopleBarriers")}><BarrierEditor title="People Barrier (kompetensi dan organisasi yang diperlukan untuk mitigasi risiko perubahan)" items={value.peopleBarriers} disabled={disabled} onChange={(next) => onChange({ peopleBarriers: next })} /></Gap>
 
-        <Field label="Upside Gain (Peluang / Opportunity)">
+        <Field fid="upsideGain" error={e("upsideGain")} label="Upside Gain (Peluang / Opportunity)">
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.upsideGain} onChange={(e) => onChange({ upsideGain: e.target.value })} />
         </Field>
-        <Field label="Downside Loss (Threat / Ancaman)">
+        <Field fid="downsideLoss" error={e("downsideLoss")} label="Downside Loss (Threat / Ancaman)">
           <textarea className={INPUT} disabled={disabled} rows={2} value={value.downsideLoss} onChange={(e) => onChange({ downsideLoss: e.target.value })} />
         </Field>
       </Section>

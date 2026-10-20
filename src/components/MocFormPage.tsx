@@ -19,6 +19,15 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
   const [form, setForm] = useState<MocFormContent | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Datang dari tombol Ajukan (?lengkapi=1): tandai bagian yang belum terisi dan gulir ke yang pertama.
+  const [showGaps, setShowGaps] = useState(false);
+  useEffect(() => { setShowGaps(new URLSearchParams(window.location.search).get("lengkapi") === "1"); }, []);
+  useEffect(() => {
+    if (!form || !window.location.hash) return;
+    const t = setTimeout(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center", behavior: "smooth" }), 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form === null]);
 
   const canCreate = !activeUser.isRegionalAdmin && !!activeUser.location && activeUser.role === MOC_INITIATOR_ROLE;
 
@@ -70,7 +79,7 @@ export default function MocFormPage({ mocId }: { mocId?: string }) {
         <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">{mocId ? "Ubah MOC" : "MOC Baru"}</h1>
       </div>
 
-      <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} location={moc?.location ?? activeUser.location ?? undefined} />
+      <MocFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={saving} location={moc?.location ?? activeUser.location ?? undefined} showGaps={showGaps} />
 
       {/* Bilah aksi menempel di bawah layar: form ini panjang, tombol simpan tak perlu dicari di dasar halaman. */}
       <div className="sticky bottom-3 z-20 mt-5 flex flex-wrap items-center gap-2.5 px-4 py-3 rounded-[14px] bg-white/95 backdrop-blur border border-[#D8E1E4] shadow-[0_8px_24px_-8px_rgba(15,23,42,.25)]">

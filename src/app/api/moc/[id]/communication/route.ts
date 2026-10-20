@@ -16,7 +16,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const moc = await requireMocAction(params.id, user, "communicate");
     const { attachmentFileIds, ...input } = mocCommunicationSchema.parse(await req.json());
 
-    const issues = mocCommunicationIssues(input);
+    const hasEvidence = attachmentFileIds.length > 0 || moc.evidence.some((e) => e.stage === "Komunikasi");
+    const issues = mocCommunicationIssues(input, hasEvidence);
     if (issues.length > 0) throw new HttpError(400, "Catatan komunikasi belum lengkap.", { issues });
 
     const record: MocCommunication = { ...input, recordedById: user.id, recordedByName: user.name, recordedAt: new Date().toISOString() };

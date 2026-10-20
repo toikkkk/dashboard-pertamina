@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, Pencil, Paperclip } from "lucide-react";
 import { useMocActions, useMocActor, useMocItem } from "@/lib/useMoc";
@@ -32,6 +32,10 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
   const actor = useMocActor();
   const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("ikhtisar");
+  // Panel Ajukan (pilih reviewer/approver = bagian persetujuan) diletakkan SETELAH formulir (catatan client 20 Okt 2026),
+  // jadi saat MOC siap diajukan tab Formulir dibuka lebih dulu.
+  const submitMode = actions.includes("submit");
+  useEffect(() => { if (submitMode) setTab("formulir"); }, [submitMode]);
 
   if (isLoading || (!moc && !error)) return <div className="text-[13px] text-[#6b6e72]">Memuat MOC…</div>;
   if (error || !moc) {
@@ -109,7 +113,7 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
       </section>
 
       {/* 3. Yang perlu dilakukan user (hanya bila ada) */}
-      {hasAction && (
+      {hasAction && !submitMode && (
         <div className="mb-5">
           <MocActionsPanel moc={moc} actions={actions} onNotice={setNotice} />
         </div>
@@ -218,6 +222,12 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {hasAction && submitMode && (
+        <div className="mt-5">
+          <MocActionsPanel moc={moc} actions={actions} onNotice={setNotice} />
         </div>
       )}
 

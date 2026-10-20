@@ -552,19 +552,22 @@ export function mocActionsFor(moc: MocRequest, user: MocActor): MocAction[] {
   // pembuat MOC atau Controller lokasi (atas nama Initiator). Initiator juga yang menyerahkan ke
   // Performer (TKO E.1.c), jadi ia boleh memulai Implementasi; tahap sesudahnya tetap Controller.
   if (moc.validationState === "registered" && moc.registerStatus === "Inisiasi & Validasi") {
+    // Catatan client 20 Okt 2026: Komunikasi, Rencana Implementasi, dan serah ke Performer dikerjakan INITIATOR
+    // pembuat MOC (bukan Controller); setelah Controller meregistrasi, MOC kembali ke Initiator.
     const isOwner = user.role === MOC_INITIATOR_ROLE && moc.createdBy === user.id;
-    if (isOwner || isController) {
+    if (isOwner) {
       actions.push("communicate");
       if (moc.communication) actions.push("planImplementation");
       actions.push("advance");
     }
-  } else if (moc.validationState === "registered" && moc.registerStatus === "Implementasi" && isController) {
-    actions.push("advance"); // Implementasi -> Pemantauan; sesudahnya lewat Formulir Pemantauan dan Tinjauan Akhir
+  } else if (moc.validationState === "registered" && moc.registerStatus === "Implementasi") {
+    const isOwner = user.role === MOC_INITIATOR_ROLE && moc.createdBy === user.id;
+    if (isOwner) actions.push("advance"); // Implementasi -> Pemantauan oleh Initiator
   }
 
   if (moc.validationState === "registered") {
     const isPerformer = !!moc.performerUserId && moc.performerUserId === user.id;
-    if (moc.registerStatus === "Pemantauan" && (isOwner || isController || isPerformer)) actions.push("monitor");
+    if (moc.registerStatus === "Pemantauan" && isOwner) actions.push("monitor"); // pemantauan oleh Initiator pembuat MOC
     if (moc.registerStatus === "Tinjauan Akhir") {
       if (isOwner || isController) actions.push("finalReview");
       // Penutupan: kewenangan MoC Approver; bila Approver tanpa akun, Controller mencatat atas namanya.
@@ -639,8 +642,11 @@ export function mocFinalReviewIssues(i: MocFinalReviewInput, todayYmd: string): 
 }
 
 // Isian minimum catatan Komunikasi. Mengembalikan daftar masalah (kosong = lengkap).
-export function mocCommunicationIssues(c: MocCommunicationInput): string[] {
+// Bukti komunikasi (notulen / daftar hadir / dokumentasi) WAJIB (catatan client 20 Okt 2026): `hasEvidence` = ada berkas
+// yang dilampirkan sekarang atau sebelumnya pada tahap Komunikasi.
+export function mocCommunicationIssues(c: MocCommunicationInput, hasEvidence = true): string[] {
   const issues: string[] = [];
+  if (!hasEvidence) issues.push("Lampirkan bukti komunikasi (notulen / daftar hadir / dokumentasi).");
   if (c.items.length === 0) issues.push("Pilih minimal satu hal yang dikomunikasikan.");
   if (c.media.length === 0) issues.push("Pilih minimal satu media komunikasi.");
   if (c.media.includes("Lainnya") && !c.mediaOther.trim()) issues.push("Sebutkan media lainnya.");
@@ -661,10 +667,11 @@ export function mocImplementationPlanIssues(p: MocImplementationPlanInput): stri
 
 // Syarat memajukan tahap. Gerbang hanya pada langkah masuk Implementasi; MOC yang sudah
 // lebih jauh (termasuk yang dimajukan manual sebelum fitur ini) tidak terdampak.
-export function mocAdvanceIssues(moc: Pick<MocRequest, "registerStatus" | "communication" | "implementationPlan" | "performerName">): string[] {
+export function mocAdvanceIssues(moc: Pick<MocRequest, "registerStatus" | "communication" | "implementationPlan" | "performerName" | "evidence">): string[] {
   if (moc.registerStatus !== "Inisiasi & Validasi") return [];
   const issues: string[] = [];
   if (!moc.communication) issues.push("Komunikasi belum dicatat.");
+  else if (!moc.evidence.some((e) => e.stage === "Komunikasi")) issues.push("Bukti komunikasi belum dilampirkan.");
   if (!moc.implementationPlan) issues.push("Rencana implementasi belum dicatat.");
   if (!moc.performerName) issues.push("MoC Performer belum ditunjuk.");
   return issues;
@@ -709,24 +716,48 @@ export function nextRegisterStatus(current: MocRegisterStatus): MocRegisterStatu
 }
 
 // Isian minimum agar draf boleh diajukan ke reviewer. Mengembalikan daftar masalah.
-export function mocSubmitIssues(form: MocFormContent, location?: string): string[] {
-  const issues: string[] = [];
+// Kekurangan isian formulir: `field` = penanda bagian di formulir (id "mf-<field>") agar user bisa diarahkan ke sana.
+export interface MocFormGap {
+  field: string;
+  message: string;
+}
+const blank = (v: string | null | undefined) => !(v ?? "").trim();
+export function mocFormGaps(form: MocFormContent, location?: string): MocFormGap[] {
+  const g: MocFormGap[] = [];
+  const need = (cond: boolean, field: string, message: string) => { if (cond) g.push({ field, message }); };
+  need(blank(form.unitOperasi), "unitOperasi", "Unit Operasi wajib diisi.");
   // Unit Regional: fungsi pengusul menentukan KBO pada Nomor MoC (lihat domain/kbo.ts).
-  if (location && isRegionalUnit(location) && !REGIONAL_KBO_FUNCTIONS.some((f) => f.label === form.fungsi)) {
-    issues.push("Pilih fungsi regional pengusul (menentukan KBO pada Nomor MoC).");
-  }
-  if (!form.judul.trim()) issues.push("Judul perubahan wajib diisi.");
-  if (form.changeCategories.length === 0) issues.push("Pilih minimal satu aktivitas / ruang lingkup perubahan.");
-  if (!form.deskripsi.trim()) issues.push("Deskripsi perubahan wajib diisi.");
-  if (!form.initiatorName.trim() || !form.initiatorJabatan.trim()) issues.push("Nama dan jabatan Initiator wajib diisi.");
-  if (form.sifatPerubahan === "Sementara" && (!form.validFrom || !form.validUntil)) {
-    issues.push("Perubahan Sementara wajib punya masa berlaku (dari-sampai).");
-  }
-  if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
-    issues.push("Tanggal akhir masa berlaku tidak boleh sebelum tanggal awal.");
-  }
-  if (!form.severity || !form.probability) issues.push("Tingkat keparahan dan probabilitas risiko wajib diisi.");
-  return issues;
+  if (location && isRegionalUnit(location)) need(!REGIONAL_KBO_FUNCTIONS.some((f) => f.label === form.fungsi), "fungsi", "Pilih fungsi regional pengusul (menentukan KBO pada Nomor MoC).");
+  else need(blank(form.fungsi), "fungsi", "Fungsi wajib diisi.");
+  need(blank(form.region), "region", "Region wajib diisi.");
+  need(blank(form.anggaranType), "anggaranType", "Jenis anggaran wajib diisi.");
+  need(blank(form.tanggal), "tanggal", "Tanggal wajib diisi.");
+  need(blank(form.judul), "judul", "Judul perubahan wajib diisi.");
+  need(blank(form.latarBelakang), "latarBelakang", "Latar belakang / tujuan perubahan wajib diisi.");
+  need(form.changeCategories.length === 0, "changeCategories", "Pilih minimal satu aktivitas / ruang lingkup perubahan.");
+  if (form.sifatPerubahan === "Sementara" && (!form.validFrom || !form.validUntil)) g.push({ field: "masaBerlaku", message: "Perubahan Sementara wajib punya masa berlaku (dari-sampai)." });
+  else if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) g.push({ field: "masaBerlaku", message: "Tanggal akhir masa berlaku tidak boleh sebelum tanggal awal." });
+  need(blank(form.deskripsi), "deskripsi", "Deskripsi perubahan wajib diisi.");
+  need(blank(form.prosesTerdampak), "prosesTerdampak", "Proses, dokumen, dan pihak terdampak wajib diisi.");
+  need(blank(form.peraturanRelevan), "peraturanRelevan", "Peraturan / regulasi yang relevan wajib diisi.");
+  need(blank(form.stakeholderReviewer), "stakeholderReviewer", "Stakeholder / tenaga ahli (MoC Reviewer) wajib diisi.");
+  need(blank(form.studiKajian), "studiKajian", "Studi kelayakan / kajian risiko wajib diisi.");
+  need(blank(form.usulanPerformer), "usulanPerformer", "Usulan tim pelaksana (MoC Performer) wajib diisi.");
+  need(blank(form.initiatorName), "initiatorName", "Nama Initiator wajib diisi.");
+  need(blank(form.initiatorJabatan), "initiatorJabatan", "Jabatan Initiator wajib diisi.");
+  need(form.riskImpacts.length === 0, "riskImpacts", "Pilih minimal satu jenis dampak risiko.");
+  need(blank(form.hazardDescription), "hazardDescription", "Deskripsi bahaya wajib diisi.");
+  need(!form.severity || !form.probability, "riskMatrix", "Tingkat keparahan dan probabilitas risiko wajib diisi.");
+  const hasBarrier = (items: MocBarrier[]) => items.some((b) => !blank(b.text));
+  need(!hasBarrier(form.plantBarriers), "plantBarriers", "Plant Barrier wajib diisi minimal satu.");
+  need(!hasBarrier(form.processBarriers), "processBarriers", "Process Barrier wajib diisi minimal satu.");
+  need(!hasBarrier(form.peopleBarriers), "peopleBarriers", "People Barrier wajib diisi minimal satu.");
+  need(blank(form.upsideGain), "upsideGain", "Upside Gain wajib diisi.");
+  need(blank(form.downsideLoss), "downsideLoss", "Downside Loss wajib diisi.");
+  return g;
+}
+export function mocSubmitIssues(form: MocFormContent, location?: string): string[] {
+  return mocFormGaps(form, location).map((x) => x.message);
 }
 
 // Penjelasan tahap sesudah registrasi. Diambil dari uraian TKO B13.3-07 (Bab III.2.e-h
