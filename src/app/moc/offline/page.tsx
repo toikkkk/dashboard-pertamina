@@ -35,7 +35,10 @@ export default function MocOfflinePage() {
   const [status, setStatus] = useState<MocRegisterStatus>("Inisiasi & Validasi");
   const [initiatorName, setInitiatorName] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
-  const [files, setFiles] = useState<{ name: string; id: string }[]>([]);
+  const [tglSetuju, setTglSetuju] = useState("");
+  const [tglTutup, setTglTutup] = useState("");
+  type Slot = "form5" | "form6" | "form7";
+  const [files, setFiles] = useState<Record<Slot, { name: string; id: string }[]>>({ form5: [], form6: [], form7: [] });
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +50,13 @@ export default function MocOfflinePage() {
     () => (kbo && Number.isInteger(seqN) && seqN > 0 && Number(month) >= 1 ? formatMocNumber(seqN, kbo, Number(month), Number(year)) : null),
     [kbo, seqN, month, year]
   );
-  const ready = !!location && judul.trim().length >= 3 && !!preview && files.length > 0 && !uploading && (!regional || !!fungsi);
+  // Form wajib mengikuti status terakhir: Form 5 selalu; Form 6 mulai Pemantauan; Form 7 saat Closed.
+  const need6 = status === "Pemantauan" || status === "Tinjauan Akhir" || status === "Closed";
+  const need7 = status === "Closed";
+  const needSetuju = status !== "Inisiasi & Validasi";
+  const filesOk = files.form5.length > 0 && (!need6 || files.form6.length > 0) && (!need7 || files.form7.length > 0);
+  const datesOk = (!needSetuju || !!tglSetuju) && (!need7 || !!tglTutup);
+  const ready = !!location && judul.trim().length >= 3 && !!preview && filesOk && datesOk && !uploading && (!regional || !!fungsi);
 
   if (!isAdmin && !(isController && activeUser.location)) {
     return (
@@ -58,14 +67,14 @@ export default function MocOfflinePage() {
     );
   }
 
-  const addFiles = async (list: FileList | null) => {
+  const addFiles = async (slot: Slot, list: FileList | null) => {
     if (!list) return;
     setUploading(true);
     setError(null);
     try {
       const added: { name: string; id: string }[] = [];
       for (const f of Array.from(list)) added.push({ name: f.name, id: await uploadFileToR2(f) });
-      setFiles((cur) => [...cur, ...added]);
+      setFiles((cur) => ({ ...cur, [slot]: [...cur[slot], ...added] }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengunggah berkas.");
     } finally {
@@ -89,7 +98,11 @@ export default function MocOfflinePage() {
         registerStatus: status,
         initiatorName: initiatorName.trim(),
         deskripsi: deskripsi.trim(),
-        fileIds: files.map((f) => f.id),
+        tanggalDisetujui: tglSetuju,
+        tanggalDitutup: need7 ? tglTutup : "",
+        form5: files.form5.map((f) => f.id),
+        form6: need6 ? files.form6.map((f) => f.id) : [],
+        form7: need7 ? files.form7.map((f) => f.id) : [],
       });
       router.push(`/moc/${saved.id}`);
     } catch (e) {
@@ -167,6 +180,23 @@ export default function MocOfflinePage() {
           </div>
         </div>
 
+        {(needSetuju || need7) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {needSetuju && (
+              <div>
+                <label className={LABEL}>Tanggal disetujui</label>
+                <input type="date" className={INPUT} value={tglSetuju} onChange={(e) => setTglSetuju(e.target.value)} />
+              </div>
+            )}
+            {need7 && (
+              <div>
+                <label className={LABEL}>Tanggal ditutup</label>
+                <input type="date" className={INPUT} value={tglTutup} onChange={(e) => setTglTutup(e.target.value)} />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
             <label className={LABEL}>Nama Initiator (opsional)</label>
@@ -178,33 +208,39 @@ export default function MocOfflinePage() {
           <textarea className={INPUT} rows={3} maxLength={5000} value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} />
         </div>
 
-        <div>
-          <label className={LABEL}>Dokumen MOC (wajib, minimal satu)</label>
-          <label className="inline-flex items-center gap-2 px-3 py-2 text-[12.5px] font-semibold border border-dashed border-[#C5CED3] rounded-[8px] cursor-pointer hover:border-[#0F3B59]">
-            <Paperclip className="w-3.5 h-3.5" strokeWidth={2} />
-            {uploading ? "Mengunggah…" : "Pilih berkas"}
-            <input type="file" multiple className="hidden" disabled={uploading || busy} onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
-          {files.length > 0 && (
-            <ul className="mt-2 flex flex-col gap-1">
-              {files.map((f) => (
-                <li key={f.id} className="flex items-center gap-2 text-[12.5px]">
-                  <Paperclip className="w-3.5 h-3.5 text-[#6b6e72]" strokeWidth={2} /> {f.name}
-                  <button type="button" aria-label="Hapus berkas" onClick={() => setFiles((cur) => cur.filter((x) => x.id !== f.id))} className="p-0.5 text-[#6b6e72] hover:text-[#DC2626]">
-                    <X className="w-3.5 h-3.5" strokeWidth={2} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {([
+          { slot: "form5" as Slot, title: "Form 5 — Pengusulan & Validasi (Lampiran 5)", required: true },
+          { slot: "form6" as Slot, title: "Form 6 — Pemantauan (Lampiran 6)", required: need6 },
+          { slot: "form7" as Slot, title: "Form 7 — Tinjauan Akhir & Penutupan (Lampiran 7)", required: need7 },
+        ]).map(({ slot, title, required }) => (
+          <div key={slot}>
+            <label className={LABEL}>{title} <span className="font-normal text-[#6b6e72]">{required ? "— wajib" : "— opsional"}</span></label>
+            <label className="inline-flex items-center gap-2 px-3 py-2 text-[12.5px] font-semibold border border-dashed border-[#C5CED3] rounded-[8px] cursor-pointer hover:border-[#0F3B59]">
+              <Paperclip className="w-3.5 h-3.5" strokeWidth={2} />
+              {uploading ? "Mengunggah…" : "Pilih berkas (boleh banyak)"}
+              <input type="file" multiple className="hidden" disabled={uploading || busy} onChange={(e) => { addFiles(slot, e.target.files); e.target.value = ""; }} />
+            </label>
+            {files[slot].length > 0 && (
+              <ul className="mt-2 flex flex-col gap-1">
+                {files[slot].map((f) => (
+                  <li key={f.id} className="flex items-center gap-2 text-[12.5px]">
+                    <Paperclip className="w-3.5 h-3.5 text-[#6b6e72]" strokeWidth={2} /> {f.name}
+                    <button type="button" aria-label="Hapus berkas" onClick={() => setFiles((cur) => ({ ...cur, [slot]: cur[slot].filter((x) => x.id !== f.id) }))} className="p-0.5 text-[#6b6e72] hover:text-[#DC2626]">
+                      <X className="w-3.5 h-3.5" strokeWidth={2} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
 
         {error && <p role="alert" className="text-[13px] font-semibold text-[#DC2626]">{error}</p>}
         <div className="flex items-center gap-3">
           <button type="button" disabled={!ready || busy} onClick={submit} className="px-6 py-2.5 rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white text-[13.5px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {busy ? "Menyimpan…" : "Catat MOC Offline"}
           </button>
-          {!ready && !busy && <span className="text-[11.5px] text-[#6b6e72]">Lengkapi lokasi, judul, nomor, dan minimal satu dokumen.</span>}
+          {!ready && !busy && <span className="text-[11.5px] text-[#6b6e72]">Lengkapi lokasi, judul, nomor, tanggal, dan dokumen form yang wajib.</span>}
         </div>
       </div>
     </div>

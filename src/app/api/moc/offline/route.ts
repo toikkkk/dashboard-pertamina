@@ -26,8 +26,16 @@ const bodySchema = z.object({
   registerStatus: z.enum(MOC_REGISTER_STATUSES),
   initiatorName: z.string().trim().max(200).default(""),
   deskripsi: z.string().trim().max(5000).default(""),
-  fileIds: z.array(z.string().uuid()).min(1, "Unggah minimal satu dokumen.").max(20),
+  tanggalDisetujui: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).default(""),
+  tanggalDitutup: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).default(""),
+  // Dokumen dipisah per form (Lampiran 5, 6, 7); wajib sesuai status terakhir.
+  form5: z.array(z.string().uuid()).max(20).default([]),
+  form6: z.array(z.string().uuid()).max(20).default([]),
+  form7: z.array(z.string().uuid()).max(20).default([]),
 });
+
+// Form wajib per status terakhir: Form 5 selalu; Form 6 mulai Pemantauan; Form 7 saat Closed.
+const needs6 = (s: string) => s === "Pemantauan" || s === "Tinjauan Akhir" || s === "Closed";
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -37,6 +45,14 @@ export async function POST(req: NextRequest) {
     if (!user.isRegionalAdmin && !isController) throw new ForbiddenError("Hanya Controller lokasi atau Admin Regional yang dapat mencatat MOC offline.");
     const b = bodySchema.parse(await req.json());
     if (!user.isRegionalAdmin && user.location !== b.location) throw new ForbiddenError("Controller hanya dapat mencatat MOC offline untuk lokasinya sendiri.");
+
+    const missing: string[] = [];
+    if (b.form5.length === 0) missing.push("Form 5 (Pengusulan & Validasi)");
+    if (needs6(b.registerStatus) && b.form6.length === 0) missing.push("Form 6 (Pemantauan)");
+    if (b.registerStatus === "Closed" && b.form7.length === 0) missing.push("Form 7 (Tinjauan Akhir & Penutupan)");
+    if (missing.length > 0) throw new HttpError(400, `Unggah dokumen wajib: ${missing.join(", ")}.`);
+    if (b.registerStatus !== "Inisiasi & Validasi" && !b.tanggalDisetujui) throw new HttpError(400, "Tanggal disetujui wajib diisi untuk status ini.");
+    if (b.registerStatus === "Closed" && !b.tanggalDitutup) throw new HttpError(400, "Tanggal ditutup wajib diisi untuk MOC yang sudah Closed.");
 
     const [loc] = await db.select({ name: locations.name }).from(locations).where(eq(locations.name, b.location)).limit(1);
     if (!loc) throw new HttpError(400, "Lokasi tidak dikenal.");
@@ -63,18 +79,23 @@ export async function POST(req: NextRequest) {
         validationState: "registered",
         isOffline: true,
         createdBy: user.id,
+        approvedAt: b.tanggalDisetujui ? new Date(`${b.tanggalDisetujui}T00:00:00+07:00`) : null,
+        closure: b.registerStatus === "Closed"
+          ? { note: "Dicatat dari dokumen offline", closedAt: new Date(`${b.tanggalDitutup}T00:00:00+07:00`).toISOString(), closedById: user.id, closedByName: user.name, onBehalfOf: null, finalizedAt: new Date(`${b.tanggalDitutup}T00:00:00+07:00`).toISOString(), finalizedByName: user.name }
+          : null,
       })
       .returning({ id: mocRequests.id });
 
-    for (const fileId of b.fileIds) {
-      const ok = await attachMocEvidence(created.id, "controller", fileId, user, undefined, "Offline");
+    const uploads = [...b.form5.map((f) => [f, "Offline-Form5"]), ...b.form6.map((f) => [f, "Offline-Form6"]), ...b.form7.map((f) => [f, "Offline-Form7"])];
+    for (const [fileId, stage] of uploads) {
+      const ok = await attachMocEvidence(created.id, "controller", fileId, user, undefined, stage);
       if (!ok) {
         await db.delete(mocRequests).where(eq(mocRequests.id, created.id)); // batalkan agar tidak ada catatan setengah jadi
         throw new HttpError(400, "Ada berkas yang tidak valid atau bukan unggahan Anda.");
       }
     }
     await recordMocHistory(created.id, user, "Dicatat Offline", {
-      notes: `MOC offline dicatat dengan Nomor ${number} (${b.registerStatus}), ${b.fileIds.length} dokumen.`,
+      notes: `MOC offline dicatat dengan Nomor ${number} (${b.registerStatus}), ${uploads.length} dokumen (Form 5: ${b.form5.length}, Form 6: ${b.form6.length}, Form 7: ${b.form7.length}).`,
       toState: "registered",
     });
     return NextResponse.json(await loadMocItem(created.id));

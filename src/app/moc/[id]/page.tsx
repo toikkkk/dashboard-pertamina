@@ -29,6 +29,9 @@ type TabKey = (typeof TABS)[number]["key"];
 // Nama form untuk berkas bukti bertanda tangan: Lampiran 5 (validasi), Lampiran 6 (tiap pemantauan), Lampiran 7 (penutupan).
 function signedFormLabel(e: { slot: string; stage?: string }): string {
   if (e.stage?.startsWith("Pemantauan-")) return `Form Pemantauan ke-${e.stage.slice("Pemantauan-".length)} (Lampiran 6)`;
+  if (e.stage === "Offline-Form5") return "Form 5 Pengusulan & Validasi (dokumen offline)";
+  if (e.stage === "Offline-Form6") return "Form 6 Pemantauan (dokumen offline)";
+  if (e.stage === "Offline-Form7") return "Form 7 Tinjauan Akhir & Penutupan (dokumen offline)";
   if (e.stage === "Offline") return "Dokumen MOC offline";
   if (e.stage === "Pengusulan") return "Form Pengusulan & Validasi (Lampiran 5)";
   if (e.stage === "Penutupan") return "Form Tinjauan Akhir & Penutupan (Lampiran 7)";
