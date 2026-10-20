@@ -40,6 +40,7 @@ export default function MocOfflinePage() {
   type Slot = "form5" | "form6" | "form7";
   const [files, setFiles] = useState<Record<Slot, { name: string; id: string }[]>>({ form5: [], form6: [], form7: [] });
   const [uploading, setUploading] = useState(false);
+  const [dragSlot, setDragSlot] = useState<Slot | null>(null); // kotak yang sedang disinggahi berkas seretan
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -215,9 +216,14 @@ export default function MocOfflinePage() {
         ]).map(({ slot, title, required }) => (
           <div key={slot}>
             <label className={LABEL}>{title} <span className="font-normal text-[#6b6e72]">{required ? "— wajib" : "— opsional"}</span></label>
-            <label className="inline-flex items-center gap-2 px-3 py-2 text-[12.5px] font-semibold border border-dashed border-[#C5CED3] rounded-[8px] cursor-pointer hover:border-[#0F3B59]">
+            <label
+              onDragOver={(e) => { e.preventDefault(); if (!uploading && !busy) setDragSlot(slot); }}
+              onDragLeave={() => setDragSlot((cur) => (cur === slot ? null : cur))}
+              onDrop={(e) => { e.preventDefault(); setDragSlot(null); if (!uploading && !busy) addFiles(slot, e.dataTransfer.files); }}
+              className={`flex items-center justify-center gap-2 px-4 py-5 text-[12.5px] font-semibold border border-dashed rounded-[10px] cursor-pointer transition-colors ${dragSlot === slot ? "border-[#0F3B59] bg-[#E2E8EB]" : "border-[#C5CED3] hover:border-[#0F3B59]"}`}
+            >
               <Paperclip className="w-3.5 h-3.5" strokeWidth={2} />
-              {uploading ? "Mengunggah…" : "Pilih berkas (boleh banyak)"}
+              {uploading ? "Mengunggah…" : dragSlot === slot ? "Lepas berkas di sini" : "Seret berkas ke sini atau klik untuk memilih (boleh banyak)"}
               <input type="file" multiple className="hidden" disabled={uploading || busy} onChange={(e) => { addFiles(slot, e.target.files); e.target.value = ""; }} />
             </label>
             {files[slot].length > 0 && (
