@@ -152,6 +152,8 @@ function pdfSurface(raw: string): string {
 // tepercaya (Controller / Admin Regional); pola berbahaya pada bagian yang tidak terenkripsi tetap ditolak.
 export interface ScanOptions {
   allowEncryptedPdf?: boolean;
+  /** Izinkan berkas yang isinya sama dengan berkas lain di arsip (mis. dokumen MOC offline yang sudah ada di arsip hasil migrasi). */
+  allowDuplicate?: boolean;
 }
 export const canUploadEncryptedPdf = (user: { isRegionalAdmin?: boolean | null; role: string }): boolean => !!user.isRegionalAdmin || user.role.includes("Controller");
 

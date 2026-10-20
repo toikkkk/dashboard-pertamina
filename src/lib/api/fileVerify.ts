@@ -80,7 +80,7 @@ export async function verifyUploadedObject(file: FileRow, scanOpts: ScanOptions 
   if (fullBuf) {
     const checksumSha256 = createHash("sha256").update(fullBuf).digest("hex");
     const dup = await findDuplicateFile(checksumSha256, file.id);
-    if (dup) return reject(file, duplicateMessage(dup));
+    if (dup && !scanOpts.allowDuplicate) return reject(file, duplicateMessage(dup));
     await db.update(fileRegistry).set({ checksumSha256 }).where(eq(fileRegistry.id, file.id));
   }
   return null;

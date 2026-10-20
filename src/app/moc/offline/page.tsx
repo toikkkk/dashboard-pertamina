@@ -74,7 +74,7 @@ export default function MocOfflinePage() {
     setError(null);
     try {
       const added: { name: string; id: string }[] = [];
-      for (const f of Array.from(list)) added.push({ name: f.name, id: await uploadFileToR2(f) });
+      for (const f of Array.from(list)) added.push({ name: f.name, id: await uploadFileToR2(f, { allowDuplicate: true }) });
       setFiles((cur) => ({ ...cur, [slot]: [...cur[slot], ...added] }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengunggah berkas.");

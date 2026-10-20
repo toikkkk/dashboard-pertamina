@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
     // dicek sebelum upload supaya tidak buang bandwidth kalau memang sudah ada.
     const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
     const dup = await findDuplicateFile(checksumSha256);
-    if (dup) return NextResponse.json({ error: duplicateMessage(dup) }, { status: 409 });
+    const allowDup = canUploadEncryptedPdf(user) && form.get("allowDuplicate") === "1";
+    if (dup && !allowDup) return NextResponse.json({ error: duplicateMessage(dup) }, { status: 409 });
 
     // Upload to R2 BEFORE inserting the row: a failed PutObject must not leave an
     // orphan 'pending' registry row behind (the direct-PUT flow can strand those,

@@ -30,7 +30,11 @@ export async function POST(req: NextRequest, { params }: { params: { fileId: str
       // Periksa isi nyata di bucket (ukuran + tanda-byte + pola berbahaya + duplikat
       // isi dengan berkas lain yang sudah ada — lihat fileVerify.ts) sebelum dianggap
       // sah. Sudah menulis checksum_sha256 sendiri kalau lolos, jangan ditimpa di sini.
-      const problem = await verifyUploadedObject(file, { allowEncryptedPdf: canUploadEncryptedPdf(user) });
+      // allowDuplicate hanya dihormati untuk akun tepercaya (Controller / Admin Regional), mis. melampirkan dokumen MOC
+      // offline yang salinannya sudah ada di arsip.
+      const reqBody = await req.json().catch(() => ({}));
+      const trusted = canUploadEncryptedPdf(user);
+      const problem = await verifyUploadedObject(file, { allowEncryptedPdf: trusted, allowDuplicate: trusted && reqBody?.allowDuplicate === true });
       if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 

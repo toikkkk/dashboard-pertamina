@@ -26,6 +26,8 @@ export interface UploadOptions {
   onProgress?: (fraction: number) => void;
   /** Membatalkan unggahan yang sedang berjalan (kartu progres bergaya Drive). */
   signal?: AbortSignal;
+  /** Izinkan berkas berisi sama dengan yang sudah ada di arsip (hanya dihormati server untuk Controller / Admin Regional). */
+  allowDuplicate?: boolean;
 }
 
 export async function uploadFileToR2(file: File, opts: UploadOptions = {}): Promise<string> {
@@ -100,7 +102,7 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
   const confirmRes = await fetch(`/api/files/${fileId}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ allowDuplicate: opts.allowDuplicate === true }),
   });
   // Previously unchecked: a failed confirm left the row 'pending', and
   // /api/files/:id/download 404s on any non-'uploaded' row — so the document saved
@@ -116,6 +118,7 @@ async function uploadViaPresignedPut(file: File, opts: UploadOptions): Promise<s
 async function uploadViaServerProxy(file: File, opts: UploadOptions, abandonedFileId?: string): Promise<string> {
   const form = new FormData();
   form.append("file", file);
+  if (opts.allowDuplicate) form.append("allowDuplicate", "1");
   if (abandonedFileId) form.append("abandonedFileId", abandonedFileId);
 
   const res = await xhrSend("POST", "/api/files/upload", form, {}, opts);
