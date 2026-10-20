@@ -81,8 +81,8 @@ export const MOC_LIKELIHOOD_LEVELS: { value: number; label: string; range: strin
 // aplikasi). Dipakai sebagai info saat memilih Reviewer/Approver; pemilihan tetap manual oleh Initiator.
 export const MOC_AUTHORITY_TABLE: { role: string; scope: string; lokasi: string; region: string }[] = [
   { role: "Change Initiator", scope: "Semua", lokasi: "Pekerja Pertamina", region: "Pekerja Pertamina" },
-  { role: "MoC Reviewer", scope: "1 – 12", lokasi: "Maintenance Service, HSSE / AP", region: "RPD, HSSE Regional / AP" },
-  { role: "MoC Reviewer", scope: "13", lokasi: "Fungsi IT, Maintenance Service, HSSE", region: "Fungsi IT, RPD, HSSE Regional / AP" },
+  { role: "MoC Reviewer", scope: "1 – 12", lokasi: "Maintenance Service, HSSE / AP", region: "DRE, HSSE Regional / AP" },
+  { role: "MoC Reviewer", scope: "13", lokasi: "Fungsi IT, Maintenance Service, HSSE", region: "Fungsi IT, DRE, HSSE Regional / AP" },
   { role: "MoC Approver", scope: "Semua", lokasi: "Terminal Manager (IT / FT / AFT) / Operation Head", region: "Manager Fungsi Regional / AP, EGM / GHO / SMOM" },
   { role: "MoC Controller", scope: "Semua", lokasi: "HSSE Lokasi", region: "HSSE Regional" },
 ];
@@ -166,11 +166,11 @@ export const MOC_FUNCTION_SUGGESTIONS: Record<MocRoleFlag, readonly string[]> = 
 // Reviewer/Approver wajib punya fungsi/jabatan (dipakai di dropdown & lembar cetak).
 export const MOC_ROLES_NEED_FUNCTION: readonly MocRoleFlag[] = ["Reviewer", "Approver"];
 
-// Tingkat Region/AP (TKO B13.3-07 Tabel 3, kolom "Region / AP"): Reviewer = RPD dan HSSE Regional/AP (+ Fungsi IT untuk
+// Tingkat Region/AP (TKO B13.3-07 Tabel 3, kolom "Region / AP"): Reviewer = DRE dan HSSE Regional/AP (+ Fungsi IT untuk
 // scope 13), Approver = Manager Fungsi Regional/AP atau EGM/GHO/SMOM, Controller = HSSE Regional. Performer ditunjuk
 // Approver. Dipakai untuk akun yang terikat ke unit Regional Jatimbalinus (lihat regionalUnit.ts).
 export const MOC_FUNCTION_SUGGESTIONS_REGIONAL: Record<MocRoleFlag, readonly string[]> = {
-  Reviewer: ["RPD", "HSSE Regional", "Fungsi IT"],
+  Reviewer: ["DRE", "HSSE Regional", "Fungsi IT"],
   Approver: ["Manager Fungsi Regional", "EGM/GHO/SMOM"],
   Performer: [],
 };

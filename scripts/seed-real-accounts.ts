@@ -4,7 +4,7 @@
 //   INITIAL_PASSWORD=... ACCOUNTS_OUT=<json di luar repo> npx tsx scripts/seed-real-accounts.ts --apply
 //
 // Komposisi (kesepakatan 2026-10-13/18): per KBO satu Initiator dan satu Approver (47+47); Controller = HSSE tiap
-// terminal + HSSE Regional (26); Reviewer lokasi = DRE + HSSE tiap terminal (50); Reviewer Regional = RPD, HSSE, IT (3);
+// terminal + HSSE Regional (26); Reviewer lokasi = DRE + HSSE tiap terminal (50); Reviewer Regional = DRE, HSSE, IT (3);
 // satu Admin Regional. Total 174. Performer TIDAK punya akun.
 // Username: orang = dua kata pertama nama + ".ini"/".apv" (jabatan Vacant memakai kode KBO); fungsi = "hsse.<lokasi>",
 // "rv-dre.<lokasi>", "rv-hsse.<lokasi>". Email: Initiator memakai email Pertamina bila ada, selain itu email penanda
@@ -157,7 +157,7 @@ async function main() {
   const reg = (grup: string, nama: string, username: string, oldUsername: string, role: string, mocRoles: string[], mocFunction: string | null) =>
     plan.push({ grup, nama, username: uniq(username), email: markEmail(username), role, location: REGIONAL_UNIT_NAME, isRegionalAdmin: false, mocRoles, mocFunction, kbo: "PPNLL0400", oldUsername });
   reg("Regional - Controller", "Controller HSSE Regional", "controller.regional", "hsse.regional", CONTROLLER, [], null);
-  reg("Regional - Reviewer", "Reviewer RPD Regional", "rev-dre.regional", "rv-dre.regional", INITIATOR, ["Reviewer"], "RPD");
+  reg("Regional - Reviewer", "Reviewer DRE Regional", "rev-dre.regional", "rv-dre.regional", INITIATOR, ["Reviewer"], "DRE");
   reg("Regional - Reviewer", "Reviewer HSSE Regional", "rev-hsse.regional", "rv-hsse.regional", INITIATOR, ["Reviewer"], "HSSE Regional");
   reg("Regional - Reviewer", "Reviewer Fungsi IT Regional", "rev-it.regional", "rv-it.regional", INITIATOR, ["Reviewer"], "Fungsi IT");
   plan.push({ grup: "Admin Regional", nama: "Admin Regional", username: uniq("admin.regional"), email: markEmail("admin.regional"), role: "Admin Regional", location: null, isRegionalAdmin: true, mocRoles: [], mocFunction: null, kbo: "", oldUsername: "admin.regional" });

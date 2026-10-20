@@ -46,7 +46,7 @@ const ROLES: RoleSpec[] = [
 const REGIONAL_ROLES: RoleSpec[] = [
   { code: "ini", label: "Initiator Regional", role: INITIATOR, mocRoles: [], mocFunction: null, keterangan: "Mengajukan MOC level regional" },
   { code: "ctl", label: "Controller HSSE Regional", role: CONTROLLER, mocRoles: [], mocFunction: null, keterangan: "Mendaftarkan MOC regional (memberi Nomor MoC)" },
-  { code: "rvr", label: "Reviewer RPD", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "RPD", keterangan: "Mereview MOC regional (fungsi RPD)" },
+  { code: "rvr", label: "Reviewer DRE", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "DRE", keterangan: "Mereview MOC regional (fungsi DRE)" },
   { code: "rvh", label: "Reviewer HSSE Regional", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "HSSE Regional", keterangan: "Mereview MOC regional (fungsi HSSE Regional)" },
   { code: "rvi", label: "Reviewer Fungsi IT", role: INITIATOR, mocRoles: ["Reviewer"], mocFunction: "Fungsi IT", keterangan: "Mereview MOC regional untuk perubahan sistem/aplikasi (scope 13)" },
   { code: "apv", label: "Approver Manager Fungsi Regional", role: INITIATOR, mocRoles: ["Approver"], mocFunction: "Manager Fungsi Regional", keterangan: "Menyetujui / menolak MOC regional dan menunjuk Performer" },
