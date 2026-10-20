@@ -433,6 +433,8 @@ export interface MocRequest extends MocFormContent {
   // Approver tanpa akun (diketik manual); approverUserId kosong. Keputusannya dicatat Controller atas namanya.
   approverManualName: string | null;
   approverManualJabatan: string | null;
+  // Jabatan Approver untuk lembar cetak: ketikan manual, atau fungsi pada akun Approver (diisi server saat memuat detail).
+  approverJabatan?: string | null;
   // null = belum dicatat. Diisi setelah registrasi, sebelum Implementasi dimulai.
   communication: MocCommunication | null;
   implementationPlan: MocImplementationPlan | null;

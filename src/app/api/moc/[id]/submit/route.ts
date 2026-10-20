@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Reviewer & Approver dipilih manual, tetapi harus user terdaftar di lokasi MOC ini.
     const wanted = Array.from(new Set([...reviewerIds, ...(approverUserId ? [approverUserId] : [])]));
     const found = await db
-      .select({ id: users.id, name: users.name, mocRoles: users.mocRoles })
+      .select({ id: users.id, name: users.name, mocRoles: users.mocRoles, mocFunction: users.mocFunction })
       .from(users)
       .where(and(inArray(users.id, wanted), eq(users.location, moc.location)));
     if (found.length !== wanted.length) {
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         reviewerUserId: r.manual ? null : (r.userId as string),
         // Reviewer akun peran boleh diberi nama orang (diketik Initiator); bila kosong dipakai nama akun.
         reviewerName: r.manual ? (r.name as string) : r.name?.trim() || (nameOf.get(r.userId as string) ?? ""),
-        reviewerJabatan: r.jabatan,
+        reviewerJabatan: r.jabatan || (r.manual ? "" : (byId.get(r.userId as string)?.mocFunction ?? "")),
       }))
     );
     await db

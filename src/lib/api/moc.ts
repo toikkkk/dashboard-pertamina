@@ -214,7 +214,16 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
     uploadedByName: uploaderName ?? "—",
     uploadedAt: fmtTs(e.uploadedAt),
   }));
-  return toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null, names.get(row.createdBy ?? "") ?? null, stateSinceOf(row, historyRows));
+  const result = toRequest(row, reviewRows.map(toReview), historyRows.map(toHistory), evidence, names.get(row.approverUserId ?? "") ?? null, names.get(row.createdBy ?? "") ?? null, stateSinceOf(row, historyRows));
+  // Jabatan kosong pada lembar cetak: pakai fungsi yang tercatat di akun Approver/Reviewer.
+  const funcIds = [row.approverUserId, ...reviewRows.map((r) => r.reviewerUserId)].filter((v): v is string => !!v);
+  if (funcIds.length > 0) {
+    const fns = await db.select({ id: users.id, fn: users.mocFunction }).from(users).where(inArray(users.id, funcIds));
+    const fnOf = new Map(fns.map((f) => [f.id, f.fn]));
+    result.approverJabatan = row.approverUserId ? fnOf.get(row.approverUserId) ?? null : null;
+    result.reviews = result.reviews.map((r) => (!r.reviewerJabatan && r.reviewerUserId ? { ...r, reviewerJabatan: fnOf.get(r.reviewerUserId) ?? "" } : r));
+  }
+  return result;
 }
 
 // Daftar Register MOC. Sengaja ringan: review terisi (dibutuhkan mocActionsFor untuk

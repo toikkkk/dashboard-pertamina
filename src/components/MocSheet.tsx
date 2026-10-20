@@ -407,7 +407,7 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
             <tr><td colSpan={12} className="foot">Keterangan: Reviewer dapat ditambah dengan fungsi-fungsi yang relevan, sesuai dengan MoC yang dilakukan</td></tr>
             <tr><td colSpan={12} className="gray">MoC Approver</td></tr>
             <tr><td colSpan={3} className="ctr"><b>Nama</b></td><td colSpan={3} className="ctr"><b>Jabatan</b></td><td colSpan={3} className="ctr"><b>Tanggal</b></td><td colSpan={3} className="ctr"><b>Tanda Tangan</b></td></tr>
-            <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan ?? ""}</td><td colSpan={3}>{moc.approvedAt ? dmy(moc.approvedAt) : ""}</td><td colSpan={3} /></tr>
+            <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan || moc.approverJabatan || ""}</td><td colSpan={3}>{moc.approvedAt ? dmy(moc.approvedAt) : ""}</td><td colSpan={3} /></tr>
             <ControllerRows />
             <tr><td colSpan={12} className="foot">Selanjutnya: MoC Initiator mengkomunikasikan upaya pengendalian dan rencana implementasi ke MoC Performer</td></tr>
             <tr><td colSpan={12} className="foot">Selanjutnya: MoC Initiator melakukan pemantauan perubahan menggunakan Formulir Pemantauan MoC</td></tr>
@@ -542,7 +542,7 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
           <tr><td colSpan={12} className="band">Tahap Penutupan MoC</td></tr>
           <tr><td colSpan={12} className="gray">MoC Approver</td></tr>
           <tr><td colSpan={3} className="ctr"><b>Nama</b></td><td colSpan={3} className="ctr"><b>Jabatan</b></td><td colSpan={3} className="ctr"><b>Tanggal</b></td><td colSpan={3} className="ctr"><b>Tanda Tangan</b></td></tr>
-          <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan ?? ""}</td><td colSpan={3} /><td colSpan={3} /></tr>
+          <tr style={{ height: 58 }}><td colSpan={3}>{moc.approverName ?? ""}</td><td colSpan={3}>{moc.approverManualJabatan || moc.approverJabatan || ""}</td><td colSpan={3} /><td colSpan={3} /></tr>
           <ControllerRows />
           <tr><td colSpan={12} className="foot">Selanjutnya: MoC Controller melakukan dokumentasi atas penutupan MoC</td></tr>
         </tbody>
