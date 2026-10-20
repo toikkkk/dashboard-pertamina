@@ -149,7 +149,8 @@ export interface MocPlannedReviewer {
   userId: string; // "" = baris belum dipilih (atau manual)
   functionLabel: string;
   jabatan: string;
-  // Reviewer tanpa akun: nama diketik manual. Review-nya dicatat Initiator/Controller atas namanya.
+  // Reviewer tanpa akun (manual): nama diketik, review dicatat Initiator/Controller atas namanya.
+  // Reviewer dari akun peran: `name` = nama orang yang menjabat (opsional), ditampilkan di formulir.
   manual?: boolean;
   name?: string;
 }

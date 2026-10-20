@@ -138,7 +138,7 @@ async function main() {
       location,
       isRegionalAdmin: false,
       mocRoles: ["Approver"],
-      mocFunction: grup === "Terminal" ? "Terminal Manager" : "Manager Fungsi Regional",
+      mocFunction: grup === "Terminal" ? "Terminal Manager" : unitLabel, // fungsi regional tampil di daftar Approver
       kbo,
       oldUsername: oldApv,
     });
@@ -204,6 +204,18 @@ async function main() {
   if (process.env.ACCOUNTS_PLAN_OUT) {
     writeFileSync(process.env.ACCOUNTS_PLAN_OUT, JSON.stringify(plan, null, 2), "utf-8");
     console.log("Rencana lengkap ditulis ke ACCOUNTS_PLAN_OUT.");
+  }
+  // Mode --refresh-functions: hanya memperbarui kolom fungsi MOC (tampil di daftar Approver/Reviewer) pada akun yang
+  // sudah ada, dicocokkan lewat username baru. Tidak menyentuh nama, email, kata sandi, atau status verifikasi.
+  if (process.argv.includes("--refresh-functions")) {
+    let n = 0;
+    for (const p of plan) {
+      if (p.mocRoles.length === 0) continue;
+      const res = await db.update(users).set({ mocFunction: p.mocFunction, updatedAt: new Date() }).where(sql`lower(${users.username}) = ${p.username.toLowerCase()}`).returning({ id: users.id });
+      n += res.length;
+    }
+    console.log(`Fungsi MOC diperbarui: ${n} akun.`);
+    return;
   }
   // Mode --rename: akun sudah ada (dibuat versi pertama); ubah username/nama/email ke aturan penamaan peran dan
   // matikan paksaan ganti sandi. Tidak membuat/menghapus akun, kata sandi tidak disentuh.

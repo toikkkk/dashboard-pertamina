@@ -14,6 +14,7 @@ import SuccessPopup from "@/components/SuccessPopup";
 import MocAttachments from "@/components/MocAttachments";
 import MocImplementationPrep from "@/components/MocImplementationPrep";
 import MocAffectedPanel from "@/components/MocAffectedPanel";
+import MocDeleteSection from "@/components/MocDeleteSection";
 
 const CARD =
   "bg-white border border-[#D8E1E4] rounded-[12px] shadow-[0_2px_6px_rgba(15,23,42,.045)]";
@@ -219,6 +220,8 @@ export default function MocDetailPage({ params }: { params: { id: string } }) {
           </ol>
         </div>
       )}
+
+      <MocDeleteSection moc={moc} />
     </div>
   );
 }

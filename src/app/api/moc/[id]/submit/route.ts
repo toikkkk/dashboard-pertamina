@@ -79,7 +79,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         round,
         functionLabel: r.functionLabel,
         reviewerUserId: r.manual ? null : (r.userId as string),
-        reviewerName: r.manual ? (r.name as string) : nameOf.get(r.userId as string) ?? "",
+        // Reviewer akun peran boleh diberi nama orang (diketik Initiator); bila kosong dipakai nama akun.
+        reviewerName: r.manual ? (r.name as string) : r.name?.trim() || (nameOf.get(r.userId as string) ?? ""),
         reviewerJabatan: r.jabatan,
       }))
     );

@@ -51,6 +51,7 @@ const ACTION_LABEL: Record<string, { label: string; color: string }> = {
   "dokumen.dihapus": { label: "Dokumen ke Sampah", color: "#B45309" },
   "dokumen.dipulihkan": { label: "Dokumen dipulihkan", color: "#15803D" },
   "dokumen.dihapus_permanen": { label: "Dokumen dihapus permanen", color: "#DC2626" },
+  "moc.dihapus": { label: "MOC dihapus", color: "#DC2626" },
 };
 
 const fetcher = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error("gagal"))));

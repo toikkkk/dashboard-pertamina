@@ -420,6 +420,9 @@ export default function MocActionsPanel({
                       <X className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
+                  {!r.manual && r.userId && (
+                    <input className={INPUT} placeholder="Nama orang yang mereview (opsional)" maxLength={200} value={r.name ?? ""} onChange={(e) => setRow(i, { name: e.target.value })} aria-label="Nama orang yang mereview" />
+                  )}
                   {r.manual && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input className={INPUT} placeholder="Fungsi (mis. Maintenance Service)" maxLength={100} value={r.functionLabel} onChange={(e) => setRow(i, { functionLabel: e.target.value })} />
@@ -475,7 +478,7 @@ export default function MocActionsPanel({
                       reviewers: reviewers.map((r) =>
                         r.manual
                           ? { manual: true, name: (r.name ?? "").trim(), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
-                          : { userId: r.userId, functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
+                          : { userId: r.userId, ...((r.name ?? "").trim() ? { name: (r.name ?? "").trim() } : {}), functionLabel: r.functionLabel.trim(), jabatan: r.jabatan.trim() }
                       ),
                       ...(approverMode === "akun"
                         ? { approverUserId: approverId }
