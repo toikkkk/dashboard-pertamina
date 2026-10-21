@@ -16,7 +16,7 @@ const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-body", di
 const ibmPlexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-mono", display: "swap" });
 
 export const metadata = {
-  title: "Portal Dokumen PSI & MOC | Pertamina Regional Jatimbalinus",
+  title: "PSIOneVision | Pertamina Regional Jatimbalinus",
   description: "Sistem manajemen dokumen Process Safety Information & Management of Change untuk Regional Jatimbalinus",
 };
 

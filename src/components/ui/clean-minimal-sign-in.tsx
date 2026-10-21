@@ -286,7 +286,7 @@ function SignIn2Content() {
         <div className={panel(isSignin, "l")} aria-hidden={!isSignin}>
           <div className="w-full max-w-[330px] mx-auto">
             <div className="text-center mb-7">
-              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">PSIOneVision</div>
               <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">{forgot ? "Atur Ulang Sandi" : "Masuk"}</h1>
             </div>
 
@@ -431,7 +431,7 @@ function SignIn2Content() {
         <div className={panel(!isSignin, "r")} aria-hidden={isSignin}>
           <div className="w-full max-w-[330px] mx-auto">
             <div className="text-center mb-6">
-              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+              <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">PSIOneVision</div>
               <h1 className="font-heading text-[32px] font-bold text-[#0F172A] mt-2 leading-tight">Buat Akun</h1>
             </div>
 

@@ -29,7 +29,7 @@ function Verify() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#CAD4DA] px-4">
       <div className="w-full max-w-[400px] bg-white rounded-[14px] border border-[#C5CED3] p-8 text-center shadow-[0_12px_40px_-12px_rgba(15,23,42,.25)]">
-        <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+        <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">PSIOneVision</div>
         {state === "proses" && <p className="mt-6 text-[13.5px] text-[#4b5560]">Memverifikasi email Anda…</p>}
         {state === "ok" && (
           <>

@@ -45,7 +45,7 @@ export default function GantiSandiPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#CAD4DA] px-4">
       <form onSubmit={submit} className="w-full max-w-[420px] bg-white rounded-[14px] border border-[#C5CED3] p-8 shadow-[0_12px_40px_-12px_rgba(15,23,42,.25)]">
-        <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">Portal PSI &amp; MOC</div>
+        <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">PSIOneVision</div>
         <h1 className="font-heading text-[20px] font-bold text-[#0F172A] mt-2">Ganti kata sandi Anda</h1>
         <p className="text-[13px] text-[#4b5560] mt-1">Halo {activeUser.name}. Ganti kata sandi awal sebelum memakai portal.</p>
 

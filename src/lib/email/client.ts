@@ -17,4 +17,4 @@ export function getResendClient(): Resend {
 // deliver to the email address the Resend account itself was signed up with. Once a
 // real sending domain is verified (see .env.example), switch RESEND_FROM_EMAIL to
 // something like "no-reply@<verified-domain>" — no code change needed beyond the env var.
-export const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Portal PSI & MOC <onboarding@resend.dev>";
+export const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "PSIOneVision <onboarding@resend.dev>";

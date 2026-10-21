@@ -7,7 +7,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { decryptSecret } from "@/lib/auth/secretBox";
 import { hashRecoveryCode, looksLikeRecoveryCode, verifyTotp } from "@/lib/auth/totp";
 
-export const MFA_ISSUER = "Portal PSI & MOC";
+export const MFA_ISSUER = "PSIOneVision";
 
 /** "totp" / "recovery" bila kode benar (dan langsung ditandai terpakai); null bila salah atau sudah dipakai. */
 export async function consumeMfaCode(user: SessionUser, rawCode: string): Promise<"totp" | "recovery" | null> {

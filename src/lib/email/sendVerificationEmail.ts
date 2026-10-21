@@ -15,7 +15,7 @@ function buildHtml({ name, verifyUrl, expiresInHours }: Args): string {
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#CAD4DA;padding:32px 16px;">
   <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #C5CED3;border-radius:4px;overflow:hidden;">
     <div style="background:#0F3B59;padding:20px 28px;">
-      <p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Portal PSI &amp; MOC</p>
+      <p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">PSIOneVision</p>
       <p style="margin:2px 0 0;color:#BAE0F5;font-size:11px;">Regional Jatimbalinus</p>
     </div>
     <div style="padding:28px;">
@@ -40,6 +40,6 @@ function buildHtml({ name, verifyUrl, expiresInHours }: Args): string {
 
 export async function sendVerificationEmail(args: Args): Promise<void> {
   const resend = getResendClient();
-  const { error } = await resend.emails.send({ from: RESEND_FROM_EMAIL, to: args.to, subject: "Verifikasi email Portal PSI & MOC", html: buildHtml(args) });
+  const { error } = await resend.emails.send({ from: RESEND_FROM_EMAIL, to: args.to, subject: "Verifikasi email PSIOneVision", html: buildHtml(args) });
   if (error) throw new Error(error.message);
 }

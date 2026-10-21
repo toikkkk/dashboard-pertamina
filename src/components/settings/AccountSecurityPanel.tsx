@@ -184,7 +184,7 @@ export default function AccountSecurityPanel() {
   const copyCodes = () => recovery && navigator.clipboard?.writeText(recovery.join("\n"));
   const downloadCodes = () => {
     if (!recovery) return;
-    const blob = new Blob([`Kode pemulihan Portal PSI & MOC (${status?.email ?? ""})\nSetiap kode hanya berlaku sekali.\n\n${recovery.join("\n")}\n`], { type: "text/plain" });
+    const blob = new Blob([`Kode pemulihan PSIOneVision (${status?.email ?? ""})\nSetiap kode hanya berlaku sekali.\n\n${recovery.join("\n")}\n`], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "kode-pemulihan-psi-moc.txt";
