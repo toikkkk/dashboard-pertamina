@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import { CheckCircle2, Copy, Download, KeyRound, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
-import { PASSWORD_REQUIREMENTS, isPlaceholderEmail } from "@/lib/domain/rules";
+import { isPlaceholderEmail } from "@/lib/domain/rules";
 
 interface Status {
   mfaEnabled: boolean;
@@ -78,28 +78,28 @@ function ChangeEmailCard({ currentEmail, placeholder, onChanged }: { currentEmai
   );
 }
 
-// Kartu opsional: ganti kata sandi sendiri (tidak dipaksa).
-function ChangePasswordCard({ locked }: { locked: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [cur, setCur] = useState("");
-  const [next, setNext] = useState("");
-  const [again, setAgain] = useState("");
+// Kartu opsional: ganti kata sandi sendiri, SELALU lewat tautan yang dikirim ke email akun (alur atur ulang kata
+// sandi), bukan formulir langsung, supaya sesi yang dicuri saja tidak cukup untuk mengubah kata sandi.
+function ChangePasswordCard({ locked, email }: { locked: boolean; email?: string }) {
+  const [sent, setSent] = useState(false);
+  const [wait, setWait] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const met = PASSWORD_REQUIREMENTS.map((r) => ({ label: r.label, ok: r.met(next) }));
-  const ready = !!cur && met.every((m) => m.ok) && next === again && next !== cur;
-  const submit = async () => {
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+  const send = async () => {
+    if (!email) return;
     setBusy(true);
     setMsg(null);
     try {
-      await post("/api/auth/change-password", { currentPassword: cur, newPassword: next });
-      setMsg({ ok: true, text: "Kata sandi diganti." });
-      setOpen(false);
-      setCur("");
-      setNext("");
-      setAgain("");
+      await post("/api/auth/forgot-password", { email });
+      setSent(true);
+      setWait(60);
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : "Gagal." });
+      setMsg(e instanceof Error ? e.message : "Gagal mengirim tautan.");
     } finally {
       setBusy(false);
     }
@@ -110,32 +110,27 @@ function ChangePasswordCard({ locked }: { locked: boolean }) {
         <KeyRound className="w-5 h-5 text-[#0F3B59] mt-0.5" strokeWidth={1.8} />
         <div className="flex-1 min-w-0">
           <h2 className="text-[14px] font-bold text-[#0F172A]">Ganti kata sandi</h2>
-          <p className="text-[12.5px] text-[#6b6e72]">{locked ? "Ganti email bawaan dengan email aktif Anda dulu, baru kata sandi bisa diganti." : "Disarankan bila akun ini masih memakai kata sandi awal."}</p>
+          <p className="text-[12.5px] text-[#6b6e72]">
+            {locked ? "Ganti email bawaan dengan email aktif Anda dulu, baru kata sandi bisa diganti." : "Tautan untuk membuat kata sandi baru dikirim ke email akun Anda."}
+          </p>
         </div>
         {locked ? (
           <span className="text-[12px] font-bold text-[#B45309] whitespace-nowrap">Ganti email dulu</span>
         ) : (
-          !open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>
+          !sent && <button type="button" onClick={send} disabled={busy || !email} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline disabled:opacity-50 whitespace-nowrap">{busy ? "Mengirim…" : "Kirim tautan"}</button>
         )}
       </div>
-      {open && !locked && (
-        <div className="mt-3 flex flex-col gap-2.5">
-          <input type="password" autoComplete="current-password" className={input} placeholder="Kata sandi saat ini" value={cur} onChange={(e) => setCur(e.target.value)} aria-label="Kata sandi saat ini" />
-          <input type="password" autoComplete="new-password" className={input} placeholder="Kata sandi baru" value={next} onChange={(e) => setNext(e.target.value)} aria-label="Kata sandi baru" />
-          <ul className="flex flex-col gap-0.5">
-            {met.map((m) => (
-              <li key={m.label} className="text-[12px] font-semibold" style={{ color: m.ok ? "#15803D" : "#6b6e72" }}>{m.ok ? "✓" : "○"} {m.label}</li>
-            ))}
-          </ul>
-          <input type="password" autoComplete="new-password" className={input} placeholder="Ulangi kata sandi baru" value={again} onChange={(e) => setAgain(e.target.value)} aria-label="Ulangi kata sandi baru" />
-          {again && next !== again && <p className="text-[12px] text-[#DC2626]">Kata sandi tidak sama.</p>}
-          <div className="flex items-center gap-3">
-            <button type="button" className={primary} disabled={busy || !ready} onClick={submit}>{busy ? "Menyimpan…" : "Simpan kata sandi"}</button>
-            <button type="button" className="text-[13px] font-bold text-[#0F172A] hover:underline" onClick={() => { setOpen(false); setMsg(null); }}>Batal</button>
+      {sent && !locked && (
+        <div className="mt-3 flex flex-col gap-2">
+          <p role="status" className="text-[12.5px] font-semibold text-[#15663A]">Tautan dikirim ke {email}. Buka email Anda dan ikuti tautannya; berlaku 30 menit. Cek juga folder Spam.</p>
+          <div>
+            <button type="button" onClick={send} disabled={busy || wait > 0} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline disabled:opacity-50 disabled:no-underline">
+              {busy ? "Mengirim…" : wait > 0 ? `Kirim ulang tautan (${wait} dtk)` : "Kirim ulang tautan"}
+            </button>
           </div>
         </div>
       )}
-      {msg && <p role={msg.ok ? "status" : "alert"} className="mt-2 text-[12px] font-semibold" style={{ color: msg.ok ? "#15663A" : "#DC2626" }}>{msg.text}</p>}
+      {msg && <p role="alert" className="mt-2 text-[12px] font-semibold text-[#DC2626]">{msg}</p>}
     </section>
   );
 }
@@ -219,7 +214,7 @@ export default function AccountSecurityPanel() {
       </section>
 
       <ChangeEmailCard currentEmail={status?.email} placeholder={placeholder} onChanged={() => { setResent(null); mutate(); }} />
-      <ChangePasswordCard locked={placeholder} />
+      <ChangePasswordCard locked={placeholder} email={status?.email} />
 
       <section className={card}>
         <div className="flex items-start gap-3">

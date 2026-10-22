@@ -321,17 +321,17 @@ function SignIn2Content() {
             )}
             {forgot ? (
               forgotSent ? (
-                <div className="flex flex-col items-center text-center gap-2.5 py-4 animate-fadeInUp">
-                  <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
-                  <p className="text-[13px] font-bold text-[#0F172A]">Tautan terkirim</p>
-                  <p className="text-[12px] text-[#4b5560] leading-relaxed">
-                    Tautan atur ulang kata sandi sudah dikirim ke <strong>{forgotEmail}</strong>. Berlaku 30 menit. Bila belum masuk, cek juga folder Spam.
-                  </p>
-                  {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{forgotError}</div>}
-                  <button type="button" onClick={handleResend} disabled={sendingForgot || resendIn > 0} className="px-4 py-2 rounded-full border border-[#0F3B59] text-[12.5px] font-bold text-[#0F3B59] hover:bg-[#0F3B59] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#0F3B59] transition-colors">
+                <div className="flex flex-col items-center text-center animate-fadeInUp">
+                  <CheckCircle2 className="w-11 h-11 text-[#15803D] animate-popIn" strokeWidth={1.6} />
+                  <p className="font-heading text-[18px] font-bold text-[#0F172A] mt-3">Tautan terkirim</p>
+                  <p className="text-[12.5px] text-[#4b5560] mt-1.5">Kami mengirim tautan atur ulang kata sandi ke</p>
+                  <div className="mt-2 max-w-full px-3.5 py-1.5 rounded-full bg-[#E2E8EB] text-[13px] font-bold text-[#0F172A] break-all">{forgotEmail}</div>
+                  <p className="text-[12px] text-[#6b6e72] mt-3 leading-relaxed">Berlaku 30 menit. Belum masuk? Cek folder Spam.</p>
+                  {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium mt-2 animate-fadeIn">{forgotError}</div>}
+                  <button type="button" onClick={backToSignIn} className={`${primaryBtn} mt-5`}>KEMBALI KE MASUK</button>
+                  <button type="button" onClick={handleResend} disabled={sendingForgot || resendIn > 0} className="mt-3 text-[12.5px] font-bold text-[#0F3B59] hover:underline disabled:opacity-50 disabled:no-underline">
                     {sendingForgot ? "Mengirim…" : resendIn > 0 ? `Kirim ulang tautan (${resendIn} dtk)` : "Kirim ulang tautan"}
                   </button>
-                  <button type="button" onClick={backToSignIn} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline mt-1">Kembali ke Masuk</button>
                 </div>
               ) : (
                 <>

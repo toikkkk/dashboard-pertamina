@@ -1,4 +1,4 @@
-// Ganti kata sandi akun sendiri (wajib untuk akun bersandi awal). Memerlukan sandi lama; sandi baru harus memenuhi
+// Ganti kata sandi langsung: hanya untuk akun yang WAJIB mengganti sandi awalnya (selain itu lewat tautan email). Memerlukan sandi lama; sandi baru harus memenuhi
 // kebijakan dan berbeda dari yang lama. Sesi lain milik akun ini dicabut, sesi yang sedang dipakai tetap hidup.
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -19,6 +19,11 @@ export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
     const user = await requireSessionUser({ allowMustChange: true });
     const { currentPassword, newPassword } = bodySchema.parse(await req.json());
+
+    // Dari Pengaturan, ganti kata sandi hanya lewat tautan yang dikirim ke email (alur atur ulang). Jalur langsung ini
+    // tinggal untuk akun yang diwajibkan mengganti sandi awalnya (halaman /ganti-sandi), supaya sesi yang dicuri
+    // tidak cukup untuk mengubah kata sandi.
+    if (!user.mustChangePassword) throw new HttpError(403, "Ganti kata sandi lewat tautan yang dikirim ke email Anda (Pengaturan > Keamanan Akun).");
 
     if (isPlaceholderEmail(user.email)) throw new HttpError(400, "Ganti email bawaan dengan email aktif Anda dulu di Pengaturan > Keamanan Akun, baru kata sandi bisa diganti.");
     if (!(await verifyPassword(currentPassword, user.passwordHash))) throw new HttpError(400, "Kata sandi saat ini salah.");
