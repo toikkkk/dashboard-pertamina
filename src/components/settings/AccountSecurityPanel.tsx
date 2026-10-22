@@ -15,6 +15,7 @@ interface Status {
   mfaAvailable: boolean;
   emailVerified: boolean;
   email: string;
+  pendingEmail?: string | null;
 }
 
 async function post(url: string, body?: unknown) {
@@ -29,7 +30,7 @@ const input = "w-full min-h-[40px] px-3 text-[13px] border border-[#C5CED3] roun
 const primary = "px-5 py-2 text-[13px] font-bold rounded-full bg-[#0F3B59] hover:bg-[#0B2C43] text-white disabled:opacity-50 transition-colors";
 
 // Kartu opsional: ganti email (mis. ke Gmail agar bisa menerima verifikasi dan atur ulang sandi).
-function ChangeEmailCard({ currentEmail, placeholder, onChanged }: { currentEmail?: string; placeholder: boolean; onChanged: () => void }) {
+function ChangeEmailCard({ currentEmail, pendingEmail, placeholder, onChanged }: { currentEmail?: string; pendingEmail?: string | null; placeholder: boolean; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
   // Email bawaan: formulir langsung terbuka supaya pemilik akun tidak perlu mencarinya.
   useEffect(() => { if (placeholder) setOpen(true); }, [placeholder]);
@@ -59,7 +60,7 @@ function ChangeEmailCard({ currentEmail, placeholder, onChanged }: { currentEmai
         <Mail className="w-5 h-5 text-[#0F3B59] mt-0.5" strokeWidth={1.8} />
         <div className="flex-1 min-w-0">
           <h2 className="text-[14px] font-bold text-[#0F172A]">Ganti email</h2>
-          <p className="text-[12.5px] text-[#6b6e72]">Pakai email aktif (mis. Gmail) supaya verifikasi dan atur ulang kata sandi bisa sampai ke Anda.</p>
+          <p className="text-[12.5px] text-[#6b6e72]">Pakai email aktif (mis. Gmail). Tautan konfirmasi dikirim ke email baru; email akun berganti setelah tautannya dibuka.</p>
         </div>
         {!open && <button type="button" onClick={() => setOpen(true)} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">Ganti</button>}
       </div>
@@ -68,11 +69,12 @@ function ChangeEmailCard({ currentEmail, placeholder, onChanged }: { currentEmai
           <input type="email" autoComplete="email" className={input} placeholder={currentEmail ? `Email baru (saat ini ${currentEmail})` : "Email baru"} value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email baru" />
           <input type="password" autoComplete="current-password" className={input} placeholder="Kata sandi saat ini" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Kata sandi saat ini" />
           <div className="flex items-center gap-3">
-            <button type="button" className={primary} disabled={busy || !email || !pw} onClick={submit}>{busy ? "Menyimpan…" : "Simpan email"}</button>
+            <button type="button" className={primary} disabled={busy || !email || !pw} onClick={submit}>{busy ? "Mengirim…" : "Kirim tautan konfirmasi"}</button>
             <button type="button" className="text-[13px] font-bold text-[#0F172A] hover:underline" onClick={() => { setOpen(false); setMsg(null); }}>Batal</button>
           </div>
         </div>
       )}
+      {pendingEmail && !msg && <p role="status" className="mt-2 text-[12px] font-semibold text-[#92400E]">Menunggu konfirmasi: tautan sudah dikirim ke {pendingEmail}. Buka email itu dan ikuti tautannya; email akun berganti setelah itu.</p>}
       {msg && <p role={msg.ok ? "status" : "alert"} className="mt-2 text-[12px] font-semibold" style={{ color: msg.ok ? "#15663A" : "#DC2626" }}>{msg.text}</p>}
     </section>
   );
@@ -213,7 +215,7 @@ export default function AccountSecurityPanel() {
         {resent && <p className="mt-2 text-[12px] text-[#15663A]">{resent}</p>}
       </section>
 
-      <ChangeEmailCard currentEmail={status?.email} placeholder={placeholder} onChanged={() => { setResent(null); mutate(); }} />
+      <ChangeEmailCard currentEmail={status?.email} pendingEmail={status?.pendingEmail} placeholder={placeholder} onChanged={() => { setResent(null); mutate(); }} />
       <ChangePasswordCard locked={placeholder} email={status?.email} />
 
       <section className={card}>

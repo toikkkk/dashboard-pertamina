@@ -4,6 +4,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { withErrorHandling } from "@/lib/api/respond";
 import { secretBoxConfigured } from "@/lib/auth/secretBox";
 import { isPlaceholderEmail } from "@/lib/domain/rules";
+import { pendingEmailOf } from "@/lib/auth/emailVerification";
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -15,6 +16,7 @@ export async function GET() {
       mfaAvailable: secretBoxConfigured(),
       emailVerified: !!user.emailVerifiedAt && !isPlaceholderEmail(user.email),
       email: user.email,
+      pendingEmail: await pendingEmailOf(user.id),
     });
   });
 }

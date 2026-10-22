@@ -122,6 +122,8 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
+  // Terisi bila token ini untuk MENGGANTI email: email akun baru berubah ke nilai ini setelah tautan dibuka.
+  newEmail: text("new_email"),
 });
 
 // Tantangan MFA: dibuat setelah sandi benar tetapi SEBELUM sesi ada. Token acak jangka pendek (hanya hash
