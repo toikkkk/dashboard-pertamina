@@ -18,7 +18,7 @@ import { PSI_CHAPTERS, psiSubDocumentByName } from "@/lib/domain/psiSubChapters"
 // persis dengan CategoryTileCard di Direktori (border+radius+aksen kiri berwarna),
 // supaya tampilan popup ini konsisten dengan bahasa visual yang sudah ada, bukan
 // bahasa baru lagi.
-function DashboardTile({ href, accentColor, title, children }: { href: string; accentColor: string; title: string; children: React.ReactNode }) {
+export function DashboardTile({ href, accentColor, title, children }: { href: string; accentColor: string; title: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}

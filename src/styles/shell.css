@@ -942,3 +942,12 @@
   .hsse-shell .mdb-pipeline { padding-left: 14px; padding-right: 14px; }
   .hsse-shell .mdb-stage { min-width: 96px; }
 }
+
+/* Elemen dashboard MOC yang bisa diklik menuju Register terfilter */
+.hsse-shell a.mdb-link { text-decoration: none; color: inherit; cursor: pointer; transition: box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.hsse-shell a.mdb-stat.mdb-link:hover { box-shadow: 0 4px 12px -6px rgba(15,23,42,.3); transform: translateY(-1px); }
+.hsse-shell a.mdb-stage.mdb-link:hover { background: #F3F6F8; border-radius: 8px; }
+.hsse-shell a.mdb-bar-row.mdb-link:hover, .hsse-shell a.mdb-loc-row.mdb-link:hover { background: #F3F6F8; border-radius: 8px; }
+.hsse-shell a.mdb-chip.mdb-link:hover { background: #F3F6F8; }
+.hsse-shell a.mdb-link:focus-visible { outline: 2px solid #0F3B59; outline-offset: 2px; }
+.hsse-shell a.mdb-bar-row, .hsse-shell a.mdb-loc-row { margin: 0 -6px; padding: 3px 6px; }

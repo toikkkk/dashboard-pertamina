@@ -315,7 +315,8 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
     return { location, total: own.length, active: own.length - done, closed: done };
   });
 
-  const recent = [...mocs].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6);
+  // Semua MOC terurut terbaru; panel dashboard menampilkan beberapa teratas dan popup "Lihat semua" menampilkan semuanya.
+  const recent = [...mocs].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   return {
     total: mocs.length,

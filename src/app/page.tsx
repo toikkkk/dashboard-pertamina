@@ -145,7 +145,12 @@ function Dashboard() {
             locationFilter={effectiveLocationFilter}
           />
         ) : (
-          <MocDashboardManus insights={moc} nowMs={now} showLocations={effectiveLocationFilter === "ALL"} />
+          <MocDashboardManus
+            insights={moc}
+            nowMs={now}
+            showLocations={effectiveLocationFilter === "ALL"}
+            lokasi={activeUser.isRegionalAdmin ? (effectiveLocationFilter === "ALL" ? null : effectiveLocationFilter) : effectiveLocationFilter === "ALL" ? "ALL" : null}
+          />
         )}
       </div>
       {view === "moc" && mocError && (

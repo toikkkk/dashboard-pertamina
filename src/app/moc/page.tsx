@@ -11,6 +11,10 @@ import {
   MOC_ACTION_LABEL,
   MOC_INITIATOR_ROLE,
   MOC_REGISTER_STATUSES,
+  MOC_RISK_LEVELS,
+  MOC_RISK_LEVEL_LABEL,
+  MOC_STAGES,
+  mocStageIndex,
   mocActionsFor,
   mocPendingActions,
   mocRolesOf,
@@ -30,6 +34,12 @@ function fmtDate(ts?: string | null) {
   const d = new Date(ts.replace(" ", "T"));
   return isNaN(d.getTime()) ? ts : d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+// Filter dari klik di Dashboard MOC (kelompok / tahap / sifat / tingkat risiko). Definisi sama dengan mocInsights supaya
+// jumlah di dashboard = jumlah baris di sini.
+const isClosed = (m: MocRequest) => m.validationState === "registered" && m.registerStatus === "Closed";
+const KELOMPOK_LABEL: Record<string, string> = { berjalan: "Sedang berjalan", ditunda: "Ditunda / dihentikan", selesai: "Selesai" };
+const NEW_FILTERS_CLEAR = { kelompok: null, tahap: null, sifat: null, risiko: null };
 
 const clip = (s: string, n = 90) => (s.length > n ? `${s.slice(0, n).trimEnd()}…` : s || "—");
 
@@ -64,7 +74,7 @@ function RegisterSummary({
   const byStatus = MOC_REGISTER_STATUSES.map((s) => ({ s, n: mocs.filter((m) => m.registerStatus === s).length }));
   const max = Math.max(1, ...byStatus.map((x) => x.n));
   const noFilter = status === "ALL" && !mineOnly && !perhatian;
-  const clear = { status: null, perlu: null, perhatian: null };
+  const clear = { status: null, perlu: null, perhatian: null, ...NEW_FILTERS_CLEAR };
   const attentionRows: { label: string; n: number; color: string; active: boolean; patch: Record<string, string | null> }[] = [
     { label: "Perlu tindakan Anda", n: needCount, color: "#B45309", active: mineOnly, patch: { ...clear, perlu: "1" } },
     { label: "Lewat batas waktu", n: attention.sla, color: "#DC2626", active: perhatian === "sla", patch: { ...clear, perhatian: "sla" } },
@@ -141,6 +151,23 @@ function MocRegisterContent() {
   const mineOnly = sp.get("perlu") === "1";
   const perhatianRaw = sp.get("perhatian");
   const perhatian = (["sla", "temp", "waiting"] as const).find((k) => k === perhatianRaw) ?? null;
+  const kelompokRaw = sp.get("kelompok");
+  const kelompok = kelompokRaw && KELOMPOK_LABEL[kelompokRaw] ? kelompokRaw : null;
+  const tahapN = Number(sp.get("tahap"));
+  const tahap = Number.isInteger(tahapN) && tahapN >= 1 && tahapN <= MOC_STAGES.length ? tahapN : null;
+  const sifatRaw = sp.get("sifat");
+  const sifat = (["Permanen", "Sementara", "Darurat"] as const).find((x) => x === sifatRaw) ?? null;
+  const risikoRaw = sp.get("risiko");
+  const risiko = risikoRaw === "belum" ? "belum" : (MOC_RISK_LEVELS as readonly string[]).includes(risikoRaw ?? "") ? risikoRaw : null;
+  const filterLabel = kelompok
+    ? KELOMPOK_LABEL[kelompok]
+    : tahap
+      ? `Tahap ${tahap}: ${MOC_STAGES[tahap - 1]}`
+      : sifat
+        ? `Sifat perubahan: ${sifat}`
+        : risiko
+          ? `Tingkat risiko: ${risiko === "belum" ? "belum dinilai" : MOC_RISK_LEVEL_LABEL[risiko as keyof typeof MOC_RISK_LEVEL_LABEL]}`
+          : null;
   const lokasiParam = sp.get("lokasi");
   const setParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(sp.toString());
@@ -176,6 +203,15 @@ function MocRegisterContent() {
   const rows: Row[] = scopedMocs
     .filter((m) => status === "ALL" || m.registerStatus === status)
     .filter((m) => !perhatian || attentionIds[perhatian].has(m.id))
+    .filter((m) => {
+      if (kelompok === "berjalan") return !isClosed(m) && m.validationState !== "halted";
+      if (kelompok === "ditunda") return !isClosed(m) && m.validationState === "halted";
+      if (kelompok === "selesai") return isClosed(m);
+      return true;
+    })
+    .filter((m) => !tahap || (isClosed(m) ? MOC_STAGES.length - 1 : mocStageIndex(m)) === tahap - 1)
+    .filter((m) => !sifat || (!isClosed(m) && m.sifatPerubahan === sifat))
+    .filter((m) => !risiko || (!isClosed(m) && (risiko === "belum" ? !m.riskLevel : m.riskLevel === risiko)))
     .filter((m) => {
       const q = search.trim().toLowerCase();
       return !q || m.judul.toLowerCase().includes(q) || (m.mocNumber ?? "").toLowerCase().includes(q);
@@ -263,6 +299,16 @@ function MocRegisterContent() {
         setParams={setParams}
       />
 
+      {filterLabel && (
+        <div className="flex items-center gap-2.5 mb-3 flex-wrap" role="status">
+          <span className="text-[12.5px] font-semibold text-[#0F172A]">Menampilkan:</span>
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-[#E2E8EB] text-[12.5px] font-bold text-[#0F3B59]">
+            {filterLabel}
+            <button type="button" aria-label="Hapus filter" onClick={() => setParams(NEW_FILTERS_CLEAR)} className="w-5 h-5 rounded-full hover:bg-[#0F3B59] hover:text-white text-[13px] leading-none">×</button>
+          </span>
+        </div>
+      )}
+
       <div className="flex gap-2.5 mb-4 flex-wrap items-center">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-3.5 h-3.5 text-[#9a9da0] absolute left-[11px] top-1/2 -translate-y-1/2" strokeWidth={1.8} />
@@ -278,7 +324,7 @@ function MocRegisterContent() {
           minWidth={180}
           value={status}
           options={[{ value: "ALL", label: "Semua Status" }, ...MOC_REGISTER_STATUSES.map((st) => ({ value: st, label: st }))]}
-          onChange={(v) => setParams({ status: v === "ALL" ? null : v, perhatian: null })}
+          onChange={(v) => setParams({ status: v === "ALL" ? null : v, perhatian: null, ...NEW_FILTERS_CLEAR })}
         />
         {!isAdmin && !!activeUser.location && (
           <MenuSelect
@@ -302,7 +348,7 @@ function MocRegisterContent() {
           />
         )}
         <label className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0F172A] cursor-pointer">
-          <input type="checkbox" checked={mineOnly} onChange={(e) => setParams({ perlu: e.target.checked ? "1" : null, perhatian: null })} />
+          <input type="checkbox" checked={mineOnly} onChange={(e) => setParams({ perlu: e.target.checked ? "1" : null, perhatian: null, ...NEW_FILTERS_CLEAR })} />
           Hanya yang perlu tindakan saya
         </label>
       </div>
