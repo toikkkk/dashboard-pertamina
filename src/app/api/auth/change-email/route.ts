@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { newEmail, password } = bodySchema.parse(await req.json());
 
     if (!(await verifyPassword(password, user.passwordHash))) throw new HttpError(400, "Kata sandi salah.");
-    if (newEmail === user.email.toLowerCase()) throw new HttpError(400, "Itu sudah email akun Anda.");
+    if (newEmail === user.email.toLowerCase()) throw new HttpError(400, "Email tersebut sama dengan email akun Anda saat ini. Gunakan email yang berbeda.");
     if (isPlaceholderEmail(newEmail)) throw new HttpError(400, "Pakai email aktif yang bisa menerima pesan.");
     const [taken] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${newEmail}`).limit(1);
     if (taken) throw new HttpError(409, "Email itu sudah dipakai akun lain.");
