@@ -82,7 +82,7 @@ function Dashboard() {
         ? { text: "belum ada dokumen PSI", tone: "plain" }
         : { text: "semua dokumen PSI masih berlaku", tone: "good" }
       : moc.active > 0
-        ? { text: `${moc.active} MOC sedang berjalan`, tone: "plain" }
+        ? { text: `${moc.running} MOC sedang berjalan`, tone: "plain" }
         : { text: "belum ada MOC berjalan", tone: "plain" };
 
   return (

@@ -26,31 +26,47 @@ const fmtWib = (s: string) => {
   return isNaN(d.getTime()) ? s : d.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 };
 
-// ------------------------------------------------------------------ tahap
+// ------------------------------------------------------------------ ringkasan + tahap
 
-function StageRail({ stages, active, closed }: { stages: Insights["stageCounts"]; active: number; closed: number }) {
+function StatTile({ label, value, tone, hint }: { label: string; value: number; tone: "biru" | "amber" | "merah" | "ungu" | "hijau"; hint: string }) {
+  return (
+    <div className={`mdb-stat mdb-${tone}${value === 0 ? " mdb-zero" : ""}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+      <small>{hint}</small>
+    </div>
+  );
+}
+
+function StageRail({ insights }: { insights: Insights }) {
+  const { stageCounts: stages, active, closed, running, halted, mineCount, slaCount } = insights;
   const total = active + closed;
   const max = Math.max(...stages.map((s) => s.count), 1);
+  const last = stages.length - 1;
   return (
-    <SectionCard title="Sebaran tahap MOC" action={<div className="stage-total"><strong>{total}</strong><span>total MOC</span></div>} className="span-12" state={total > 0 ? "ready" : "empty"} emptyLabel="MOC">
-      <div className="moc-overview">
-        <div className="moc-total"><span>Sedang berjalan</span><strong>{active}</strong></div>
-        <div className="moc-total moc-total-complete"><span>Selesai</span><strong>{closed}</strong><small className="complete-note">tercatat</small></div>
-        <div className="stage-rail">
-          {stages.map((stage, index) => (
-            <div className="stage-column" key={stage.label}>
-              <div className="stage-count">{stage.count}</div>
-              <div className="stage-track">
-                <span
-                  style={{ height: `${stage.count === 0 ? 4 : Math.max(12, (stage.count / max) * 100)}%` }}
-                  className={stage.count === 0 ? "stage-empty" : index > 4 ? "stage-fill stage-fill-light" : "stage-fill"}
-                />
+    <SectionCard title="Ringkasan MOC" action={<div className="stage-total"><strong>{total}</strong><span>total MOC</span></div>} className="span-12" state={total > 0 ? "ready" : "empty"} emptyLabel="MOC">
+      <div className="mdb-stats">
+        <StatTile label="Sedang berjalan" value={running} tone="biru" hint="sedang diproses" />
+        <StatTile label="Menunggu Anda" value={mineCount} tone="amber" hint="perlu tindakan Anda" />
+        <StatTile label="Lewat batas waktu" value={slaCount} tone="merah" hint="melebihi batas hari kerja" />
+        <StatTile label="Ditunda / dihentikan" value={halted} tone="ungu" hint="menunggu dilanjutkan" />
+        <StatTile label="Selesai" value={closed} tone="hijau" hint="sudah ditutup" />
+      </div>
+      <div className="mdb-pipeline-head">Posisi MOC per tahap</div>
+      <div className="mdb-pipeline" role="list">
+        {stages.map((stage, index) => {
+          const h = stage.count === 0 ? 0 : Math.max(14, (stage.count / max) * 100);
+          return (
+            <div className="mdb-stage" role="listitem" key={stage.label} title={`${stage.count} MOC di tahap ${stage.label}`}>
+              <div className={`mdb-stage-count${stage.count === 0 ? " mdb-zero" : ""}`}>{stage.count}</div>
+              <div className="mdb-stage-track">
+                <span className={index === last ? "mdb-fill-done" : "mdb-fill"} style={{ height: `${h}%` }} />
               </div>
-              <span className="stage-label">{stage.label}</span>
-              <span className="stage-number">0{index + 1}</span>
+              <div className="mdb-stage-label">{stage.label}</div>
+              <div className="mdb-stage-no">Tahap {index + 1}</div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </SectionCard>
   );
@@ -58,23 +74,33 @@ function StageRail({ stages, active, closed }: { stages: Insights["stageCounts"]
 
 // ------------------------------------------------------------------ perlu perhatian
 
+const KIND_COLOR: Record<MocAttentionKind, string> = { mine: "#B45309", sla: "#DC2626", temp: "#92400E", waiting: "#6D28D9" };
+
 function AttentionList({ items, nowMs }: { items: Insights["attention"]; nowMs: number }) {
   const shown = items.slice(0, 7);
+  const counts = (["mine", "sla", "temp", "waiting"] as MocAttentionKind[]).map((k) => ({ k, n: items.filter((i) => i.kind === k).length })).filter((c) => c.n > 0);
   return (
     <SectionCard title="Perlu perhatian" action={<span className="attention-count"><span>{items.length}</span> item{items.length > shown.length && <> · <Link href={items.some((i) => i.kind === "mine") ? "/moc?perlu=1" : "/moc"} className="card-action">Lihat semua</Link></>}</span>} className="span-7" state={shown.length > 0 ? "ready" : "empty"} emptyLabel="MOC yang perlu perhatian">
-      <div className="attention-list">
-        {shown.map(({ moc, kind, detail }, index) => {
+      <div className="mdb-attn-chips">
+        {counts.map(({ k, n }) => (
+          <span key={k} className="mdb-chip" style={{ color: KIND_COLOR[k], borderColor: KIND_COLOR[k] }}><b>{n}</b> {KIND_LABEL[k]}</span>
+        ))}
+      </div>
+      <div className="mdb-attn-list">
+        {shown.map(({ moc, kind, detail }) => {
           const since = moc.stateSince ? new Date(moc.stateSince).getTime() : 0;
           const days = since > 0 ? workingDaysBetween(since, nowMs) : 0;
           return (
-            <Link className={`attention-row attention-${kind}`} key={moc.id + kind} href={`/moc/${moc.id}`}>
-              <div className="attention-index">0{index + 1}</div>
-              <StatusDot severity={KIND_SEVERITY[kind]} className="attention-dot" />
-              <div className="row-main"><strong>{moc.judul || "(tanpa judul)"}</strong><span><span className="mono-number">{moc.mocNumber ?? "Belum bernomor"}</span> <i /> {moc.location}</span></div>
-              <div className="attention-reason"><span>{KIND_LABEL[kind]}</span><small>{detail}</small></div>
-              <div className="attention-duration" style={{ color: KIND_SEVERITY[kind] === "kritis" ? "#DC2626" : KIND_SEVERITY[kind] === "revisi" ? "#6D28D9" : "#B45309" }}>
-                <Timer className="h-3.5 w-3.5" /> {days <= 0 ? "hari ini" : `${days} hari`}
+            <Link className="mdb-attn-row" key={moc.id + kind} href={`/moc/${moc.id}`} style={{ borderLeftColor: KIND_COLOR[kind] }}>
+              <div className="mdb-attn-main">
+                <strong>{moc.judul || "(tanpa judul)"}</strong>
+                <span><span className="mono-number">{moc.mocNumber ?? "Belum bernomor"}</span> · {moc.location}</span>
               </div>
+              <div className="mdb-attn-why">
+                <b style={{ color: KIND_COLOR[kind] }}>{KIND_LABEL[kind]}</b>
+                <span>{detail}</span>
+              </div>
+              <div className="mdb-attn-days">{days <= 0 ? "baru hari ini" : <>menunggu <b>{days}</b> hari</>}</div>
             </Link>
           );
         })}
@@ -101,61 +127,56 @@ function RecentMocActivity({ items }: { items: MocRequest[] }) {
 
 // ------------------------------------------------------------------ baris bawah
 
-const DONUT_COLOR = ["#0F3B59", "#60758A", "#AAB6BF"];
+const BAR_COLOR = ["#0F3B59", "#60758A", "#AAB6BF"];
 
-function BreakdownCard({ title, items, total, span, flipId }: { title: string; items: { label: string; count: number; color?: string }[]; total: number; span: string; flipId: string }) {
-  let acc = 0;
-  const stops = items
-    .map((i, idx) => ({ ...i, color: i.color ?? DONUT_COLOR[idx % DONUT_COLOR.length] }))
-    .filter((i) => i.count > 0)
-    .map((i) => {
-      const from = acc;
-      acc += total > 0 ? (i.count / total) * 100 : 0;
-      return `${i.color} ${from}% ${acc}%`;
-    });
+// Daftar batang berlabel (menggantikan donat): satu baris per kategori, panjang batang = porsi dari `total`.
+function BarBreakdown({ title, note, items, total, extra, span, flipId }: { title: string; note: string; items: { label: string; count: number; color?: string }[]; total: number; extra?: { label: string; count: number }; span: string; flipId: string }) {
+  const hasData = total > 0 || (extra?.count ?? 0) > 0;
   return (
-    <SectionCard title={title} className={`${span} moc-lower-card`} flipId={flipId} state={total > 0 ? "ready" : "empty"} emptyLabel={title.toLowerCase()}>
-      <div className="donut-breakdown">
-        <div className="donut" style={{ background: stops.length > 0 ? `conic-gradient(${stops.join(", ")})` : "#E9EEF0" }}>
-          <div className="donut-hole"><strong>{total}</strong><span>berjalan</span></div>
-        </div>
-        <div className="breakdown-list">
-          {items.map((item, index) => (
-            <div key={item.label}>
-              <span className={`breakdown-mark mark-${index}`} style={item.color ? { background: item.color } : undefined} />
-              <span>{item.label}</span>
-              <b>{item.count}</b>
-              <small>{total > 0 ? Math.round((item.count / total) * 100) : 0}%</small>
+    <SectionCard title={title} action={<span className="mdb-total-note">{note}</span>} className={`${span} moc-lower-card`} flipId={flipId} state={hasData ? "ready" : "empty"} emptyLabel={title.toLowerCase()}>
+      <div className="mdb-bars">
+        {items.map((item, idx) => {
+          const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+          return (
+            <div className={`mdb-bar-row${item.count === 0 ? " mdb-zero" : ""}`} key={item.label}>
+              <span className="mdb-bar-label">{item.label}</span>
+              <div className="mdb-bar-track"><i style={{ width: `${item.count === 0 ? 0 : Math.max(4, pct)}%`, background: item.color ?? BAR_COLOR[idx % BAR_COLOR.length] }} /></div>
+              <span className="mdb-bar-val"><b>{item.count}</b> MOC{item.count > 0 && <small> · {pct}%</small>}</span>
             </div>
-          ))}
-        </div>
+          );
+        })}
+        {extra && extra.count > 0 && (
+          <div className="mdb-bar-row mdb-bar-extra">
+            <span className="mdb-bar-label">{extra.label}</span>
+            <div className="mdb-bar-track" />
+            <span className="mdb-bar-val"><b>{extra.count}</b> MOC</span>
+          </div>
+        )}
       </div>
     </SectionCard>
   );
 }
 
 function LocationMoc({ items }: { items: Insights["byLocation"] }) {
+  const rows = [...items].sort((a, b) => b.total - a.total || a.location.localeCompare(b.location));
+  const max = Math.max(...rows.map((r) => r.total), 1);
   return (
     <SectionCard title="MOC per lokasi" className="span-4 moc-lower-card" flipId="lokasi" state={items.length > 0 ? "ready" : "empty"} emptyLabel="MOC per lokasi">
-      <div className="location-legend">
-        <span><i className="legend-running" /> Berjalan</span>
-        <span><i className="legend-complete" /> Selesai</span>
+      <div className="mdb-loc-legend">
+        <span><i style={{ background: "#0F3B59" }} /> Berjalan</span>
+        <span><i style={{ background: "#15803D" }} /> Selesai</span>
       </div>
-      <div className="location-bars">
-        {items.map((item) => {
-          const total = Math.max(1, item.total);
-          return (
-            <div className="location-bar-row" key={item.location}>
-              <span>{item.location}</span>
-              <div className="location-track">
-                <i className="location-running" style={{ width: `${(item.active / total) * 100}%` }} />
-                <i className="location-complete" style={{ width: `${(item.closed / total) * 100}%` }} />
-              </div>
-              <strong>{item.total}</strong>
-              <small>{item.active} / {item.closed}</small>
+      <div className="mdb-bars">
+        {rows.map((item) => (
+          <div className="mdb-loc-row" key={item.location}>
+            <span className="mdb-bar-label">{item.location}</span>
+            <div className="mdb-bar-track">
+              <i style={{ width: `${(item.active / max) * 100}%`, background: "#0F3B59" }} />
+              <i style={{ width: `${(item.closed / max) * 100}%`, background: "#15803D" }} />
             </div>
-          );
-        })}
+            <span className="mdb-bar-val"><b>{item.active}</b> berjalan · <b>{item.closed}</b> selesai</span>
+          </div>
+        ))}
       </div>
     </SectionCard>
   );
@@ -199,21 +220,24 @@ export default function MocDashboardManus({
 
   return (
     <div className="dashboard-content page-enter">
-      <StageRail stages={insights.stageCounts} active={insights.active} closed={insights.closed} />
+      <StageRail insights={insights} />
       <div className="content-grid content-grid-moc" ref={gridRef}>
         <AttentionList items={insights.attention} nowMs={nowMs} />
         <RecentMocActivity items={insights.recent} />
-        <BreakdownCard
+        <BarBreakdown
           title="Sifat perubahan"
-          items={insights.bySifat.map((s) => ({ label: s.label, count: s.count }))}
+          note={`${insights.active} MOC belum selesai`}
+          items={insights.bySifat.map((x) => ({ label: x.label, count: x.count }))}
           total={insights.active}
           span={span}
           flipId="sifat"
         />
-        <BreakdownCard
+        <BarBreakdown
           title="Tingkat risiko"
+          note={`${insights.active - insights.unrated} MOC sudah dinilai`}
           items={insights.byRisk.map((r) => ({ label: MOC_RISK_LEVEL_LABEL[r.level], count: r.count, color: MOC_RISK_LEVEL_COLOR[r.level] }))}
-          total={insights.active}
+          total={insights.active - insights.unrated}
+          extra={{ label: "Belum dinilai", count: insights.unrated }}
           span={span}
           flipId="risiko"
         />

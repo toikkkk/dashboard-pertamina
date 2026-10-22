@@ -302,6 +302,9 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
   const order: Record<MocAttentionKind, number> = { mine: 0, sla: 1, temp: 2, waiting: 3 };
   attention.sort((a, b) => order[a.kind] - order[b.kind]);
 
+  // MOC yang ditunda/dihentikan tetap "aktif" di database tetapi tidak sedang berjalan: dihitung terpisah.
+  const halted = active.filter((m) => m.validationState === "halted").length;
+  const unrated = active.filter((m) => !m.riskLevel).length;
   const bySifat = (["Permanen", "Sementara", "Darurat"] as const).map((label) => ({ label, count: active.filter((m) => m.sifatPerubahan === label).length }));
   const byRisk = RISK_ORDER.map((level) => ({ level, count: active.filter((m) => m.riskLevel === level).length }));
 
@@ -317,6 +320,9 @@ export function mocInsights(mocs: MocRequest[], actor: MocActor, nowMs: number) 
   return {
     total: mocs.length,
     active: active.length,
+    running: active.length - halted,
+    halted,
+    unrated,
     closed: mocs.length - active.length,
     mineCount: attention.filter((a) => a.kind === "mine").length,
     slaCount: attention.filter((a) => a.kind === "sla").length,
