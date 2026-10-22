@@ -55,15 +55,15 @@ function StageRail({ insights }: { insights: Insights }) {
       <div className="mdb-pipeline-head">Posisi MOC per tahap</div>
       <div className="mdb-pipeline" role="list">
         {stages.map((stage, index) => {
-          const h = stage.count === 0 ? 0 : Math.max(14, (stage.count / max) * 100);
+          const h = stage.count === 0 ? 4 : Math.max(14, (stage.count / max) * 100);
           return (
             <div className="mdb-stage" role="listitem" key={stage.label} title={`${stage.count} MOC di tahap ${stage.label}`}>
               <div className={`mdb-stage-count${stage.count === 0 ? " mdb-zero" : ""}`}>{stage.count}</div>
               <div className="mdb-stage-track">
-                <span className={index === last ? "mdb-fill-done" : "mdb-fill"} style={{ height: `${h}%` }} />
+                <span className={stage.count === 0 ? "mdb-fill-empty" : index === last ? "mdb-fill-done" : "mdb-fill"} style={{ height: `${h}%` }} />
               </div>
               <div className="mdb-stage-label">{stage.label}</div>
-              <div className="mdb-stage-no">Tahap {index + 1}</div>
+              <div className="mdb-stage-no">0{index + 1}</div>
             </div>
           );
         })}
