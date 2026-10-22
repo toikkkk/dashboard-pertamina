@@ -218,6 +218,8 @@ export default function AccountSecurityPanel() {
       <ChangeEmailCard currentEmail={status?.email} pendingEmail={status?.pendingEmail} placeholder={placeholder} onChanged={() => { setResent(null); mutate(); }} />
       <ChangePasswordCard locked={placeholder} email={status?.email} />
 
+      {/* Kartu MFA disembunyikan selama kunci enkripsi server belum disetel (MFA_ENCRYPTION_KEY); muncul sendiri begitu disetel. */}
+      {status?.mfaAvailable && (
       <section className={card}>
         <div className="flex items-start gap-3">
           {status?.mfaEnabled ? <ShieldCheck className="w-5 h-5 text-[#15803D] mt-0.5" strokeWidth={1.8} /> : <ShieldAlert className="w-5 h-5 text-[#B45309] mt-0.5" strokeWidth={1.8} />}
@@ -304,6 +306,7 @@ export default function AccountSecurityPanel() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }
