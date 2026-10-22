@@ -60,6 +60,7 @@ function SignIn2Content() {
   const [forgotError, setForgotError] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [sendingForgot, setSendingForgot] = useState(false);
+  const [resendIn, setResendIn] = useState(0); // detik sampai tombol Kirim ulang aktif lagi
 
   // Sign in
   const [identifier, setIdentifier] = useState("");
@@ -244,6 +245,7 @@ function SignIn2Content() {
     try {
       await forgotPassword(forgotEmail);
       setForgotSent(true);
+      setResendIn(60);
     } catch (err) {
       setForgotError(err instanceof Error ? err.message : "Gagal mengirim tautan atur ulang.");
     } finally {
@@ -251,8 +253,29 @@ function SignIn2Content() {
     }
   };
 
+  // Hitung mundur jeda Kirim ulang (satu detik sekali, berhenti di 0).
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const handleResend = async () => {
+    setForgotError("");
+    setSendingForgot(true);
+    try {
+      await forgotPassword(forgotEmail);
+      setResendIn(60);
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : "Gagal mengirim ulang tautan.");
+    } finally {
+      setSendingForgot(false);
+    }
+  };
+
   const backToSignIn = () => {
     setForgot(false);
+    setResendIn(0);
     setForgotEmail("");
     setForgotError("");
     setForgotSent(false);
@@ -302,8 +325,12 @@ function SignIn2Content() {
                   <CheckCircle2 className="w-9 h-9 text-[#15803D] animate-popIn" strokeWidth={1.7} />
                   <p className="text-[13px] font-bold text-[#0F172A]">Tautan terkirim</p>
                   <p className="text-[12px] text-[#4b5560] leading-relaxed">
-                    Kalau <strong>{forgotEmail}</strong> terdaftar, tautan atur ulang kata sandi sudah dikirim ke email tersebut. Berlaku 30 menit.
+                    Tautan atur ulang kata sandi sudah dikirim ke <strong>{forgotEmail}</strong>. Berlaku 30 menit. Bila belum masuk, cek juga folder Spam.
                   </p>
+                  {forgotError && <div className="text-[11.5px] text-[#DC2626] font-medium animate-fadeIn">{forgotError}</div>}
+                  <button type="button" onClick={handleResend} disabled={sendingForgot || resendIn > 0} className="px-4 py-2 rounded-full border border-[#0F3B59] text-[12.5px] font-bold text-[#0F3B59] hover:bg-[#0F3B59] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#0F3B59] transition-colors">
+                    {sendingForgot ? "Mengirim…" : resendIn > 0 ? `Kirim ulang tautan (${resendIn} dtk)` : "Kirim ulang tautan"}
+                  </button>
                   <button type="button" onClick={backToSignIn} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline mt-1">Kembali ke Masuk</button>
                 </div>
               ) : (

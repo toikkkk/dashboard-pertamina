@@ -45,10 +45,13 @@ function buildHtml({ name, resetUrl, expiresInMinutes }: SendPasswordResetEmailA
 
 export async function sendPasswordResetEmail(args: SendPasswordResetEmailArgs): Promise<void> {
   const resend = getResendClient();
-  await resend.emails.send({
+  // Resend mengembalikan galat sebagai nilai (tidak melempar), jadi harus diperiksa: tanpa ini kegagalan kirim
+  // (domain belum terverifikasi, kunci salah, dsb.) lolos tanpa jejak.
+  const { error } = await resend.emails.send({
     from: RESEND_FROM_EMAIL,
     to: args.to,
     subject: "Atur ulang kata sandi PSIOneVision",
     html: buildHtml(args),
   });
+  if (error) throw new Error(`Resend: ${error.name ?? "error"} — ${error.message}`);
 }
