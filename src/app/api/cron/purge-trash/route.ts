@@ -8,6 +8,7 @@ import { db } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
 import { withErrorHandling } from "@/lib/api/respond";
 import { purgeDocumentRow } from "@/lib/api/trash";
+import { dueMocs, purgeMocRow } from "@/lib/api/mocTrash";
 import { TRASH_RETENTION_DAYS } from "@/lib/domain/trash";
 import { logAudit } from "@/lib/audit";
 
@@ -53,6 +54,25 @@ export async function GET(req: NextRequest) {
         console.error("[cron purge-trash] gagal", docRow.id, err instanceof Error ? err.message : err);
       }
     }
-    return NextResponse.json({ checked: due.length, purged });
+
+    // MOC di Sampah yang lewat masa simpan ikut dihapus permanen (jatah per putaran sendiri).
+    const dueMoc = await dueMocs(MAX_PER_RUN);
+    let mocPurged = 0;
+    for (const m of dueMoc) {
+      try {
+        const { filesRemoved, filesTotal } = await purgeMocRow(m);
+        mocPurged += 1;
+        await logAudit(req, { name: "Sistem (hapus otomatis 30 hari)" }, "moc.dihapus_permanen", {
+          targetType: "moc",
+          targetId: m.id,
+          targetLabel: `${m.mocNumber ?? "Belum bernomor"} ${m.judul}`.trim(),
+          location: m.location,
+          detail: { otomatis: true, berkasDihapus: filesRemoved, berkasTotal: filesTotal, dihapusDariSampah: m.deletedAt?.toISOString() },
+        });
+      } catch (err) {
+        console.error("[cron purge-trash] MOC gagal", m.id, err instanceof Error ? err.message : err);
+      }
+    }
+    return NextResponse.json({ checked: due.length, purged, mocChecked: dueMoc.length, mocPurged });
   });
 }

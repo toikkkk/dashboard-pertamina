@@ -8,6 +8,8 @@ import React, { useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Download, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { TRASH_URGENT_DAYS, type TrashedDocument } from "@/lib/domain/trash";
+import { usePsi } from "@/lib/psiStore";
+import SampahMocPanel from "@/components/SampahMocPanel";
 
 const fetcher = (u: string) =>
   fetch(u).then(async (r) => {
@@ -53,6 +55,9 @@ function PurgeConfirm({ docs, busy, error, onClose, onConfirm }: { docs: Trashed
 }
 
 export default function SampahPage() {
+  const { activeUser } = usePsi();
+  const [tab, setTab] = useState<"dokumen" | "moc">("dokumen");
+  const isAdmin = !!activeUser.isRegionalAdmin;
   const { data, error, isLoading, mutate } = useSWR<TrashedDocument[]>("/api/documents/trash", fetcher);
   const { mutate: globalMutate } = useSWRConfig();
   const [q, setQ] = useState("");
@@ -114,8 +119,8 @@ export default function SampahPage() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Trash2 className="w-[18px] h-[18px] text-[#0F3B59]" strokeWidth={1.8} />
         <h1 className="font-heading text-[18px] font-bold text-[#0F172A]">Sampah</h1>
-        {data && <span className="font-mono text-[12px] text-[#6b6e72]">{data.length.toLocaleString("id-ID")} dokumen</span>}
-        {urgentCount > 0 && (
+        {tab === "dokumen" && data && <span className="font-mono text-[12px] text-[#6b6e72]">{data.length.toLocaleString("id-ID")} dokumen</span>}
+        {tab === "dokumen" && urgentCount > 0 && (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0F172A]">
             <span className="w-2 h-[3px] rounded-full bg-[#DC2626]" aria-hidden />
             {urgentCount} dokumen dihapus permanen dalam {TRASH_URGENT_DAYS} hari
@@ -123,6 +128,27 @@ export default function SampahPage() {
         )}
       </div>
 
+      {isAdmin && (
+        <div role="tablist" aria-label="Jenis data di Sampah" className="flex gap-1 mb-4 border-b border-[#D8E1E4]">
+          {([["dokumen", "Dokumen"], ["moc", "MOC"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              className={`px-4 py-2 text-[13px] font-bold -mb-px border-b-2 transition-colors ${tab === k ? "border-[#0F3B59] text-[#0F3B59]" : "border-transparent text-[#6b6e72] hover:text-[#0F172A]"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isAdmin && tab === "moc" ? (
+        <SampahMocPanel />
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <div className="relative flex-1 min-w-[240px] max-w-[420px]">
           <Search className="w-3.5 h-3.5 text-[#9a9da0] absolute left-[11px] top-1/2 -translate-y-1/2" strokeWidth={1.8} />
@@ -229,6 +255,8 @@ export default function SampahPage() {
 
       {purgeTargets && (
         <PurgeConfirm docs={purgeTargets} busy={busy} error={actionError} onClose={() => setPurgeTargets(null)} onConfirm={() => run("purge", purgeTargets)} />
+      )}
+      </>
       )}
     </div>
   );

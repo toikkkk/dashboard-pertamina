@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const b = bodySchema.parse(await req.json());
 
     const [moc] = await db.select().from(mocRequests).where(eq(mocRequests.id, params.id)).limit(1);
-    if (!moc) throw new HttpError(404, "MOC tidak ditemukan.");
+    if (!moc || moc.deletedAt) throw new HttpError(404, "MOC tidak ditemukan.");
     if (!moc.isOffline) throw new HttpError(400, "Hanya catatan MOC offline yang dapat dilanjutkan dengan cara ini.");
     const isController = user.role.includes("Controller");
     if (!user.isRegionalAdmin && !(isController && user.location === moc.location)) {

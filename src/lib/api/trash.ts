@@ -30,7 +30,12 @@ export async function purgeDocumentRow(docRow: DocRow): Promise<{ filesRemoved: 
     throw err;
   }
 
-  // Berkas yang sudah tidak dipakai siapa pun → hapus dari R2 lalu dari registry.
+  const filesRemoved = await removeUnusedFiles(fileIds);
+  return { filesRemoved, filesTotal: fileIds.length };
+}
+
+/** Berkas yang sudah tidak dipakai dokumen, riwayat, maupun bukti MOC mana pun → hapus dari R2 lalu dari registry. */
+export async function removeUnusedFiles(fileIds: string[]): Promise<number> {
   let filesRemoved = 0;
   for (const fid of fileIds) {
     const [a] = await db.select({ id: documents.id }).from(documents).where(eq(documents.primaryFileId, fid)).limit(1);
@@ -49,7 +54,7 @@ export async function purgeDocumentRow(docRow: DocRow): Promise<{ filesRemoved: 
       console.error("[hapus-permanen] gagal menghapus berkas", fid, err instanceof Error ? err.message : err);
     }
   }
-  return { filesRemoved, filesTotal: fileIds.length };
+  return filesRemoved;
 }
 
 /** Dokumen aktif → Sampah. Mengembalikan waktu hapus permanen otomatis. */

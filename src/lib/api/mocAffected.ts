@@ -54,7 +54,7 @@ export async function loadMocsAffectingDoc(documentId: string): Promise<MocAffec
   const rows = await db
     .select({ a: mocAffectedDocs, mocNumber: mocRequests.mocNumber, judul: mocRequests.judul, registerStatus: mocRequests.registerStatus, validationState: mocRequests.validationState })
     .from(mocAffectedDocs)
-    .innerJoin(mocRequests, eq(mocRequests.id, mocAffectedDocs.mocId))
+    .innerJoin(mocRequests, and(eq(mocRequests.id, mocAffectedDocs.mocId), isNull(mocRequests.deletedAt)))
     .where(eq(mocAffectedDocs.documentId, documentId))
     .orderBy(asc(mocAffectedDocs.addedAt));
   const last = (await lastRevisionAt([documentId])).get(documentId)?.getTime() ?? 0;

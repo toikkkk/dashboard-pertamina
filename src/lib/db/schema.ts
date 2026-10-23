@@ -384,6 +384,10 @@ export const mocRequests = pgTable(
     halt: jsonb("halt"),
     // MOC yang dicatat dari dokumen offline (Controller/Admin): hanya catatan Register + dokumen, tanpa alur di aplikasi.
     isOffline: boolean("is_offline").notNull().default(false),
+    // Sampah MOC: terisi = MOC ada di Sampah (tidak muncul di Register/dashboard), dihapus permanen setelah 30 hari.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id"),
+    deletedByName: text("deleted_by_name"),
     // Tahap D Komunikasi & E.1 Rencana Implementasi (lihat domain/moc.ts). NULL = belum dicatat.
     communication: jsonb("communication"),
     implementationPlan: jsonb("implementation_plan"),

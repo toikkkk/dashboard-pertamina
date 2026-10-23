@@ -1,7 +1,7 @@
 // Pemuat + pemeta data MOC untuk semua route /api/moc/*. Sama tujuannya dengan
 // lib/api/documents.ts: memetakan baris DB ke bentuk domain (MocRequest) yang dipakai
 // klien, sehingga aturan di domain/moc.ts berjalan identik di klien dan server.
-import { and, eq, inArray, desc, asc } from "drizzle-orm";
+import { and, eq, inArray, desc, asc, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { mocRequests, mocReviews, mocHistory, mocEvidence, fileRegistry, users } from "@/lib/db/schema";
@@ -187,7 +187,7 @@ async function userNames(ids: (string | null)[]): Promise<Map<string, string>> {
 }
 
 export async function loadMocItem(id: string): Promise<MocRequest | null> {
-  const [row] = await db.select().from(mocRequests).where(eq(mocRequests.id, id)).limit(1);
+  const [row] = await db.select().from(mocRequests).where(and(eq(mocRequests.id, id), isNull(mocRequests.deletedAt))).limit(1);
   if (!row) return null;
   const [reviewRows, historyRows, evidenceRows] = await Promise.all([
     db.select().from(mocReviews).where(eq(mocReviews.mocId, id)).orderBy(asc(mocReviews.round), asc(mocReviews.functionLabel)),
@@ -232,7 +232,7 @@ export async function loadMocItem(id: string): Promise<MocRequest | null> {
 // Daftar Register MOC. Sengaja ringan: review terisi (dibutuhkan mocActionsFor untuk
 // "menunggu tindakan saya"), tetapi riwayat & bukti kosong — ambil lewat loadMocItem.
 export async function loadMocList(): Promise<MocRequest[]> {
-  const rows = await db.select().from(mocRequests).orderBy(desc(mocRequests.createdAt));
+  const rows = await db.select().from(mocRequests).where(isNull(mocRequests.deletedAt)).orderBy(desc(mocRequests.createdAt));
   if (rows.length === 0) return [];
   const reviewRows = await db.select().from(mocReviews).where(inArray(mocReviews.mocId, rows.map((r) => r.id)));
   const names = await userNames(rows.flatMap((r) => [r.approverUserId, r.createdBy]));

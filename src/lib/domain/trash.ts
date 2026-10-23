@@ -16,6 +16,20 @@ export function trashDaysLeft(deletedAt: Date | string, now: Date = new Date()):
   return Math.max(0, Math.ceil((trashPurgeAt(deletedAt).getTime() - now.getTime()) / DAY_MS));
 }
 
+export interface TrashedMoc {
+  id: string;
+  mocNumber: string | null;
+  judul: string;
+  location: string;
+  registerStatus: string;
+  validationState: string;
+  isOffline: boolean;
+  deletedAt: string; // ISO
+  deletedByName: string | null;
+  purgeAt: string; // ISO
+  daysLeft: number;
+}
+
 export interface TrashedDocument {
   id: string;
   documentNumber: string;

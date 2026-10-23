@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     if (!kbo) throw new HttpError(422, "KBO untuk lokasi atau fungsi ini belum ditetapkan; unit Regional wajib memilih fungsi pengusul.");
 
     const number = formatMocNumber(b.sequence, kbo, b.month, b.year);
-    const [dup] = await db.select({ id: mocRequests.id }).from(mocRequests).where(eq(mocRequests.mocNumber, number)).limit(1);
-    if (dup) throw new HttpError(409, `Nomor MoC ${number} sudah ada di Register.`);
+    const [dup] = await db.select({ id: mocRequests.id, deletedAt: mocRequests.deletedAt }).from(mocRequests).where(eq(mocRequests.mocNumber, number)).limit(1);
+    if (dup) throw new HttpError(409, dup.deletedAt ? `Nomor MoC ${number} dipakai MOC yang ada di Sampah. Pulihkan atau hapus permanen MOC itu dulu.` : `Nomor MoC ${number} sudah ada di Register.`);
 
     let created: { id: string };
     try {
