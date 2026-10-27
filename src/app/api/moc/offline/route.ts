@@ -4,7 +4,7 @@
 // tidak diproses di alur aplikasi (tanpa tindakan); dokumennya disimpan sebagai bukti.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { locations, mocRequests } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -12,7 +12,8 @@ import { ForbiddenError, assertOnboarded } from "@/lib/auth/rbac";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { attachMocEvidence, loadMocItem, recordMocHistory } from "@/lib/api/moc";
 import { MOC_REGISTER_STATUSES, MOC_SIFAT_PERUBAHAN } from "@/lib/domain/moc";
-import { formatMocNumber, kboForMoc } from "@/lib/domain/kbo";
+import { formatMocNumber, kboForMoc, parseRegionalSequence } from "@/lib/domain/kbo";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 
 const bodySchema = z.object({
   location: z.string().trim().min(1),
@@ -62,6 +63,14 @@ export async function POST(req: NextRequest) {
     const number = formatMocNumber(b.sequence, kbo, b.month, b.year);
     const [dup] = await db.select({ id: mocRequests.id, deletedAt: mocRequests.deletedAt }).from(mocRequests).where(eq(mocRequests.mocNumber, number)).limit(1);
     if (dup) throw new HttpError(409, dup.deletedAt ? `Nomor MoC ${number} dipakai MOC yang ada di Sampah. Pulihkan atau hapus permanen MOC itu dulu.` : `Nomor MoC ${number} sudah ada di Register.`);
+
+    // Unit Regional memakai satu urutan untuk semua fungsi: nomor urut yang sama pada tahun yang sama tidak boleh dipakai dua kali,
+    // walau KBO fungsinya berbeda.
+    if (isRegionalUnit(b.location)) {
+      const sameYear = await db.select({ n: mocRequests.mocNumber, deletedAt: mocRequests.deletedAt }).from(mocRequests).where(like(mocRequests.mocNumber, `%/MOC/%/%/${b.year}`));
+      const clash = sameYear.find((r) => parseRegionalSequence(r.n, b.year) === b.sequence);
+      if (clash) throw new HttpError(409, `Nomor urut ${String(b.sequence).padStart(3, "0")} tahun ${b.year} sudah dipakai di unit Regional (${clash.n})${clash.deletedAt ? ", MOC itu ada di Sampah" : ""}. Unit Regional memakai satu urutan untuk semua fungsi.`);
+    }
 
     let created: { id: string };
     try {

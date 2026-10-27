@@ -1,5 +1,6 @@
 // Kode KBO untuk Nomor MoC (permintaan client 13 Okt 2026): format `AAA/MOC/PPNXXXXXXX/BB/TAHUN`.
-//   AAA        = nomor urut 3 digit, mulai 001 dan di-reset per KBO per tahun
+//   AAA        = nomor urut 3 digit, mulai 001 dan di-reset per tahun. Terminal: urut per KBO. Unit Regional:
+//                satu urutan bersama untuk SEMUA fungsi (revisi client 27 Okt 2026), sedangkan KBO tetap per fungsi.
 //   PPNXXXXXXX = kode KBO unit penerbit (dari "List KBO Jatimbalinus"); tiap lokasi dan tiap fungsi regional punya sendiri
 //   BB         = bulan PENGAJUAN oleh Initiator, angka Romawi (I–XII)
 //   TAHUN      = tahun pengajuan
@@ -94,4 +95,16 @@ export function parseMocSequence(number: string | null, kbo: string, year: numbe
   if (!number) return null;
   const m = /^(\d{3,})\/MOC\/([A-Z0-9]+)\/(?:I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\/(\d{4})$/.exec(number);
   return m && m[2] === kbo && Number(m[3]) === year ? Number(m[1]) : null;
+}
+
+// Semua kode KBO fungsi regional: dipakai untuk menghitung satu urutan bersama di unit Regional.
+export const REGIONAL_KBO_CODES: string[] = REGIONAL_KBO_FUNCTIONS.map((f) => f.kbo);
+
+// Nomor urut dari nomor berformat baru yang KBO-nya salah satu fungsi regional pada tahun itu; null bila bukan.
+export function parseRegionalSequence(number: string | null, year: number): number | null {
+  for (const kbo of REGIONAL_KBO_CODES) {
+    const seq = parseMocSequence(number, kbo, year);
+    if (seq !== null) return seq;
+  }
+  return null;
 }

@@ -1,6 +1,6 @@
 // MoC Controller meregistrasi MOC yang sudah disetujui ke daftar MoC (TKO Tahap C, langkah 4) dan Nomor MoC
 // dibuat otomatis oleh sistem dengan format client: AAA/MOC/PPNXXXXXXX/BB/TAHUN (lihat domain/kbo.ts). Nomor urut
-// AAA di-reset per KBO per tahun; bulan dan tahun diambil dari PENGAJUAN pertama oleh Initiator. Nomor tidak
+// AAA di-reset per tahun: per KBO untuk terminal, satu urutan bersama semua fungsi untuk unit Regional (KBO tetap per fungsi); bulan dan tahun diambil dari PENGAJUAN pertama oleh Initiator. Nomor tidak
 // diketik manual agar urutan tidak loncat atau ganda.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -11,7 +11,8 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { HttpError, withErrorHandling } from "@/lib/api/respond";
 import { attachMocEvidence, loadMocItem, recordMocHistory, requireMocAction } from "@/lib/api/moc";
 import { PENGUSULAN_EVIDENCE_STAGE } from "@/lib/domain/moc";
-import { formatMocNumber, kboForMoc, parseMocSequence, wibMonthYear } from "@/lib/domain/kbo";
+import { formatMocNumber, kboForMoc, parseMocSequence, parseRegionalSequence, wibMonthYear } from "@/lib/domain/kbo";
+import { isRegionalUnit } from "@/lib/domain/regionalUnit";
 
 const bodySchema = z.object({
   evidenceFileId: z.string().uuid().optional(),
@@ -50,11 +51,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       number = moc.mocNumber;
     }
     for (let attempt = 0; attempt < 5 && !moc.mocNumber; attempt++) {
+      // Unit Regional: satu urutan untuk semua fungsi (KBO berbeda, nomor urut berlanjut). Terminal: per KBO.
+      // MOC di Sampah ikut terhitung karena nomornya tetap dicadangkan.
+      const regional = isRegionalUnit(moc.location);
       const existing = await db
         .select({ n: mocRequests.mocNumber })
         .from(mocRequests)
-        .where(like(mocRequests.mocNumber, `%/MOC/${kbo}/%/${year}`));
-      const max = existing.reduce((m, r) => Math.max(m, parseMocSequence(r.n, kbo, year) ?? 0), 0);
+        .where(regional ? like(mocRequests.mocNumber, `%/MOC/%/%/${year}`) : like(mocRequests.mocNumber, `%/MOC/${kbo}/%/${year}`));
+      const max = existing.reduce((m, r) => Math.max(m, (regional ? parseRegionalSequence(r.n, year) : parseMocSequence(r.n, kbo, year)) ?? 0), 0);
       number = formatMocNumber(max + 1, kbo, month, year);
       try {
         await db.update(mocRequests).set({ mocNumber: number, validationState: "registered", updatedAt: new Date() }).where(eq(mocRequests.id, moc.id));
