@@ -1,0 +1,21 @@
+# Pemeriksaan ketergantungan berkala: GitHub membuat permintaan pembaruan (pull request) bila ada pustaka dengan
+# kerentanan atau versi baru. Dijadwalkan mingguan; pembaruan kecil digabung supaya tidak membanjiri.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      pembaruan-minor-dan-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Next.js 15 membutuhkan perubahan besar di kode; dikerjakan terencana, bukan otomatis.
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
