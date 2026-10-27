@@ -15,14 +15,14 @@
     "seed:demo-volume": "tsx scripts/seed-demo-volume.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1113.0",
-    "@aws-sdk/lib-storage": "^3.1113.0",
-    "@aws-sdk/s3-request-presigner": "^3.1113.0",
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/lib-storage": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@gsap/react": "^2.1.2",
-    "@neondatabase/serverless": "^1.1.0",
+    "@neondatabase/serverless": "^1.2.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "^0.45.4",
     "gsap": "^3.15.0",
     "lucide-react": "^0.419.0",
     "next": "^14.2.5",
@@ -30,11 +30,11 @@
     "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
-    "resend": "^6.25.0",
+    "resend": "^6.34.1",
     "swr": "^2.5.1",
     "tailwind-merge": "^2.4.0",
     "xlsx": "^0.18.5",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/mime-types": "^3.0.1",
@@ -43,15 +43,15 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "mime-types": "^3.0.2",
-    "p-limit": "^7.3.1",
-    "playwright": "^1.62.1",
+    "p-limit": "^7.3.3",
+    "playwright": "^1.64.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
