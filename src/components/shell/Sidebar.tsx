@@ -100,8 +100,8 @@ export default function Sidebar({
         <div className="sidebar-brand">
           <div className="collapsed-brand-mark" aria-hidden="true">P</div>
           <div>
-            <Link href="/" className="brand-title brand-link" aria-label="Portal PSI dan MOC, ke dashboard" onClick={() => setMobileOpen(false)}>
-              Portal PSI &amp; MOC
+            <Link href="/" className="brand-title brand-link" aria-label="PSIOneVision, ke dashboard" onClick={() => setMobileOpen(false)}>
+              PSIOneVision
             </Link>
           </div>
           <button aria-label="Tutup navigasi" className="mobile-close" onClick={() => setMobileOpen(false)}>

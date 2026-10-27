@@ -148,7 +148,7 @@ export default function Navbar() {
               wordmark than a template slot waiting for a logo. */}
           <Link href="/" className="flex items-baseline gap-2 min-w-0">
             <span className="font-heading text-[13px] lg:text-[14px] font-bold tracking-[.02em] text-[#0F172A] uppercase whitespace-nowrap">
-              Portal PSI &amp; MOC
+              PSIOneVision
             </span>
             <span className="hidden sm:inline text-[#C5CED3]">/</span>
             <span className="hidden sm:inline text-[11px] text-[#748094] font-medium truncate">Regional Jatimbalinus</span>
