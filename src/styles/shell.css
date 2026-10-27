@@ -951,3 +951,41 @@
 .hsse-shell a.mdb-chip.mdb-link:hover { background: #F3F6F8; }
 .hsse-shell a.mdb-link:focus-visible { outline: 2px solid #0F3B59; outline-offset: 2px; }
 .hsse-shell a.mdb-bar-row, .hsse-shell a.mdb-loc-row { margin: 0 -6px; padding: 3px 6px; }
+
+/* ===== Animasi halus (2026-10-27) =====
+   Hanya transform/opacity. prefers-reduced-motion sudah ditangani di globals.css (durasi dinolkan). */
+
+/* Pemilih PSI/MOC: pil biru meluncur ke tab terpilih, bukan berpindah seketika. */
+.hsse-shell .greeting-switcher { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0; isolation: isolate; }
+.hsse-shell .greeting-switcher::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 2); border-radius: 999px; background: #0F3B59; box-shadow: 0 2px 5px rgba(15, 59, 89, .16); transition: transform 340ms cubic-bezier(.22, 1, .36, 1); }
+.hsse-shell .greeting-switcher[data-view="moc"]::before { transform: translateX(100%); }
+.hsse-shell .greeting-switcher button.view-tab-active, .hsse-shell .greeting-switcher button.view-tab-active:hover { background: transparent; box-shadow: none; }
+.hsse-shell .greeting-switcher button { transition: color 240ms ease-out, background-color 160ms ease-out; }
+
+/* Panel dashboard: masuk dengan geser tipis dari arah tab yang dipilih. */
+@keyframes panelFromRight { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes panelFromLeft { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+.hsse-shell .panel-from-right { animation: panelFromRight 380ms cubic-bezier(.22, 1, .36, 1) backwards; }
+.hsse-shell .panel-from-left { animation: panelFromLeft 380ms cubic-bezier(.22, 1, .36, 1) backwards; }
+
+/* Kartu dashboard muncul berurutan; "backwards" supaya tidak ada transform tertinggal (Flip memakai transform). */
+@keyframes cardRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.hsse-shell .dashboard-panel .section-card { animation: cardRise 460ms cubic-bezier(.22, 1, .36, 1) backwards; }
+.hsse-shell .dashboard-panel .section-card:nth-child(2) { animation-delay: 60ms; }
+.hsse-shell .dashboard-panel .section-card:nth-child(3) { animation-delay: 120ms; }
+.hsse-shell .dashboard-panel .section-card:nth-child(4) { animation-delay: 180ms; }
+.hsse-shell .dashboard-panel .section-card:nth-child(5) { animation-delay: 240ms; }
+.hsse-shell .dashboard-panel .section-card:nth-child(n+6) { animation-delay: 300ms; }
+
+/* Batang tumbuh dari dasarnya saat data tampil. */
+@keyframes barGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes barGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.hsse-shell .mdb-stage-track span, .hsse-shell .insight-column-track i { transform-origin: bottom; animation: barGrowY 720ms cubic-bezier(.22, 1, .36, 1) 160ms backwards; }
+.hsse-shell .mdb-bar-track i, .hsse-shell .stack-track i, .hsse-shell .table-progress span { transform-origin: left; animation: barGrowX 720ms cubic-bezier(.22, 1, .36, 1) 160ms backwards; }
+.hsse-shell .table-progress span { transition: width 400ms cubic-bezier(.22, 1, .36, 1); }
+.hsse-shell .stack-track i { transition: width 400ms cubic-bezier(.22, 1, .36, 1); }
+
+/* Tekanan dan hover yang konsisten di seluruh aplikasi. */
+.hsse-shell a.mdb-link:active, .hsse-shell .metric-card:active, .hsse-shell .insight-column-link:active { transform: scale(.985); }
+.hsse-shell tbody tr { transition: background-color 140ms ease-out; }
+.hsse-shell .section-card { transition: box-shadow 200ms ease-out, border-color 200ms ease-out; }

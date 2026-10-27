@@ -11,6 +11,7 @@ import { MOC_RISK_LEVEL_COLOR, MOC_RISK_LEVEL_LABEL, type MocRequest } from "@/l
 import { MOC_STATE_META } from "@/lib/domain/statusStyle";
 import { workingDaysBetween, type MocAttentionKind, type mocInsights } from "@/lib/domain/dashboard";
 import SectionCard from "@/components/dashboard/SectionCard";
+import AnimatedNumber from "@/components/AnimatedNumber";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { DashboardTile } from "@/components/dashboard/PsiDashboardManus";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
@@ -39,7 +40,7 @@ function MaybeLink({ href, className, role, title, children }: { href?: string; 
 function StatTile({ label, value, tone, hint, href }: { label: string; value: number; tone: "biru" | "amber" | "merah" | "ungu" | "hijau"; hint: string; href: string }) {
   const inner = (
     <>
-      <strong>{value}</strong>
+      <strong><AnimatedNumber value={value} /></strong>
       <span>{label}</span>
       <small>{hint}</small>
     </>
@@ -54,7 +55,7 @@ function StageRail({ insights, href }: { insights: Insights; href: (q: string) =
   const max = Math.max(...stages.map((s) => s.count), 1);
   const last = stages.length - 1;
   return (
-    <SectionCard title="Ringkasan MOC" action={<div className="stage-total"><strong>{total}</strong><span>total MOC</span></div>} className="span-12" state={total > 0 ? "ready" : "empty"} emptyLabel="MOC">
+    <SectionCard title="Ringkasan MOC" action={<div className="stage-total"><strong><AnimatedNumber value={total} /></strong><span>total MOC</span></div>} className="span-12" state={total > 0 ? "ready" : "empty"} emptyLabel="MOC">
       <div className="mdb-stats">
         <StatTile label="Sedang berjalan" value={running} tone="biru" hint="sedang diproses" href={href("kelompok=berjalan")} />
         <StatTile label="Menunggu Anda" value={mineCount} tone="amber" hint="perlu tindakan Anda" href={href("perlu=1")} />
@@ -68,7 +69,7 @@ function StageRail({ insights, href }: { insights: Insights; href: (q: string) =
           const h = stage.count === 0 ? 4 : Math.max(14, (stage.count / max) * 100);
           return (
             <MaybeLink key={stage.label} className={`mdb-stage${stage.count > 0 ? " mdb-link" : ""}`} role="listitem" title={`${stage.count} MOC di tahap ${stage.label}`} href={stage.count > 0 ? href(`tahap=${index + 1}`) : undefined}>
-              <div className={`mdb-stage-count${stage.count === 0 ? " mdb-zero" : ""}`}>{stage.count}</div>
+              <div className={`mdb-stage-count${stage.count === 0 ? " mdb-zero" : ""}`}><AnimatedNumber value={stage.count} /></div>
               <div className="mdb-stage-track">
                 <span className={stage.count === 0 ? "mdb-fill-empty" : index === last ? "mdb-fill-done" : "mdb-fill"} style={{ height: `${h}%` }} />
               </div>

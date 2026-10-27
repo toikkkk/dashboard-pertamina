@@ -9,6 +9,7 @@ import { ArrowUpRight, ChevronRight, ChevronDown, FileClock, ArrowUp, ArrowDown,
 import type { DocumentItem } from "@/lib/domain/types";
 import { EXPIRING_WITHIN_DAYS, completenessByChapter, completenessByLocation, psiInsights } from "@/lib/domain/dashboard";
 import { useDirectoryOverview, useDocumentCategorySummary } from "@/lib/useDocumentCategories";
+import AnimatedNumber from "@/components/AnimatedNumber";
 import SectionCard from "@/components/dashboard/SectionCard";
 import DashboardListModal from "@/components/dashboard/DashboardListModal";
 import { StatusDot, StatusPill, type Severity } from "@/components/dashboard/severity";
@@ -60,8 +61,8 @@ function MetricGrid({ insights, locationFilter }: { insights: Insights; location
             <ArrowUpRight className="h-4 w-4" />
           </div>
           <div className="metric-value-row">
-            <strong>{m.value}</strong>
-            <span>{m.percentage}%</span>
+            <strong><AnimatedNumber value={m.value} /></strong>
+            <span><AnimatedNumber value={m.percentage} />%</span>
           </div>
           <div className="metric-note">
             <StatusDot severity={m.severity} /> {m.note}
@@ -407,7 +408,7 @@ function ComplianceTable({
         </div>
       )}
       <div className="compliance-summary">
-        <div><span>Kepatuhan keseluruhan</span><strong>{overallPct}<small>%</small></strong></div>
+        <div><span>Kepatuhan keseluruhan</span><strong><AnimatedNumber value={overallPct} /><small>%</small></strong></div>
         <div className="summary-divider" />
         <div><span>Sub-kategori terpenuhi</span><strong className="mono-summary">{totals.approved} <small>/ {totals.target}</small></strong></div>
       </div>
@@ -590,7 +591,7 @@ function TerminalAttention() {
           <Link key={r.name} href={`/directory?location=${encodeURIComponent(r.name)}`} className="completeness-row insight-link-row">
             <span className="completeness-name" title={r.name}>{r.name}</span>
             <StackedBar ok={r.ok} review={r.review} missing={r.missing} />
-            <strong>{r.pct}<small>%</small></strong>
+            <strong><AnimatedNumber value={r.pct} /><small>%</small></strong>
           </Link>
         ))}
       </div>
@@ -638,7 +639,7 @@ function ExpiryColumns({ insights, locationFilter, span }: { insights: Insights;
             : `/directory?tahun=${e.key}&lokasi=${encodeURIComponent(locationFilter)}`;
           const body = (
             <>
-              <strong>{e.count}</strong>
+              <strong><AnimatedNumber value={e.count} /></strong>
               <div className="insight-column-track"><i style={{ height: `${Math.max(e.count > 0 ? 4 : 0, (e.count / max) * 100)}%`, background: toneColor[e.tone] }} /></div>
               <span>{e.label}</span>
             </>

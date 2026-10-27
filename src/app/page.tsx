@@ -1,7 +1,7 @@
 "use client";
 
 import { isRegionalUnit } from "@/lib/domain/regionalUnit";
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { usePsi } from "@/lib/psiStore";
@@ -35,6 +35,12 @@ function Dashboard() {
     writePref(VIEW_KEY, v);
     router.replace(v === "moc" ? `${pathname}?d=moc` : pathname, { scroll: false });
   };
+
+  // Arah geser panel saat pindah PSI <-> MOC: MOC masuk dari kanan, PSI dari kiri. Dihitung saat render
+  // (bukan di efek) supaya kelas arah sudah terpasang ketika panel baru dipasang; "none" pada muat pertama.
+  const prevView = useRef(view);
+  const panelMotion = prevView.current === view ? "" : view === "moc" ? " panel-from-right" : " panel-from-left";
+  useEffect(() => { prevView.current = view; }, [view]);
 
   // Mode lihat-saja untuk non-admin: menampilkan semua lokasi. Hanya berlaku di halaman
   // ini (dilepas saat pindah halaman) supaya sisa aplikasi tetap memakai lokasi user;
@@ -135,7 +141,7 @@ function Dashboard() {
         </div>
       )}
 
-      <div id="dashboard-panel" role="tabpanel" aria-label={view === "psi" ? "Dashboard PSI" : "Dashboard MOC"} key={view}>
+      <div id="dashboard-panel" className={`dashboard-panel${panelMotion}`} role="tabpanel" aria-label={view === "psi" ? "Dashboard PSI" : "Dashboard MOC"} key={view}>
         {view === "psi" ? (
           <PsiDashboardManus
             insights={psi}

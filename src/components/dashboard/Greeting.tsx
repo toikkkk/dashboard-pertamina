@@ -69,7 +69,7 @@ export default function Greeting({
         </div>
       </div>
       <div className="greeting-side">
-        <div className="view-switcher greeting-switcher" role="tablist" aria-label="Pilih dashboard">
+        <div className="view-switcher greeting-switcher" data-view={view} role="tablist" aria-label="Pilih dashboard">
           <button role="tab" aria-selected={view === "psi"} aria-controls="dashboard-panel" className={view === "psi" ? "view-tab-active" : ""} onClick={() => onView("psi")}>
             <FileCheck2 aria-hidden="true" className="h-4 w-4" />
             <span className="toggle-code">PSI</span>
