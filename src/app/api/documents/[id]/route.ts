@@ -4,7 +4,8 @@ import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { documents, documentCategories, historyItems, historyDiffs } from "@/lib/db/schema";
 import { requireSessionUser } from "@/lib/auth/session";
-import { assertLocationRead, assertLocationWrite, ForbiddenError } from "@/lib/auth/rbac";
+import { assertLocationRead, ForbiddenError } from "@/lib/auth/rbac";
+import { canEditDocumentData } from "@/lib/domain/rules";
 import { withErrorHandling, HttpError } from "@/lib/api/respond";
 import { loadDocumentItem, getDocumentLocation } from "@/lib/api/documents";
 import { moveToTrash } from "@/lib/api/trash";
@@ -35,6 +36,7 @@ const patchSchema = z
     title: z.string().trim().min(1).max(300).optional(),
     documentNumber: z.string().trim().min(1).max(100).optional(),
     psiType: z.enum(PSI_TYPES).optional(),
+    description: z.string().trim().max(1000).optional(),
     issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     // "Berlaku sampai" manual (menimpa hitungan terbit + siklus): hanya Admin Regional.
     expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -59,7 +61,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const [docRow] = await db.select().from(documents).where(eq(documents.id, params.id)).limit(1);
     if (!docRow || docRow.deletedAt) return NextResponse.json({ error: "Dokumen tidak ditemukan." }, { status: 404 });
-    assertLocationWrite(user, docRow.location);
+    if (!canEditDocumentData(user, docRow.location)) {
+      throw new ForbiddenError("Hanya Penanggung Jawab PSI (Initiator) lokasi ini yang dapat mengubah data dokumen.");
+    }
 
     const catRows = await db.select({ id: documentCategories.id, name: documentCategories.name, months: documentCategories.reviewCycleMonths }).from(documentCategories).where(eq(documentCategories.location, docRow.location));
     const catById = new Map(catRows.map((c) => [c.id, c]));
@@ -90,6 +94,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.psiType !== undefined && body.psiType !== docRow.psiType) {
       set.psiType = body.psiType;
       diffs.push({ field: "Jenis PSI", oldValue: docRow.psiType, newValue: body.psiType });
+    }
+    if (body.description !== undefined && body.description !== docRow.deskripsi) {
+      set.deskripsi = body.description;
+      diffs.push({ field: "Deskripsi", oldValue: docRow.deskripsi || "(kosong)", newValue: body.description || "(kosong)" });
     }
     if (body.issueDate !== undefined && body.issueDate !== docRow.issueDate) {
       const today = new Date().toISOString().split("T")[0];

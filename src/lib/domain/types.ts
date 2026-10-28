@@ -55,6 +55,8 @@ export interface DocumentItem {
   id: string;
   documentNumber: string;
   title: string;
+  /** Deskripsi dokumen (opsional, diubah lewat "Ubah data dokumen"). */
+  description?: string;
   psiType: PSIType;
   lifecyclePhase: LifecyclePhase;
   location: string;

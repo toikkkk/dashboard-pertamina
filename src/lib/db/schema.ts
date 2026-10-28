@@ -243,6 +243,8 @@ export const documents = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     documentNumber: text("document_number").notNull().unique(),
     title: text("title").notNull(),
+    // Keterangan bebas (migrasi 0022); diubah lewat "Ubah data dokumen", tercatat lama → baru di riwayat.
+    deskripsi: text("deskripsi").notNull().default(""),
     psiType: text("psi_type").notNull(),
     lifecyclePhase: text("lifecycle_phase").notNull(),
     location: text("location").notNull().references(() => locations.name),

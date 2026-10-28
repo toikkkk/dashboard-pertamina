@@ -96,6 +96,15 @@ export function isDocOverdue(doc: DocumentItem): boolean {
  * (semua lokasi); user lokasi lain atau akun yang menunggu aktivasi tidak berhak. Dicek ulang di server
  * (lib/api/trash.ts); ini juga dipakai menampilkan/menyembunyikan tombolnya.
  */
+/**
+ * Hak "Ubah data dokumen" (judul, nomor, jenis PSI, tanggal terbit, deskripsi): hanya Penanggung Jawab PSI (Initiator)
+ * di lokasi dokumen itu. Controller lokasi dan Admin Regional tidak lagi (permintaan client 2026-10-28). Dicek ulang
+ * di PATCH /api/documents/[id]; ini juga dipakai menampilkan/menyembunyikan tombolnya.
+ */
+export function canEditDocumentData(user: { isRegionalAdmin?: boolean; role: string; location: string | null }, docLocation: string): boolean {
+  return !user.isRegionalAdmin && user.role === "Penanggung Jawab PSI (Initiator)" && !!user.location && user.location === docLocation;
+}
+
 export function canDeleteDocument(user: { isRegionalAdmin?: boolean; role: string; location: string | null }, docLocation: string): boolean {
   return !!user.isRegionalAdmin || (!!user.location && user.location === docLocation);
 }

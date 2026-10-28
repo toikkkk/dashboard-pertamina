@@ -112,6 +112,7 @@ async function assembleDocumentItems(docRows: (typeof documents.$inferSelect)[])
     id: doc.id,
     documentNumber: doc.documentNumber,
     title: doc.title,
+    description: doc.deskripsi || undefined,
     psiType: doc.psiType as DocumentItem["psiType"],
     lifecyclePhase: doc.lifecyclePhase as DocumentItem["lifecyclePhase"],
     location: doc.location,

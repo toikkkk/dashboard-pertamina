@@ -24,6 +24,7 @@ export default function DocumentMetadataFallback({ document: doc }: { document: 
       <InfoField label="No. Dokumen" value={doc.documentNumber} />
       <InfoField label="Jenis PSI" value={doc.psiType} />
       <InfoField label="Judul" value={doc.title} span />
+      {doc.description && <InfoField label="Deskripsi" value={doc.description} span />}
       <InfoField label="Lokasi" value={doc.location} />
       <InfoField label="Versi Berlaku" value={`v${doc.currentVersion}`} />
       <InfoField label="Tanggal Terbit" value={fmtDate(doc.issueDate)} />

@@ -16,7 +16,7 @@ import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
 import ReplaceFileDialog from "@/components/directory/ReplaceFileDialog";
 import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
 import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
-import { canDeleteDocument } from "@/lib/domain/rules";
+import { canDeleteDocument, canEditDocumentData } from "@/lib/domain/rules";
 import { psiInsights } from "@/lib/domain/dashboard";
 import { supersededInfo } from "@/lib/domain/rules";
 import SupersedeDialog from "@/components/directory/SupersedeDialog";
@@ -117,6 +117,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     }
   };
   const canDelete = canDeleteDocument(activeUser, doc.location);
+  const canEditData = canEditDocumentData(activeUser, doc.location);
   const loc = encodeURIComponent(doc.location);
   const crumbs: Crumb[] = [
     { label: "Direktori", href: "/directory" },
@@ -161,9 +162,11 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                   <Archive className="w-3.5 h-3.5" strokeWidth={2.2} /> Tandai digantikan
                 </button>
               )}
-              <button type="button" onClick={() => setEditOpen(true)} className={barBtn}>
-                <Pencil className="w-3.5 h-3.5" strokeWidth={2.2} /> Ubah data
-              </button>
+              {canEditData && (
+                <button type="button" onClick={() => setEditOpen(true)} className={barBtn}>
+                  <Pencil className="w-3.5 h-3.5" strokeWidth={2.2} /> Ubah data
+                </button>
+              )}
               <button type="button" onClick={() => setMoveOpen(true)} className={barBtn}>
                 <FolderInput className="w-3.5 h-3.5" strokeWidth={2.2} /> Pindahkan
               </button>

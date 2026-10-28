@@ -11,7 +11,7 @@ import MoveDocumentsDialog from "@/components/directory/MoveDocumentsDialog";
 import EditDocumentDialog from "@/components/directory/EditDocumentDialog";
 import DeleteDocumentDialog from "@/components/directory/DeleteDocumentDialog";
 import ActionMenu from "@/components/ui/ActionMenu";
-import { canDeleteDocument } from "@/lib/domain/rules";
+import { canDeleteDocument, canEditDocumentData } from "@/lib/domain/rules";
 import { mutate as globalMutate } from "swr";
 import Breadcrumb, { type Crumb } from "@/components/Breadcrumb";
 import { enqueueUploads, type UploadJob } from "@/lib/uploadQueue";
@@ -707,12 +707,8 @@ function CategoryView({
                     ariaLabel={`Aksi untuk ${d.title}`}
                     items={[
                       { label: "Buka", icon: ExternalLink, onClick: () => router.push(`/document/${d.id}`) },
-                      ...(canWrite
-                        ? [
-                            { label: "Ubah data", icon: Pencil, onClick: () => setEditId(d.id) },
-                            { label: "Pindahkan ke…", icon: FolderInput, onClick: () => startMove(d.id) },
-                          ]
-                        : []),
+                      ...(canEditDocumentData(activeUser, location) ? [{ label: "Ubah data", icon: Pencil, onClick: () => setEditId(d.id) }] : []),
+                      ...(canWrite ? [{ label: "Pindahkan ke…", icon: FolderInput, onClick: () => startMove(d.id) }] : []),
                       ...(canDelete ? [{ label: "Pindahkan ke Sampah", icon: Trash2, danger: true, divider: true, onClick: () => setDeleteDoc({ id: d.id, title: d.title, number: d.documentNumber }) }] : []),
                     ]}
                   />

@@ -43,6 +43,7 @@ export default function EditDocumentDialog({
   const [loadError, setLoadError] = useState(false);
   const [title, setTitle] = useState("");
   const [number, setNumber] = useState("");
+  const [description, setDescription] = useState("");
   const [psiType, setPsiType] = useState<string>(PSI_TYPES[1]);
   const [issue, setIssue] = useState("");
   const [verified, setVerified] = useState(false);
@@ -59,6 +60,7 @@ export default function EditDocumentDialog({
         setDoc(d);
         setTitle(d.title);
         setNumber(d.documentNumber);
+        setDescription(d.description ?? "");
         setPsiType(d.psiType);
         setIssue(d.issueDate);
       })
@@ -76,6 +78,7 @@ export default function EditDocumentDialog({
     if (title.trim() !== doc.title) changes.title = title.trim();
     if (number.trim() !== doc.documentNumber) changes.documentNumber = number.trim();
     if (psiType !== doc.psiType) changes.psiType = psiType;
+    if (description.trim() !== (doc.description ?? "")) changes.description = description.trim();
     if (dateChanged) changes.issueDate = issue;
     if (isAdmin && expiryManual !== null && expiryManual !== (dateChanged && issue ? addMonthsIso(issue, cycleMonths) : doc.expiryDate)) changes.expiryDate = expiryManual;
     if (estimated && verified) changes.dateVerified = true;
@@ -124,6 +127,10 @@ export default function EditDocumentDialog({
               <div>
                 <div className={label}>Nomor dokumen</div>
                 <input value={number} disabled={busy} maxLength={100} onChange={(e) => setNumber(e.target.value)} className={`${field} font-mono`} />
+              </div>
+              <div>
+                <div className={label}>Deskripsi</div>
+                <textarea value={description} disabled={busy} maxLength={1000} rows={3} onChange={(e) => setDescription(e.target.value)} className={`${field} py-2 resize-y`} />
               </div>
               <div>
                 <div className={label}>Jenis PSI</div>
