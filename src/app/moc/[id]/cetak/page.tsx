@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMocItem } from "@/lib/useMoc";
 import MocFormViewer from "@/components/MocFormViewer";
-import type { MocFormKey } from "@/components/MocSheet";
+import { tkoRefText, type MocFormKey } from "@/components/MocSheet";
 
 // Halaman cetak/unduh formulir MoC untuk ditandatangani di luar web. Navbar & footer
 // disembunyikan saat cetak. ?form=pengusulan|pemantauan|tinjauan memilih lampiran;
@@ -68,19 +68,30 @@ function PrintContent({ id }: { id: string }) {
              menempel di tepi atas kertas (laporan 2026-10-29). Pembungkus <table> di bawah memakai thead/tfoot
              pengganjal yang DIULANG browser di setiap halaman, jadi tiap halaman punya margin atas-bawah sama. */
           .pf-spacer { height: 0.6in; }
+          /* Baris "Lampiran N – TKO No. …" pindah ke kepala (thead) yang diulang di setiap halaman, sama seperti
+             header di Excel asli; versi di dalam lembar disembunyikan supaya tidak dobel. */
+          .pf-body .moc-form-ref { display: none !important; }
         }
+        .pf-head { display: none; }
+        @media print { .pf-head { display: block; } }
+        .pf-head table { width: 100%; border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 13px; color: #000; margin: 0 0 6px; }
+        .pf-head td { border: 0; padding: 0; }
+        .pf-head td.r { text-align: right; }
         .print-frame { width: 100%; border-collapse: collapse; }
+        @media screen { .pf-spacer { height: 0; } }
         .print-frame td.pf-cell { padding: 0; border: 0; }
-        .pf-spacer { height: 0; }
       `}</style>
       <div className="no-print mb-3">
         <Link href={`/moc/${moc.id}`} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">← Kembali ke detail</Link>
       </div>
       <div className="bg-white p-3 border border-[#C5CED3] rounded-[8px] print:border-0 print:p-0">
         <table className="print-frame">
-          <thead><tr><td className="pf-cell"><div className="pf-spacer" /></td></tr></thead>
+          <thead><tr><td className="pf-cell">
+            <div className="pf-spacer" />
+            <div className="pf-head"><table><tbody><tr><td>{tkoRefText(form === "pemantauan" ? 6 : form === "tinjauan" ? 7 : 5)}</td><td className="r">Revisi Ke-1</td></tr></tbody></table></div>
+          </td></tr></thead>
           <tfoot><tr><td className="pf-cell"><div className="pf-spacer" /></td></tr></tfoot>
-          <tbody><tr><td className="pf-cell">
+          <tbody><tr><td className="pf-cell pf-body">
             <MocFormViewer moc={moc} initialForm={form} standalone autoPrint={params.get("print") === "1"} monitoringNo={Number(params.get("no")) || undefined} />
           </td></tr></tbody>
         </table>

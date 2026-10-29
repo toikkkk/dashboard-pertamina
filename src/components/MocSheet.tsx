@@ -90,6 +90,8 @@ const BOX = "☐";
 // di bawah), supaya keduanya tidak pernah bisa saling tidak sinkron.
 export const TKO_DOC_NO = "B13.3-07/PNA400000/2025-S9";
 const TKO_REF = `Lampiran %N% – TKO No.    ${TKO_DOC_NO}`;
+/** Teks "Lampiran N – TKO No. …" — dipakai juga oleh halaman cetak sebagai kepala yang diulang di tiap halaman PDF. */
+export const tkoRefText = (n: number) => TKO_REF.replace("%N%", String(n));
 
 function dmy(iso?: string | null): string {
   if (!iso) return "DD/MM/YYYY";
@@ -148,7 +150,7 @@ function BannerRow({ text }: { text: string }) {
   return (
     <tr>
       <td colSpan={12} className="moc-sheet-banner">
-        <table className="moc-sheet-banner-inner">
+        <table className="moc-sheet-banner-inner" cellSpacing={0} cellPadding={0}>
           <tbody>
             <tr>
               <td className="txt">{text}</td>
@@ -169,7 +171,7 @@ function BannerRow({ text }: { text: string }) {
 // dengan BannerRow.
 function RefLine({ n }: { n: number }) {
   return (
-    <table className="moc-form-ref"><tbody><tr>
+    <table className="moc-form-ref" cellSpacing={0} cellPadding={0}><tbody><tr>
       <td className="l">{TKO_REF.replace("%N%", String(n))}</td>
       <td className="r">Revisi Ke-1</td>
     </tr></tbody></table>
@@ -185,7 +187,7 @@ function CategoryRow({ moc }: { moc: MocRequest }) {
     <tr>
       <td colSpan={3}>Aktivitas / Ruang Lingkup Perubahan</td>
       <td colSpan={9}>
-        <table className="cats">
+        <table className="cats" cellSpacing={0} cellPadding={0}>
           <tbody>
             <tr>{cells.slice(0, 6)}</tr>
             <tr>{cells.slice(6, 12)}</tr>
@@ -302,7 +304,7 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
       <style>{SHEET_CSS}</style>
       <RefLine n={5} />
       <div className="moc-form-title">FORMULIR MOC – PENGUSULAN &amp; VALIDASI</div>
-      <table className="moc-sheet">
+      <table className="moc-sheet" cellSpacing={0} cellPadding={0}>
         <Cols12 />
         <tbody>
           <BannerRow text="FORMULIR PENGUSULAN DAN VALIDASI MANAGEMENT OF CHANGE (MoC)" />
@@ -331,7 +333,7 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
 
       <div style={{ marginTop: 16 }}>
         <RefLine n={5} />
-        <table className="moc-sheet">
+        <table className="moc-sheet" cellSpacing={0} cellPadding={0}>
           <Cols12 />
           <tbody>
             <tr><td colSpan={12} className="band">Tahap Penilaian Risiko dan Penentuan Pengendalian</td></tr>
@@ -459,7 +461,7 @@ export function MocSheetPemantauan({ moc, no }: { moc: MocRequest; no?: number }
       <style>{SHEET_CSS}</style>
       <RefLine n={6} />
       <div className="moc-form-title">FORMULIR MOC – PEMANTAUAN</div>
-      <table className="moc-sheet">
+      <table className="moc-sheet" cellSpacing={0} cellPadding={0}>
         <Cols12 />
         <tbody>
           <BannerRow text="FORMULIR PEMANTAUAN MANAGEMENT OF CHANGE (MoC)" />
@@ -517,7 +519,7 @@ export function MocSheetTinjauan({ moc }: { moc: MocRequest }) {
       <style>{SHEET_CSS}</style>
       <RefLine n={7} />
       <div className="moc-form-title">FORMULIR MOC – TINJAUAN AKHIR &amp; PENUTUPAN</div>
-      <table className="moc-sheet">
+      <table className="moc-sheet" cellSpacing={0} cellPadding={0}>
         <Cols12 />
         <tbody>
           <BannerRow text="FORMULIR TINJAUAN AKHIR DAN PENUTUPAN MANAGEMENT OF CHANGE (MoC)" />
