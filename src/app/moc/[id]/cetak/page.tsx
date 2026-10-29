@@ -45,7 +45,7 @@ function PrintContent({ id }: { id: string }) {
              dipindah jadi padding di body. Hasil akhirnya sama persis secara
              visual, tapi header/footer bawaan browser tidak lagi punya tempat.
              Ditemukan lewat screenshot pengguna langsung, 2026-10-01. */
-          body { background: #fff !important; padding: 0.75in 0.25in !important; }
+          body { background: #fff !important; padding: 0 0.25in !important; }
           main { padding: 0 !important; }
           .no-print { display: none !important; }
           /* Kerangka aplikasi (latar abu-abu, kartu bayangan, padding lebar) tidak
@@ -64,13 +64,26 @@ function PrintContent({ id }: { id: string }) {
              visual yang persis page setup asli Form MoC 2025.xlsx (0.75in/0.25in)
              sekarang datang dari padding body, bukan dari sini. */
           @page { size: A4; margin: 0; }
+          /* Padding body hanya berlaku di tepi halaman pertama dan terakhir, sehingga halaman 2 dst mulai
+             menempel di tepi atas kertas (laporan 2026-10-29). Pembungkus <table> di bawah memakai thead/tfoot
+             pengganjal yang DIULANG browser di setiap halaman, jadi tiap halaman punya margin atas-bawah sama. */
+          .pf-spacer { height: 0.6in; }
         }
+        .print-frame { width: 100%; border-collapse: collapse; }
+        .print-frame td.pf-cell { padding: 0; border: 0; }
+        .pf-spacer { height: 0; }
       `}</style>
       <div className="no-print mb-3">
         <Link href={`/moc/${moc.id}`} className="text-[12.5px] font-bold text-[#0F3B59] hover:underline">← Kembali ke detail</Link>
       </div>
       <div className="bg-white p-3 border border-[#C5CED3] rounded-[8px] print:border-0 print:p-0">
-        <MocFormViewer moc={moc} initialForm={form} standalone autoPrint={params.get("print") === "1"} monitoringNo={Number(params.get("no")) || undefined} />
+        <table className="print-frame">
+          <thead><tr><td className="pf-cell"><div className="pf-spacer" /></td></tr></thead>
+          <tfoot><tr><td className="pf-cell"><div className="pf-spacer" /></td></tr></tfoot>
+          <tbody><tr><td className="pf-cell">
+            <MocFormViewer moc={moc} initialForm={form} standalone autoPrint={params.get("print") === "1"} monitoringNo={Number(params.get("no")) || undefined} />
+          </td></tr></tbody>
+        </table>
       </div>
     </div>
   );

@@ -73,7 +73,6 @@ export const SHEET_CSS = `
 .moc-form-ref{width:100%;font-family:Calibri,Arial,sans-serif;font-size:13px;margin:0 0 12px;color:#000;border-collapse:collapse}
 .moc-form-ref td{border:0;padding:0}
 .moc-form-ref .r{text-align:right}
-.moc-sheet-page-break{break-before:page;page-break-before:always}
 @media print{
   /* Di layar lembar dirancang minimal 860px; saat cetak lebar minimum dilepas (lihat
      .moc-min-w) agar tabel mengikuti lebar kertas A4 dan tidak terpotong. */
@@ -330,7 +329,7 @@ export default function MocSheet({ moc }: { moc: MocRequest }) {
         </tbody>
       </table>
 
-      <div className="moc-sheet-page-break" style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
         <RefLine n={5} />
         <table className="moc-sheet">
           <Cols12 />
