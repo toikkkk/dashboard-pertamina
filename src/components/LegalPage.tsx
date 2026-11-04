@@ -7,7 +7,6 @@ export default function LegalPage({ title, updated, children }: { title: string;
   return (
     <div className="min-h-screen bg-[#CAD4DA] px-4 py-10">
       <article className="max-w-[760px] mx-auto bg-white rounded-[14px] border border-[#C5CED3] p-6 sm:p-9">
-        <img src="/logo-psi.png" alt="" width={44} height={44} className="mb-2 h-11 w-11 rounded-[10px]" />
         <div className="text-[10.5px] font-bold uppercase tracking-[.14em] text-[#6b7780]">PSIOneVision</div>
         <h1 className="font-heading text-[26px] font-bold text-[#0F172A] mt-1">{title}</h1>
         <p className="text-[12.5px] text-[#6b6e72] mt-1">Terakhir diperbarui: {updated}</p>

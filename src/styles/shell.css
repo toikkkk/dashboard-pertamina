@@ -989,5 +989,3 @@
 .hsse-shell a.mdb-link:active, .hsse-shell .metric-card:active, .hsse-shell .insight-column-link:active { transform: scale(.985); }
 .hsse-shell tbody tr { transition: background-color 140ms ease-out; }
 .hsse-shell .section-card { transition: box-shadow 200ms ease-out, border-color 200ms ease-out; }
-
-.hsse-shell .sidebar-logo { height: 32px; width: 32px; flex: none; border-radius: 8px; display: block; }

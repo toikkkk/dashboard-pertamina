@@ -18,7 +18,7 @@ function buildHtml({ name, verifyUrl, expiresInHours, purpose }: Args): string {
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#CAD4DA;padding:32px 16px;">
   <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #C5CED3;border-radius:4px;overflow:hidden;">
     <div style="background:#0F3B59;padding:20px 28px;">
-      <img src="https://www.psionevision.com/logo-psi.png" alt="" width="32" height="32" style="vertical-align:middle;border-radius:6px;margin-right:10px;" /><span style="vertical-align:middle;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">PSIOneVision</span>
+      <p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">PSIOneVision</p>
       <p style="margin:2px 0 0;color:#BAE0F5;font-size:11px;">Regional Jatimbalinus</p>
     </div>
     <div style="padding:28px;">
@@ -53,7 +53,7 @@ export async function sendEmailChangeNotice(args: { to: string; name: string; ne
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#CAD4DA;padding:32px 16px;">
   <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #C5CED3;border-radius:4px;overflow:hidden;">
-    <div style="background:#0F3B59;padding:20px 28px;"><img src="https://www.psionevision.com/logo-psi.png" alt="" width="32" height="32" style="vertical-align:middle;border-radius:6px;margin-right:10px;" /><span style="vertical-align:middle;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">PSIOneVision</span></div>
+    <div style="background:#0F3B59;padding:20px 28px;"><p style="margin:0;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">PSIOneVision</p></div>
     <div style="padding:28px;">
       <h1 style="margin:0 0 12px;color:#0F172A;font-size:18px;">Permintaan Ganti Email Akun</h1>
       <p style="margin:0 0 12px;color:#3a3d40;font-size:13.5px;line-height:1.6;">Halo ${esc(args.name)}, ada permintaan mengganti email akun Anda menjadi <b>${esc(args.newEmailMasked)}</b>. Email akun baru berganti setelah tautan konfirmasi di alamat baru itu dibuka.</p>

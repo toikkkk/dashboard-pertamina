@@ -98,7 +98,7 @@ export default function Sidebar({
       {mobileOpen && <button aria-label="Tutup menu" className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
       <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`}>
         <div className="sidebar-brand">
-          <img src="/logo-psi.png" alt="" width={32} height={32} className="sidebar-logo" />
+          <div className="collapsed-brand-mark" aria-hidden="true">P</div>
           <div>
             <Link href="/" className="brand-title brand-link" aria-label="PSIOneVision, ke dashboard" onClick={() => setMobileOpen(false)}>
               PSIOneVision
