@@ -48,7 +48,11 @@ export function downloadSheetAsWord(sheetHtml: string, filename: string) {
   // setiap gambar dipindah menjadi bagian MIME terpisah (format "Halaman Web Satu Berkas"/MHTML, yang juga
   // dipakai Word sendiri saat Save As Single File Web Page) dan <img> menunjuk ke bagian itu.
   const images: { location: string; mime: string; base64: string }[] = [];
-  const html = sheetHtml.replace(/src="data:(image\/[a-z+.-]+);base64,([^"]+)"/gi, (_m, mime: string, b64: string) => {
+  // Baris "Lampiran N – TKO No. … Revisi Ke-1" dipindah dari badan lembar ke HEADER Word, supaya
+  // berulang di setiap halaman seperti pada PDF (header Word asli: mso-element:header + mso-header di @page).
+  let refHtml = "";
+  const body = sheetHtml.replace(/<table[^>]*class="moc-form-ref"[\s\S]*?<\/table>/gi, (m) => { refHtml = refHtml || m; return ""; });
+  const html = body.replace(/src="data:(image\/[a-z+.-]+);base64,([^"]+)"/gi, (_m, mime: string, b64: string) => {
     const location = `file:///C:/moc/gambar${images.length + 1}.${mime.split("/")[1].replace("jpeg", "jpg")}`;
     images.push({ location, mime, base64: b64 });
     return `src="${location}"`;
@@ -66,10 +70,16 @@ export function downloadSheetAsWord(sheetHtml: string, filename: string) {
     // float, ukuran gambar, flexbox). Satuan pt (satuan asli Word), bukan in/mm. A4 =
     // 595.3pt x 841.9pt. Margin atas/bawah 54pt (0.75in), kiri/kanan 18pt (0.25in),
     // header/footer 21.6pt (0.3in) — persis page setup asli Form MoC 2025.xlsx.
-    `@page Section1{size:595.3pt 841.9pt;margin:54.0pt 18.0pt 54.0pt 18.0pt;mso-header-margin:21.6pt;mso-footer-margin:21.6pt;mso-paper-source:0}` +
+    `@page Section1{size:595.3pt 841.9pt;margin:54.0pt 18.0pt 54.0pt 18.0pt;mso-header-margin:21.6pt;mso-header:url("file:///C:/moc/header.htm") h1;mso-footer-margin:21.6pt;mso-paper-source:0}` +
     `div.Section1{page:Section1}` +
     `body{margin:0}${SHEET_CSS}</style></head>` +
     `<body><div class="Section1">${html}</div></body></html>`;
+  // Header harus bagian MIME TERSENDIRI (seperti Save As Single File Web Page dari Word): kalau divnya ditaruh di badan,
+  // Word memakainya sebagai header sekaligus mencetaknya lagi sebagai paragraf biasa (terbukti di uji Word, 2026-11-04).
+  const headerDoc =
+    `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">` +
+    `<head><meta charset="utf-8"><style>${SHEET_CSS}</style></head>` +
+    `<body><div style="mso-element:header" id="h1">${refHtml}</div></body></html>`;
   const boundary = "----=_NextPart_moc_" + Math.random().toString(36).slice(2);
   const parts = [
     "MIME-Version: 1.0",
@@ -81,6 +91,9 @@ export function downloadSheetAsWord(sheetHtml: string, filename: string) {
     'Content-Type: text/html; charset="utf-8"',
     "",
     utf8Base64Lines(doc),
+    ...(refHtml
+      ? ["", `--${boundary}`, "Content-Location: file:///C:/moc/header.htm", "Content-Transfer-Encoding: base64", 'Content-Type: text/html; charset="utf-8"', "", utf8Base64Lines(headerDoc)]
+      : []),
     ...images.flatMap((img) => [
       "",
       `--${boundary}`,
